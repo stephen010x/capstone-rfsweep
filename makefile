@@ -27,7 +27,8 @@ CC := gcc
 # Here are the extensions
 # https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
 CFLAGS := -std=gnu23 -fvisibility=internal
-LFLAGS := 
+# -llibhackrf.so -lhackrf
+LFLAGS :=
 BFLAGS := -Wall -Wextra
 #LIBS   :=
 
@@ -77,14 +78,15 @@ WASM_BFLAGS :=
 
 
 
-DEFAULT := dynamic_release
+DEFAULT := release
 WHITELIST := all fast release debug static dynamic 
 WHITELIST := $(WHITELIST) static_fast static_debug static_release
 WHITELIST := $(WHITELIST) dynamic_fast dynamic_debug dynamic_release
+WHITELIST := $(WHITELIST) preproc preproc_debug
 
 
 
-test: $(BINDIR)/test
+#test: $(BINDIR)/test
 
 
 
@@ -103,6 +105,7 @@ INCS = $(shell find $(INCDIR) -name "*.h")
 ifneq ($(filter $(GOAL),$(WHITELIST)),)
 	OBJS = $(SRCS:%.c=$(TMPDIR)/$(GOAL)/%.o)
 	DEPS = $(SRCS:%.c=$(TMPDIR)/$(GOAL)/%.d)
+	PREP = $(SRCS:%.c=$(TMPDIR)/$(GOAL)/%.pp)
 endif
 
 #BINGOAL :=  $(subst dynamic_,,$(subst static_,,$(GOAL)))
@@ -111,7 +114,7 @@ BINTARG := $(BINDIR)/$(TARGET)
 LIBBINTARG := $(BINDIR)/lib$(TARGET)
 INCTARG := $(BINDIR)/$(INCLUDEE)
 
-LIBDIRS := $(shell ls -d $(LIBDIR)/*/)
+LIBDIRS := $(shell ls -d $(LIBDIR)/)
 LIBINCS := $(foreach path,$(LIBDIRS),-I$(path)$(INCDIR)/)
 LIBBINS := $(foreach path,$(LIBDIRS),-L$(path)$(BINDIR)/)
 CFLAGS  := $(CFLAGS) $(LIBINCS)
@@ -141,6 +144,9 @@ all: $(DEFAULT)
 fast: _fast $(BINTARG)
 debug: _debug $(BINTARG)
 release: _release $(BINTARG)
+
+preproc: _release $(PREP)
+preproc_debug: _debug $(PREP)
 
 static: static_$(DEFAULT)
 static_fast: _static _fast $(LIBBINTARG).a
@@ -226,6 +232,9 @@ $(TMPDIR)/$(GOAL)/%.d: %.c
 	mkdir -p $(dir $@)
 	$(CC) -I$(INCDIR) $(BFLAGS) $(CFLAGS) -MM -MT $(patsubst %.d,%.o,$@) -MF $@ $<
 
+$(TMPDIR)/$(GOAL)/%.pp: %.c
+	mkdir -p $(dir $@)
+	$(CC) -E -I$(INCDIR)  $(BFLAGS) $(CFLAGS) -c $< > $@
 
 
 clean:
