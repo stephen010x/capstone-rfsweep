@@ -1,0 +1,5 @@
+./bin/hackrf
+[0;33m[warn] [0m	[0;34msrc/main.c[0m:[0;34m101[0m: target hackrf library version is '0.9.1'. Instead, 'unknown' is being used.
+device opened with serial #00000000930c64dc285b0ec3
+[0;31m[error][0m	src/main.c:187: setup_receiver_params(...): assertion '("hackrf_set_freq(...)", !err)' failed. return code ffffffff.
+[0;31m[error][0m	src/main.c:63: main(...): assertion '("problem setting up receiver params", !err)' failed. return code ffffffff.
