@@ -162,7 +162,7 @@ int setup_receiver_params(hackrf_device *device) {
     int err;
     uint32_t real_bandwidth_hz;
     
-    uint8_t enable_amp = true;
+    uint8_t enable_amp = false;
     uint8_t enable_ant = true;
     
     uint32_t bandwidth_hz = 10e6;   // half above and half below freq_hz

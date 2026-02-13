@@ -28,7 +28,7 @@ CC := gcc
 # https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
 CFLAGS := -std=gnu23 -fvisibility=internal
 # -llibhackrf.so -lhackrf
-LFLAGS :=
+LFLAGS := -lusb-1.0
 BFLAGS := -Wall -Wextra
 #LIBS   :=
 

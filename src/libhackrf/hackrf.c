@@ -21,7 +21,7 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABI
 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "hackrf.h"
+#include "libhackrf/hackrf.h"
 
 #include <stdbool.h>
 #include <stdlib.h>
@@ -30,7 +30,8 @@ ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSI
 	#include <unistd.h>
 	#include <signal.h>
 #endif
-#include <libusb.h>
+//#include <libusb.h>
+#include <libusb-1.0/libusb.h>
 
 #ifdef _WIN32
 	/* Avoid redefinition of timespec from time.h (included by libusb.h) */
@@ -1282,6 +1283,7 @@ int ADDCALL hackrf_test_rtc_osc(hackrf_device* device, bool* pass)
 		READ_FREQ_MONITOR,
 		STOP_32KHZ_OSCILLATOR,
 	} step;
+	(void)step;
 
 	// Enable 32kHz oscillator
 	result = libusb_control_transfer(
@@ -1343,7 +1345,7 @@ int ADDCALL hackrf_test_rtc_osc(hackrf_device* device, bool* pass)
 		sizeof(count),
 		1000);
 
-	if (result < sizeof(count)) {
+	if (result < (int)sizeof(count)) {
 		last_libusb_error = result;
 		return HACKRF_ERROR_LIBUSB;
 	}
@@ -1418,7 +1420,7 @@ int ADDCALL hackrf_get_m0_state(hackrf_device* device, hackrf_m0_state* state)
 		sizeof(hackrf_m0_state),
 		0);
 
-	if (result < sizeof(hackrf_m0_state)) {
+	if (result < (int)sizeof(hackrf_m0_state)) {
 		last_libusb_error = result;
 		return HACKRF_ERROR_LIBUSB;
 	} else {
@@ -1746,7 +1748,8 @@ int ADDCALL hackrf_set_freq(hackrf_device* device, const uint64_t freq_hz)
 
 	if (result < length) {
 		last_libusb_error = result;
-		return HACKRF_ERROR_LIBUSB;
+		//return HACKRF_ERROR_LIBUSB;
+		return result;
 	} else {
 		return HACKRF_SUCCESS;
 	}
