@@ -1,30 +1,38 @@
 
 #include <stdio.h>
+#include <stlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <time.h>
+//#include <time.h>
 #include <sched.h>
 
 //#include <libhackrf/hackrf.h>
 #include "libhackrf/hackrf.h"
+#include "kissfft/kiss_fft.h"
 
 //#include "hackrf.h"
 #include "utils/debug.h"
+#include "utils/macros.h"
+
+
+#define MY_HACKRF_SOURCE
+#include "rfsweep-host.h"
 
 
 // https://github.com/greatscottgadgets/hackrf/blob/main/host/libhackrf/src/hackrf.h
 // https://github.com/DevRaf-Per/hackrf/wiki/libHackRF-API
 
 
-#define SAFE_LIBHACKRF_VERSION "0.9.1"
+//#define SAFE_LIBHACKRF_VERSION "0.9.1"
+#define SAFE_LIBHACKRF_VERSION "unknown"
 
 typedef hackrf_device hackrf_device_t;
+typedef hackrf_transfer hackrf_transfer_t;
 
 
 
 
-
-#define fatalassert(__val, ...)
+//#define fatalassert(__val, ...)
 
 
 
@@ -35,41 +43,100 @@ typedef hackrf_device hackrf_device_t;
 
 
 
-int open_board(hackrf_device **device);
-//int open_board(hackrf_device *device);
-int free_board(hackrf_device *device);
-int setup_receiver_params(hackrf_device *device);
-int begin_receiver(hackrf_device *device);
-int rx_callback(hackrf_transfer* transfer);
+int hackrf_open_board(hackrf_device_t **device);
+int hackrf_free_board(hackrf_device_t *device);
+
+static int setup_receiver_params(hackrf_device_t *device, hparams_t *params);
+static int begin_receiver(hackrf_device_t *device, hparams_t *params, sbins_t *sbins);
+static int stop_receiver(hackrf_device_t *device);
+static int rx_callback(hackrf_transfer_t *transfer);
 
 
-typedef struct global_state_t {} state;
-
-
-
-
+//typedef struct global_state_t {} state;
 
 
 
-int main(void) {
+
+
+
+
+void sbins_free(sbins_t sbins) {
+    free(sbins->bins);
+    debug(
+        sbins = (sbins_t){0};
+    );
+}
+
+
+
+int sbins_init(sbins_t *sbins, int len) {
+    void *mem = malloc(sizeof(sbin_t) * len);
+
+    if (mem == NULL) {
+        debug(
+            *sbins = (sbins_t){
+                .len = 0,
+                .bins = NULL,
+            };
+        );
+        return -1;
+    }
+    
+    *sbins = (sbins_t){
+        .len = len,
+        .bins = mem,
+    };
+    
+    return 0;
+}
+
+
+
+
+void hparams_defaults(hparams_t *params) {
+    *params = (hparams_t){
+        .srate_hz = 10e6,
+        .freq_hz  = 2.4e6,
+        .band_hz  = 10e6,
+        .lna_gain = 16,
+        .vga_gain = 20,
+        .samps = 100,
+        .amp_enable = false,
+    };
+}
+
+
+
+
+uint32_t hackrf_real_bandwidth(uint32_t band_hz) {
+    return hackrf_compute_baseband_filter_bw(band_hz);
+}
+
+
+
+
+
+int hackrf_read(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
     int err;
-    hackrf_device_t* device;
+    //hackrf_device_t* device;
 
     //err = open_board(&device);
-    err = open_board(&device);
-    if (err) return err;
+    // err = open_board(&device);
+    // if (err) return err;
 
-    err = setup_receiver_params(device);
+    err = setup_receiver_params(device, params);
     assert(("problem setting up receiver params", !err), err);
 
-    err = begin_receiver(device);
+    err = begin_receiver(device, params, sbins);
     assert(("problem starting receiver", !err), err);
 
     // loops forever.
-    for(;;) sched_yield();
+    //for(;;) sched_yield();
 
-    err = free_board(device);
-    if (err) return err;
+
+
+    // err = free_board(device);
+    // if (err) return err;
 
     return 0;
 }
@@ -78,22 +145,33 @@ int main(void) {
 
 
 
+static __construct void init_libhackrf(void) {
+    // initilize the hackrf library
+    int err = hackrf_init();
+    assert(("hackrf failed to initilize", err == HACKRF_SUCCESS), err);
+}
 
+
+static __destruct void exit_libhackrf() {
+    // safely exit hackrf
+    int err = hackrf_exit();
+    assert((err == HACKRF_SUCCESS), err)
+}
 
 
 
 // initilizes library and opens board
 //int open_board(hackrf_device **device) {
-int open_board(hackrf_device **device) {
+int hackrf_open_board(hackrf_device_t **device) {
     int err;
     //uint16_t version, usb_version;
     read_partid_serialno_t rpisn;
     //hackrf_device_list_t *devices;
     
     
-    // initilize the hackrf library
-    err = hackrf_init();
-    assert(("hackrf failed to initilize", err == HACKRF_SUCCESS), err);
+    // // initilize the hackrf library
+    // err = hackrf_init();
+    // assert(("hackrf failed to initilize", err == HACKRF_SUCCESS), err);
     //if (err) fatal(err);
 
     // warn user if a different untargeted hackrf lib version is being used
@@ -120,6 +198,7 @@ int open_board(hackrf_device **device) {
 //         (usb_version >> 8) & 0xFF, usb_version & 0xFF);
 //     
 
+    debug(
     // get serial number
     err = hackrf_board_partid_serialno_read(*device, &rpisn);
     assert(!err, err);
@@ -129,6 +208,7 @@ int open_board(hackrf_device **device) {
     for (int i = 0; i < 4; i++)
         printf("%04x", rpisn.serial_no[i]);
     printf("\n");
+    );
     
     return 0;
 }
@@ -137,7 +217,7 @@ int open_board(hackrf_device **device) {
 
 
 
-int free_board(hackrf_device *device) {
+int hackrf_free_board(hackrf_device_t *device) {
     int err;
 
     // close opened device
@@ -148,8 +228,8 @@ int free_board(hackrf_device *device) {
     // hackrf_device_list_free(devices);
 
     // safely exit hackrf
-    err = hackrf_exit();
-    assert((err == HACKRF_SUCCESS), err);
+    // err = hackrf_exit();
+    // assert((err == HACKRF_SUCCESS), err);
 
     return 0;
 }
@@ -158,56 +238,60 @@ int free_board(hackrf_device *device) {
 
 
 
-int setup_receiver_params(hackrf_device *device) {
+
+
+static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
     int err;
-    uint32_t real_bandwidth_hz;
+    debug(uint32_t real_band_hz;);
     
-    uint8_t enable_amp = false;
-    uint8_t enable_ant = true;
+    //uint8_t enable_amp = false;
+    //uint8_t enable_ant = true;
     
-    uint32_t bandwidth_hz = 10e6;   // half above and half below freq_hz
-    uint64_t freq_hz      = 2.4e6;  // center frequency
-    double sample_rate_hz = 10e6;   // should be between 2-20MHz
+    //uint32_t bandwidth_hz = 10e6;   // half above and half below freq_hz
+    //uint64_t freq_hz      = 2.4e6;  // center frequency
+    //double sample_rate_hz = 10e6;   // should be between 2-20MHz
     
-    uint32_t lna_gain     = 16;
-    uint32_t vga_gain     = 20;
-    
+    //uint32_t lna_gain     = 16;
+    //uint32_t vga_gain     = 20;
 
-    // toggle amplifier
-    err = hackrf_set_amp_enable(device, enable_amp);
-    assert(("hackrf_set_amp_enable(...)", !err), err);
-
-    // toggle antenna
-    err = hackrf_set_antenna_enable(device, enable_ant);
-    assert(("hackrf_set_antenna_enable(...)", !err), err);
-
-    // apparently won't be exact frequency. See the hackrf.h lib header
-    // set center frequency
-    err = hackrf_set_freq(device, freq_hz);
-    assert(("hackrf_set_freq(...)", !err), err);
-
-    // set sample rate
-    err = hackrf_set_sample_rate(device, sample_rate_hz);
-    assert(("hackrf_set_sample_rate(...)", !err), err);
-
-    // set vga and lna gain
-    err = hackrf_set_lna_gain(device, lna_gain);
-    assert(("hackrf_set_lna_gain(...)", !err), err);
-    err = hackrf_set_vga_gain(device, vga_gain);
-    assert(("hackrf_set_vga_gain(...)", !err), err);
-    
 
     // calculate actual bandwidth we will be using
     // will be forced to one of these: 1.75, 2.5, 3.5, 5, 5.5, 6, 7, 8, 
     //      9, 10, 12, 14, 15, 20, 24, 28MHz
+    debug(
     real_bandwidth_hz = hackrf_compute_baseband_filter_bw(bandwidth_hz);
+    assert(("param bandwidth not an accepted bandwidth", real_bandwidth_hz == param->band_hz), -1);
+    )
+    
 
-    printf("bandwidth of %uHz selected based on %uHz\n", 
-        real_bandwidth_hz, bandwidth_hz);
+    // apparently won't be exact frequency. See the hackrf.h lib header
+    // set center frequency
+    err = hackrf_set_freq(device, params->freq_hz);
+    assert(("hackrf_set_freq(...)", !err), err);
+
+    // set sample rate
+    err = hackrf_set_sample_rate(device, params->srate_hz);
+    assert(("hackrf_set_sample_rate(...)", !err), err);
+
+    // set vga and lna gain
+    err = hackrf_set_lna_gain(device, params->lna_gain);
+    assert(("hackrf_set_lna_gain(...)", !err), err);
+    err = hackrf_set_vga_gain(device, params->vga_gain);
+    assert(("hackrf_set_vga_gain(...)", !err), err);
+    
+
+    // debug(
+    // printf("bandwidth of %uHz selected based on %uHz\n", 
+    //     real_bandwidth_hz, bandwidth_hz);
+    // );
+
+    // toggle amplifier
+    err = hackrf_set_amp_enable(device, params->amp_enable);
+    assert(("hackrf_set_amp_enable(...)", !err), err);
 
     // set baseband sampling bandwidth
-    // reset after sample rate is set, so call this after sample rate
-    err = hackrf_set_baseband_filter_bandwidth(device, real_bandwidth_hz);
+    // resets after sample rate is set, so call this after sample rate
+    err = hackrf_set_baseband_filter_bandwidth(device, params->band_hz);
     assert(!err, err);
 
     return 0;
@@ -215,8 +299,12 @@ int setup_receiver_params(hackrf_device *device) {
 
 
 
-int begin_receiver(hackrf_device *device) {
+int begin_receiver(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
     int err;
+
+    // enable antenna
+    err = hackrf_set_antenna_enable(device, HACKRF_TRUE);
+    assert(("hackrf_set_antenna_enable(..., HACKRF_TRUE)", !err), err);
 
     /*uint16_t frequency_range[2] = {};
 
@@ -228,38 +316,79 @@ int begin_receiver(hackrf_device *device) {
 	const uint32_t offset,
 	const enum sweep_style style);*/
 
-    err = hackrf_start_rx(device, rx_callback, NULL);
+	params->_sbins = sbins;
+
+    err = hackrf_start_rx(device, (hackrf_sample_block_cb_fn)rx_callback, params);
     assert(("hackrf failed to start receiver loop", !err), err);
 
     return 0;
 }
 
 
-int stop_receiver(hackrf_device *device) {
+int stop_receiver(hackrf_device_t *device) {
     int err;
     
     err = hackrf_stop_rx(device);
     assert(("hackrf failed to start receiver loop", !err), err);
 
+    // disable antenna
+    err = hackrf_set_antenna_enable(device, HACKRF_FALSE);
+    assert(("hackrf_set_antenna_enable(..., HACKRF_FALSE)", !err), err);
+
     return 0;
 }
 
 
 
-int wait_until_finished(hackrf_device *device) {
-    (void)device;
-    return -1;
+
+int hackrf_is_finished(hackrf_device_t *device) {
+    return (hackrf_is_streaming(device) != HACKRF_TRUE);
 }
 
 
-int rx_callback(hackrf_transfer* transfer) {
-    printf("PRINTING BUFFER (length %d)", transfer->buffer_length);
-    for (int i = 0; i < transfer->buffer_length; i++)
-        printf("%d ", transfer->buffer[i]);
-    printf("BREAK\n");
-    printf("\n");
-    return 0;
+
+void hackrf_wait_until_finished(hackrf_device_t *device) {
+    while (!hackrf_is_finished(device))
+        sched_yield();
 }
+
+
+static int rx_callback(hackrf_transfer_t *transfer) {
+    // printf("PRINTING BUFFER (length %d)", transfer->buffer_length);
+    // for (int i = 0; i < transfer->buffer_length; i++)
+    //     printf("%d ", transfer->buffer[i]);
+    // printf("BREAK\n");
+    // printf("\n");
+    // return 0;
+
+    hparams_t *params = transfer->rx_ctx;
+    sbins_t *sbins = params->sbins;
+
+    params->samps--;
+
+    printf("TRANSFER OF %d BYTES\n", transfer->buffer_length);
+    debug(assert(transfer->buffer_length % 2 == 0););
+
+    for (int i = 0; i < (transfer->buffer_length >> 1); i += 2) {
+        sbins->bins[i>>1].real = transfer->buffer[i+0];
+        sbins->bins[i>>1].imag = transfer->buffer[i+1];
+    }
+
+    // return zero will continue transfer
+    // whereas return nonzero will stop transfer
+    return (params->samps <= 0);
+}
+
+
+// typedef struct {
+//     uint8_t real;
+//     uint8_t imag;
+// } sbin_t;
+// 
+// typedef struct sbins_t {
+//     int len;
+//     sbin_t *bins;
+// } sbins_t;
 
 
 

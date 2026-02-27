@@ -4,8 +4,8 @@
 # https://sourceware.org/binutils/docs/ld/Options.html
 
 
-TARGET := hackrf
-INCLUDEE := hackrf.h
+TARGET := host
+#INCLUDEE := hackrf.h
 
 TMPDIR := tmp
 SRCDIR := src
@@ -26,9 +26,9 @@ CC := gcc
 # NOTE: -std=c23 is strict c23 compliance, whereas -std=gnu23 includes gnu specific features
 # Here are the extensions
 # https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
-CFLAGS := -std=gnu23 -fvisibility=internal
+CFLAGS := -std=gnu23 -fvisibility=internal -I/usr/include/libusb-1.0
 # -llibhackrf.so -lhackrf
-LFLAGS := -lusb-1.0
+LFLAGS := -L./lib/kissfft/ -lusb-1.0 -Wl,-Bstatic -lkissfft-float -Wl,-Bdynamic
 BFLAGS := -Wall -Wextra
 #LIBS   :=
 
@@ -100,8 +100,8 @@ GOAL := $(firstword $(MAKECMDGOALS))
 GOAL := $(if $(GOAL),$(GOAL),$(DEFAULT))
 # should grab all sources relative to makefile.
 # colon equal (:=) removed, so as to grab all generated c files as well
-SRCS = $(shell find $(SRCDIR) -name "*.c")
-INCS = $(shell find $(INCDIR) -name "*.h")
+SRCS = $(shell find -L $(SRCDIR) -name "*.c")
+INCS = $(shell find -L $(INCDIR) -name "*.h")
 ifneq ($(filter $(GOAL),$(WHITELIST)),)
 	OBJS = $(SRCS:%.c=$(TMPDIR)/$(GOAL)/%.o)
 	DEPS = $(SRCS:%.c=$(TMPDIR)/$(GOAL)/%.d)
@@ -112,7 +112,7 @@ endif
 #BINTARG := $(BINDIR)/$(BINGOAL)/$(TARGET)
 BINTARG := $(BINDIR)/$(TARGET)
 LIBBINTARG := $(BINDIR)/lib$(TARGET)
-INCTARG := $(BINDIR)/$(INCLUDEE)
+#INCTARG := $(BINDIR)/$(INCLUDEE)
 
 LIBDIRS := $(shell ls -d $(LIBDIR)/)
 LIBINCS := $(foreach path,$(LIBDIRS),-I$(path)$(INCDIR)/)
