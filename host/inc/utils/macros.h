@@ -27,6 +27,8 @@
 // force inline
 //#define __force_inline  static inline __attribute__((always_inline))
 #define __force_inline __attribute__((always_inline)) static inline
+#define __noinline __attribute__((noinline))
+#define __weak_inline inline
 //#define __inline   __force_inline
 #define __inline__ __force_inline
 

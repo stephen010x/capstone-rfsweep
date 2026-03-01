@@ -1,6 +1,6 @@
 
 #include <stdio.h>
-#include <stlib.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 //#include <time.h>
@@ -8,7 +8,7 @@
 
 //#include <libhackrf/hackrf.h>
 #include "libhackrf/hackrf.h"
-#include "kissfft/kiss_fft.h"
+//#include "kissfft/kiss_fft.h"
 
 //#include "hackrf.h"
 #include "utils/debug.h"
@@ -16,7 +16,7 @@
 
 
 #define MY_HACKRF_SOURCE
-#include "rfsweep-host.h"
+#include "rfsweep/host.h"
 
 
 // https://github.com/greatscottgadgets/hackrf/blob/main/host/libhackrf/src/hackrf.h
@@ -28,6 +28,9 @@
 
 typedef hackrf_device hackrf_device_t;
 typedef hackrf_transfer hackrf_transfer_t;
+
+
+//#define TRANSFER_BUFFER_SIZE  262144
 
 
 
@@ -47,7 +50,7 @@ int hackrf_open_board(hackrf_device_t **device);
 int hackrf_free_board(hackrf_device_t *device);
 
 static int setup_receiver_params(hackrf_device_t *device, hparams_t *params);
-static int begin_receiver(hackrf_device_t *device, hparams_t *params, sbins_t *sbins);
+static int begin_receiver(hackrf_device_t *device, hparams_t *params, fbins_t *fbins);
 static int stop_receiver(hackrf_device_t *device);
 static int rx_callback(hackrf_transfer_t *transfer);
 
@@ -60,35 +63,55 @@ static int rx_callback(hackrf_transfer_t *transfer);
 
 
 
-void sbins_free(sbins_t sbins) {
-    free(sbins->bins);
-    debug(
-        sbins = (sbins_t){0};
-    );
-}
 
 
+int fbins_init(fbins_t *fbins, int flen, int blen) {
+    // allocate pointer array for fbins
+    fbin_t **mem = malloc(sizeof(void*) * flen);
+    assert(mem != NULL, -1);
 
-int sbins_init(sbins_t *sbins, int len) {
-    void *mem = malloc(sizeof(sbin_t) * len);
-
-    if (mem == NULL) {
-        debug(
-            *sbins = (sbins_t){
-                .len = 0,
-                .bins = NULL,
-            };
-        );
-        return -1;
+    // allocate fbins
+    for (int i = 0; i < flen; i++) {
+        mem[i] = malloc(sizeof(fbin_t) * blen);
+        assert(mem[i] != NULL, -2);
     }
     
-    *sbins = (sbins_t){
-        .len = len,
+    *fbins = (fbins_t){
+        .flen = flen,
+        .blen = blen,
         .bins = mem,
     };
     
     return 0;
 }
+
+
+
+// fbins_t *fbins_new(int flen, int blen) {
+//     fbins_t *self = malloc(sizeof(fbins_t));
+//     fbins_init(self, flen, blen);
+//     return self;
+// }
+
+
+
+void fbins_free(fbins_t *fbins) {
+    // free fbins
+    for (int i = 0; i < fbins->flen; i++) {
+        free(fbins->bins[i]);
+        DEBUG(fbins->bins[i] = NULL;)
+    }
+        
+    // free pointer array for fbins
+    free(fbins->bins);
+
+    DEBUG(*fbins = (fbins_t){0};)
+    
+    // free self incase in heap as well
+    //free(fbins);
+    
+}
+
 
 
 
@@ -100,23 +123,46 @@ void hparams_defaults(hparams_t *params) {
         .band_hz  = 10e6,
         .lna_gain = 16,
         .vga_gain = 20,
-        .samps = 100,
+        .samps = 10,
         .amp_enable = false,
     };
 }
 
 
 
+// will open the first board it sees.
+// just use hparams_default and explicit board open for more control, I guess.
+int hparams_init(hparams_t *params) {
+    int err;
+    hparams_defaults(params);
+    err = hackrf_open_board(&params->_device);
+    assert(("failed to open board", !err), err);
+    return 0;
+}
+
+
+
+void hparams_free(hparams_t *params) {
+    hackrf_free_board(params->_device);
+    DEBUG(
+        *params = (hparams_t){0};
+    )
+}
+
+
+
 
 uint32_t hackrf_real_bandwidth(uint32_t band_hz) {
-    return hackrf_compute_baseband_filter_bw(band_hz);
+    uint32_t val = hackrf_compute_baseband_filter_bw(band_hz);
+    debugf("the selected frequency is %d Hz", val);
+    return val;
 }
 
 
 
 
 
-int hackrf_read(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
+int hackrf_read(hparams_t *params, fbins_t *fbins) {
     int err;
     //hackrf_device_t* device;
 
@@ -124,10 +170,10 @@ int hackrf_read(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
     // err = open_board(&device);
     // if (err) return err;
 
-    err = setup_receiver_params(device, params);
+    err = setup_receiver_params(params->_device, params);
     assert(("problem setting up receiver params", !err), err);
 
-    err = begin_receiver(device, params, sbins);
+    err = begin_receiver(params->_device, params, fbins);
     assert(("problem starting receiver", !err), err);
 
     // loops forever.
@@ -143,19 +189,29 @@ int hackrf_read(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
 
 
 
+int hackrf_stop(hparams_t *params) {
+    int err = stop_receiver(params->_device);
+    assert(!err, err);
+    return 0;
+}
+
+
+
 
 
 static __construct void init_libhackrf(void) {
     // initilize the hackrf library
     int err = hackrf_init();
-    assert(("hackrf failed to initilize", err == HACKRF_SUCCESS), err);
+    fassert(("hackrf failed to initilize", !err));
+
+    //fassert(("", TRANSFER_BUFFER_SIZE == hackrf_get_transfer_buffer_size(NULL)));
 }
 
 
-static __destruct void exit_libhackrf() {
+static __destruct void exit_libhackrf(void) {
     // safely exit hackrf
     int err = hackrf_exit();
-    assert((err == HACKRF_SUCCESS), err)
+    vassert(!err);
 }
 
 
@@ -165,7 +221,7 @@ static __destruct void exit_libhackrf() {
 int hackrf_open_board(hackrf_device_t **device) {
     int err;
     //uint16_t version, usb_version;
-    read_partid_serialno_t rpisn;
+    DEBUG(read_partid_serialno_t rpisn;)
     //hackrf_device_list_t *devices;
     
     
@@ -198,7 +254,7 @@ int hackrf_open_board(hackrf_device_t **device) {
 //         (usb_version >> 8) & 0xFF, usb_version & 0xFF);
 //     
 
-    debug(
+    DEBUG(
     // get serial number
     err = hackrf_board_partid_serialno_read(*device, &rpisn);
     assert(!err, err);
@@ -208,7 +264,7 @@ int hackrf_open_board(hackrf_device_t **device) {
     for (int i = 0; i < 4; i++)
         printf("%04x", rpisn.serial_no[i]);
     printf("\n");
-    );
+    )
     
     return 0;
 }
@@ -242,7 +298,7 @@ int hackrf_free_board(hackrf_device_t *device) {
 
 static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
     int err;
-    debug(uint32_t real_band_hz;);
+    DEBUG(uint32_t real_band_hz;)
     
     //uint8_t enable_amp = false;
     //uint8_t enable_ant = true;
@@ -258,9 +314,9 @@ static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
     // calculate actual bandwidth we will be using
     // will be forced to one of these: 1.75, 2.5, 3.5, 5, 5.5, 6, 7, 8, 
     //      9, 10, 12, 14, 15, 20, 24, 28MHz
-    debug(
-    real_bandwidth_hz = hackrf_compute_baseband_filter_bw(bandwidth_hz);
-    assert(("param bandwidth not an accepted bandwidth", real_bandwidth_hz == param->band_hz), -1);
+    DEBUG(
+    real_band_hz = hackrf_compute_baseband_filter_bw(params->band_hz);
+    assert(("param bandwidth not an accepted bandwidth", real_band_hz == params->band_hz), -1);
     )
     
 
@@ -299,12 +355,12 @@ static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
 
 
 
-int begin_receiver(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
+static int begin_receiver(hackrf_device_t *device, hparams_t *params, fbins_t *fbins) {
     int err;
 
     // enable antenna
-    err = hackrf_set_antenna_enable(device, HACKRF_TRUE);
-    assert(("hackrf_set_antenna_enable(..., HACKRF_TRUE)", !err), err);
+    err = hackrf_set_antenna_enable(device, 1);
+    assert(("hackrf_set_antenna_enable(..., 1)", !err), err);
 
     /*uint16_t frequency_range[2] = {};
 
@@ -316,7 +372,11 @@ int begin_receiver(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
 	const uint32_t offset,
 	const enum sweep_style style);*/
 
-	params->_sbins = sbins;
+	params->_fbins = fbins;
+
+    // malloc space for fbins
+    fbins_init(fbins, params->samps, (int)hackrf_get_transfer_buffer_size(device)>>1);
+	
 
     err = hackrf_start_rx(device, (hackrf_sample_block_cb_fn)rx_callback, params);
     assert(("hackrf failed to start receiver loop", !err), err);
@@ -325,15 +385,15 @@ int begin_receiver(hackrf_device_t *device, hparams_t *params, sbins_t *sbins) {
 }
 
 
-int stop_receiver(hackrf_device_t *device) {
+static int stop_receiver(hackrf_device_t *device) {
     int err;
     
     err = hackrf_stop_rx(device);
     assert(("hackrf failed to start receiver loop", !err), err);
 
     // disable antenna
-    err = hackrf_set_antenna_enable(device, HACKRF_FALSE);
-    assert(("hackrf_set_antenna_enable(..., HACKRF_FALSE)", !err), err);
+    err = hackrf_set_antenna_enable(device, 0);
+    assert(("hackrf_set_antenna_enable(..., 0)", !err), err);
 
     return 0;
 }
@@ -341,15 +401,19 @@ int stop_receiver(hackrf_device_t *device) {
 
 
 
-int hackrf_is_finished(hackrf_device_t *device) {
-    return (hackrf_is_streaming(device) != HACKRF_TRUE);
+
+__weak_inline int hackrf_is_finished(hparams_t *params) {
+    return (hackrf_is_streaming(params->_device) != HACKRF_TRUE);
 }
 
 
 
-void hackrf_wait_until_finished(hackrf_device_t *device) {
-    while (!hackrf_is_finished(device))
+void hackrf_wait_until_finished(hparams_t *params) {
+    while (!hackrf_is_finished(params))
         sched_yield();
+
+    // just in case call stop for clean exit
+    hackrf_stop(params);
 }
 
 
@@ -362,33 +426,48 @@ static int rx_callback(hackrf_transfer_t *transfer) {
     // return 0;
 
     hparams_t *params = transfer->rx_ctx;
-    sbins_t *sbins = params->sbins;
+    fbins_t *fbins = params->_fbins;
 
-    params->samps--;
+    //params->samps--;
 
-    printf("TRANSFER OF %d BYTES\n", transfer->buffer_length);
-    debug(assert(transfer->buffer_length % 2 == 0););
+    //debugf("read %d bytes from hackrf", transfer->buffer_length);
+    
+    // assert that buffer length is a multiple of 2 (even)
+    DEBUG(assert((transfer->buffer_length % 2 == 0), -1);)
+    // assert that fbins length is equal to buffer length
+    DEBUG(assert(("bins are of unequal length", transfer->buffer_length>>1 == fbins->blen), -1);)
+    
 
-    for (int i = 0; i < (transfer->buffer_length >> 1); i += 2) {
-        sbins->bins[i>>1].real = transfer->buffer[i+0];
-        sbins->bins[i>>1].imag = transfer->buffer[i+1];
+    // assert that the typeof(fbins->bins[0].real) is signed
+    /*_Static_assert((typeof(fbins->bins[0].real))0 - 1 < (typeof(fbins->bins[0].real))0,
+        "typeof(fbins->bins[0].real) must be signed")*/
+    // assert that the typeof(fbins->bins[0].real) is a float
+    _Static_assert(__builtin_types_compatible_p(float, typeof(fbins->bins[0][0].real)),
+        "typeof(fbins->bins[0].real) must be a float");
+    #define _RX_NORMALIZE(__n) (((int8_t)(__n - 128))/256.0f)
+
+    #if 1
+    for (int i = 0; i < transfer->buffer_length; i += 2) {
+        fbins->bins[params->_i][i>>1].real = (float)_RX_NORMALIZE(transfer->buffer[i+0]);
+        fbins->bins[params->_i][i>>1].imag = (float)_RX_NORMALIZE(transfer->buffer[i+1]);
     }
+    #endif
+
+    // this to test speeds
+    // it seems like the bottleneck is libhackrf, which is probably due to usb rates and overhead
+    //memcpy(&fbins->bins[params->_i][0].real, transfer->buffer, transfer->buffer_length);
 
     // return zero will continue transfer
     // whereas return nonzero will stop transfer
-    return (params->samps <= 0);
+    return (++params->_i >= params->samps);
 }
 
 
-// typedef struct {
-//     uint8_t real;
-//     uint8_t imag;
-// } sbin_t;
-// 
-// typedef struct sbins_t {
-//     int len;
-//     sbin_t *bins;
-// } sbins_t;
+
+
+
+
+
 
 
 

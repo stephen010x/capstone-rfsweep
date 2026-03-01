@@ -43,6 +43,20 @@
     } while(0)
 
 
+#define SYSTEM_ERR(__status, __format, ...) do {                                            \
+        printf(__status "\t" STR_BLUE(__FILENAME__) ":" STR_BLUE(STRINGIFY(__LINE__)) ": "  \
+            STR_BLUE("%s(") "..." STR_BLUE(")") ": " __format "\n",                         \
+            __func__ __VA_OPT__(,) __VA_ARGS__);                                            \
+    } while(0)
+
+
+#define IGNORE_UNUSED(__expr)                               \
+    _Pragma("GCC diagnostic push")                          \
+    _Pragma("GCC diagnostic ignored \"-Wunused-value\"")    \
+    __expr                                                  \
+    _Pragma("GCC diagnostic pop")
+
+
 
 // TODO: Implement later
 const char* filename_from_path(const char* path);
@@ -52,43 +66,28 @@ const char* filename_from_path(const char* path);
 #ifndef __DEBUG__
 
 
-#   define fatal(__ecode) do {                                  \
-        _Pragma("GCC diagnostic push")                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")    \
+#   define fatal(__ecode) do { IGNORE_UNUSED(                   \
         exit(__ecode);                                          \
-        _Pragma("GCC diagnostic pop")                           \
-    } while(0)
+    )} while(0)
 
 
-#   define error(__rcode) do {                                  \
-        _Pragma("GCC diagnostic push")                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")    \
+#   define error(__rcode) do { IGNORE_UNUSED(                   \
         return (__rcode);                                       \
-        _Pragma("GCC diagnostic pop")                           \
-    } while(0)
+    )} while(0)
 
 
-#   define fassert(__expr) do {                                 \
-        _Pragma("GCC diagnostic push")                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")    \
+#   define fassert(__expr) do { IGNORE_UNUSED(                  \
         if (!(__expr)) abort();                                 \
-        _Pragma("GCC diagnostic pop")                           \
-    } while(0)
+    )} while(0)
 
 #   undef  assert
-#   define assert(__expr, __rcode) do {                         \
-        _Pragma("GCC diagnostic push")                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")    \
+#   define assert(__expr, __rcode) do { IGNORE_UNUSED(          \
         if (!(__expr)) return (__rcode);                        \
-        _Pragma("GCC diagnostic pop")                           \
-    } while(0)
+    )} while(0)
 
-#   define vassert(__expr) do {                                 \
-        _Pragma("GCC diagnostic push")                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")    \
+#   define vassert(__expr) do { IGNORE_UNUSED(                  \
         if (!(__expr)) return;                                  \
-        _Pragma("GCC diagnostic pop")                           \
-    } while(0)
+    )} while(0)
 
 #   define wassert(__expr)  NOP()
 //#   define error(__msg)     abort()
@@ -100,7 +99,8 @@ const char* filename_from_path(const char* path);
 #   define debugf(...)      NOP()
 
 
-#   define DEBUG(__statement) NOP()
+#   define DEBUG(__statement)
+#   define debug(__statement) NOP()
 
 
 #else
@@ -109,66 +109,45 @@ const char* filename_from_path(const char* path);
 //extern char *assert_format;
 
 
-#   define fatal(__ecode) do {                                                  \
-        _Pragma("GCC diagnostic push")                                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")                    \
-        printf(STR_FATAL "\t%s:%s: %s(...): fatal error with code '%d'.\n",     \
-            __FILENAME__,  STRINGIFY(__LINE__), __ASSERT_FUNCTION, __ecode);    \
+#   define fatal(__ecode) do { IGNORE_UNUSED(                                   \
+        SYSTEM_ERR(STR_FATAL, "fatal error with code '%d'.", __ecode);          \
         fflush(stdout);                                                         \
         exit(__ecode);                                                          \
-        _Pragma("GCC diagnostic pop")                                           \
-    } while(0)
+    )} while(0)
 
 
 
-#   define fassert(__expr) do {                                                 \
-        _Pragma("GCC diagnostic push")                                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")                    \
+#   define fassert(__expr) do { IGNORE_UNUSED(                                  \
         if (!(__expr)) {                                                        \
-            printf(STR_FATAL "\t%s:%s: %s(...): assertion '%s' failed.\n",      \
-                __FILENAME__,  STRINGIFY(__LINE__), __ASSERT_FUNCTION, #__expr);\
+            SYSTEM_ERR(STR_FATAL, "fatal assertion '%s' failed.", #__expr);     \
             fflush(stdout);                                                     \
             abort();                                                            \
         }                                                                       \
-        _Pragma("GCC diagnostic pop")                                           \
-    } while(0)
+    )} while(0)
 
 // TODO: use __VA_OPT__ to merge assert and vassert
 // TODO: I should probably change these from macros to functions at this point
 #   undef  assert
-#   define assert(__expr, __rcode) do {                                         \
-        _Pragma("GCC diagnostic push")                                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")                    \
+#   define assert(__expr, __rcode) do { IGNORE_UNUSED(                          \
         if (!(__expr)) {                                                        \
-            printf(STR_ERROR "\t%s:%s: %s(...): "                               \
-                "assertion '%s' failed. return code %x.\n",                     \
-                __FILENAME__,  STRINGIFY(__LINE__), __ASSERT_FUNCTION,          \
-                #__expr, (unsigned int)__rcode);                                \
+            SYSTEM_ERR(STR_ERROR, "assertion '%s' failed. return code %d.",     \
+                #__expr, (int)__rcode);                                         \
             return (__rcode);                                                   \
         }                                                                       \
-        _Pragma("GCC diagnostic pop")                                           \
-    } while(0)
+    )} while(0)
 
-#   define vassert(__expr) do {                                                 \
-        _Pragma("GCC diagnostic push")                                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")                    \
+#   define vassert(__expr) do { IGNORE_UNUSED(                                  \
         if (!(__expr)) {                                                        \
-            printf(STR_ERROR "\t%s:%s: %s(...): assertion '%s' failed.\n",      \
-                __FILENAME__,  STRINGIFY(__LINE__), __ASSERT_FUNCTION, #__expr);\
+            SYSTEM_ERR(STR_ERROR, "assertion '%s' failed.", #__expr);           \
             return;                                                             \
         }                                                                       \
-        _Pragma("GCC diagnostic pop")                                           \
-    } while(0)
+    )} while(0)
 
-#   define wassert(__expr) do {                                                 \
-        _Pragma("GCC diagnostic push")                                          \
-        _Pragma("GCC diagnostic ignored \"-Wunused-value\"")                    \
+#   define wassert(__expr) do { IGNORE_UNUSED(                                  \
         if (!(__expr)) {                                                        \
-            printf(STR_WARN "\t%s:%s: %s(...): assertion '%s' failed\n",        \
-                __FILENAME__,  STRINGIFY(__LINE__), __ASSERT_FUNCTION, #__expr);\
+            SYSTEM_ERR(STR_WARN, "warning assertion '%s' failed.", #__expr);    \
         }                                                                       \
-        _Pragma("GCC diagnostic pop")                                           \
-    } while(0)
+    )} while(0)
 
 /*#   define fatal(__msg) do {            \
         printf(STR_FATAL "\t" __msg);   \
@@ -191,9 +170,13 @@ const char* filename_from_path(const char* path);
     } while(0)
 
 
-#   define DEBUG(__statement) do {      \
-        __statement                     \
-    } while(0)
+#   define DEBUG(__statement) __statement
+
+
+#   define debug(__statement) do {      \
+            __statement                 \
+        } while(0)
+
 
 
 /*#   define debugf(__format, ...) do {                               \

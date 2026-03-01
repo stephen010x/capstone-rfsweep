@@ -339,7 +339,7 @@ static int prepare_transfers(
 	const uint_fast8_t endpoint_address,
 	libusb_transfer_cb_fn callback)
 {
-	int error;
+	int error;   // compiler uninitilized warning
 	uint32_t transfer_index;
 	uint32_t ready_transfers = 0;
 
@@ -410,7 +410,11 @@ static int prepare_transfers(
 		device->active_transfers++;
 	}
 
+
+	#pragma GCC diagnostic pop
+	#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 	if (error == 0) {
+	#pragma GCC diagnostic push
 		// We should only continue streaming if all transfers were made ready
 		// and submitted above. Otherwise, set streaming to false so that the
 		// libusb completion callback won't submit further transfers.
@@ -1286,6 +1290,8 @@ int ADDCALL hackrf_test_rtc_osc(hackrf_device* device, bool* pass)
 		READ_FREQ_MONITOR,
 		STOP_32KHZ_OSCILLATOR,
 	} step;
+	
+	(void)step; // avoids compiler warning of step being unused.
 
 	// Enable 32kHz oscillator
 	result = libusb_control_transfer(
@@ -1347,7 +1353,7 @@ int ADDCALL hackrf_test_rtc_osc(hackrf_device* device, bool* pass)
 		sizeof(count),
 		1000);
 
-	if (result < sizeof(count)) {
+	if (result < (int)sizeof(count)) {
 		last_libusb_error = result;
 		return HACKRF_ERROR_LIBUSB;
 	}
@@ -1422,7 +1428,7 @@ int ADDCALL hackrf_get_m0_state(hackrf_device* device, hackrf_m0_state* state)
 		sizeof(hackrf_m0_state),
 		0);
 
-	if (result < sizeof(hackrf_m0_state)) {
+	if (result < (int)sizeof(hackrf_m0_state)) {
 		last_libusb_error = result;
 		return HACKRF_ERROR_LIBUSB;
 	} else {
@@ -2168,7 +2174,10 @@ hackrf_libusb_transfer_callback(struct libusb_transfer* usb_transfer)
 	}
 
 	// If a data transfer was resubmitted successfully, we're done.
+    #pragma GCC diagnostic push
+	#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 	if (!resubmit || result != LIBUSB_SUCCESS) {
+	#pragma GCC diagnostic pop
 		// No further calls should be made to the TX callback.
 		device->streaming = false;
 
