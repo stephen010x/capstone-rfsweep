@@ -26,7 +26,6 @@ int main(void) {
     //hackrf_device_t *device;
     hparams_t params;
     fbins_t fbins, qbins, abins;
-    
 
     // setup default params
     //hparams_default(&params);

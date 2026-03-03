@@ -23,18 +23,22 @@
 #define ANSI_BLACK     "\033[0;30m"
 #define ANSI_RED       "\033[0;31m"
 #define ANSI_YELLOW    "\033[0;33m"
-#define ANSI_REDBG     "\033[0;41m"
 #define ANSI_BLUE      "\033[0;34m"
+
+#define ANSI_BG_RED     "\033[41m"
+
+#define ANS_BLACK_REDBG "\033[1;30;41m"
 
 #define STR_RED(__str)    ANSI_RED    __str ANSI_DEFAULT
 #define STR_YELLOW(__str) ANSI_YELLOW __str ANSI_DEFAULT
 #define STR_BLUE(__str)   ANSI_BLUE   __str ANSI_DEFAULT
 
-#define STR_FATAL   ANSI_BLACK ANSI_REDBG "[fatal]"   ANSI_DEFAULT
-#define STR_ERROR   ANSI_RED              "[error]"   ANSI_DEFAULT
-#define STR_WARN    ANSI_YELLOW           "[warn] "   ANSI_DEFAULT
-#define STR_DEBUG                         "[debug]"
-#define STR_MSG                           "[msg]"
+//#define STR_FATAL   ANSI_BLACK ANSI_REDBG "[fatal]"   ANSI_DEFAULT
+#define STR_FATAL   ANS_BLACK_REDBG "[fatal]"   ANSI_DEFAULT
+#define STR_ERROR   ANSI_RED        "[error]"   ANSI_DEFAULT
+#define STR_WARN    ANSI_YELLOW     "[warn] "   ANSI_DEFAULT
+#define STR_DEBUG                   "[debug]"
+#define STR_MSG                     "[msg]"
 
 
 #define SYSTEM_MSG(__status, __format, ...) do {                                    \
