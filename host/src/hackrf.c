@@ -46,9 +46,9 @@ typedef hackrf_transfer hackrf_transfer_t;
 
 
 
-int hackrf_open_board(hackrf_device_t **device);
-int hackrf_free_board(hackrf_device_t *device);
-
+static int hackrf_open_board(hackrf_device_t **device);
+// consider making this a void return
+static int hackrf_free_board(hackrf_device_t *device);
 static int setup_receiver_params(hackrf_device_t *device, hparams_t *params);
 static int begin_receiver(hackrf_device_t *device, hparams_t *params, fbins_t *fbins);
 static int stop_receiver(hackrf_device_t *device);
@@ -57,60 +57,6 @@ static int rx_callback(hackrf_transfer_t *transfer);
 
 //typedef struct global_state_t {} state;
 
-
-
-
-
-
-
-
-
-int fbins_init(fbins_t *fbins, int flen, int blen) {
-    // allocate pointer array for fbins
-    fbin_t **mem = malloc(sizeof(void*) * flen);
-    assert(mem != NULL, -1);
-
-    // allocate fbins
-    for (int i = 0; i < flen; i++) {
-        mem[i] = malloc(sizeof(fbin_t) * blen);
-        assert(mem[i] != NULL, -2);
-    }
-    
-    *fbins = (fbins_t){
-        .flen = flen,
-        .blen = blen,
-        .bins = mem,
-    };
-    
-    return 0;
-}
-
-
-
-// fbins_t *fbins_new(int flen, int blen) {
-//     fbins_t *self = malloc(sizeof(fbins_t));
-//     fbins_init(self, flen, blen);
-//     return self;
-// }
-
-
-
-void fbins_free(fbins_t *fbins) {
-    // free fbins
-    for (int i = 0; i < fbins->flen; i++) {
-        free(fbins->bins[i]);
-        DEBUG(fbins->bins[i] = NULL;)
-    }
-        
-    // free pointer array for fbins
-    free(fbins->bins);
-
-    DEBUG(*fbins = (fbins_t){0};)
-    
-    // free self incase in heap as well
-    //free(fbins);
-    
-}
 
 
 
@@ -145,7 +91,7 @@ int hparams_init(hparams_t *params) {
 void hparams_free(hparams_t *params) {
     hackrf_free_board(params->_device);
     DEBUG(
-        *params = (hparams_t){0};
+        //*params = (hparams_t){0};
     )
 }
 
@@ -154,7 +100,7 @@ void hparams_free(hparams_t *params) {
 
 uint32_t hackrf_real_bandwidth(uint32_t band_hz) {
     uint32_t val = hackrf_compute_baseband_filter_bw(band_hz);
-    debugf("the selected frequency is %d Hz", val);
+    debugf("the selected frequency is %0.3f MHz", val/1e6f);
     return val;
 }
 
@@ -202,7 +148,7 @@ int hackrf_stop(hparams_t *params) {
 static __construct void init_libhackrf(void) {
     // initilize the hackrf library
     int err = hackrf_init();
-    fassert(("hackrf failed to initilize", !err));
+    vassert(("hackrf failed to initilize", !err));
 
     //fassert(("", TRANSFER_BUFFER_SIZE == hackrf_get_transfer_buffer_size(NULL)));
 }
@@ -218,7 +164,7 @@ static __destruct void exit_libhackrf(void) {
 
 // initilizes library and opens board
 //int open_board(hackrf_device **device) {
-int hackrf_open_board(hackrf_device_t **device) {
+static int hackrf_open_board(hackrf_device_t **device) {
     int err;
     //uint16_t version, usb_version;
     DEBUG(read_partid_serialno_t rpisn;)
@@ -260,7 +206,7 @@ int hackrf_open_board(hackrf_device_t **device) {
     assert(!err, err);
 
     // print out serial number
-    printf("device opened with serial #");
+    printf("[debug] : device opened with serial #");
     for (int i = 0; i < 4; i++)
         printf("%04x", rpisn.serial_no[i]);
     printf("\n");
@@ -273,7 +219,7 @@ int hackrf_open_board(hackrf_device_t **device) {
 
 
 
-int hackrf_free_board(hackrf_device_t *device) {
+static int hackrf_free_board(hackrf_device_t *device) {
     int err;
 
     // close opened device

@@ -121,9 +121,10 @@ const char* filename_from_path(const char* path);
 
 
 
+// "fatal assertion '%s' failed."
 #   define fassert(__expr) do { IGNORE_UNUSED(                                  \
         if (!(__expr)) {                                                        \
-            SYSTEM_ERR(STR_FATAL, "fatal assertion '%s' failed.", #__expr);     \
+            SYSTEM_ERR(STR_FATAL, "fatal assertion '%s'.", #__expr);            \
             fflush(stdout);                                                     \
             abort();                                                            \
         }                                                                       \
@@ -131,25 +132,27 @@ const char* filename_from_path(const char* path);
 
 // TODO: use __VA_OPT__ to merge assert and vassert
 // TODO: I should probably change these from macros to functions at this point
+// "assertion '%s' failed. return code %d."
 #   undef  assert
 #   define assert(__expr, __rcode) do { IGNORE_UNUSED(                          \
         if (!(__expr)) {                                                        \
-            SYSTEM_ERR(STR_ERROR, "assertion '%s' failed. return code %d.",     \
-                #__expr, (int)__rcode);                                         \
+            SYSTEM_ERR(STR_ERROR, "assertion '%s'.", #__expr);                  \
             return (__rcode);                                                   \
         }                                                                       \
     )} while(0)
 
+// "assertion '%s' failed."
 #   define vassert(__expr) do { IGNORE_UNUSED(                                  \
         if (!(__expr)) {                                                        \
-            SYSTEM_ERR(STR_ERROR, "assertion '%s' failed.", #__expr);           \
+            SYSTEM_ERR(STR_ERROR, "assertion '%s'.", #__expr);                  \
             return;                                                             \
         }                                                                       \
     )} while(0)
 
+// "warning assertion '%s' failed."
 #   define wassert(__expr) do { IGNORE_UNUSED(                                  \
         if (!(__expr)) {                                                        \
-            SYSTEM_ERR(STR_WARN, "warning assertion '%s' failed.", #__expr);    \
+            SYSTEM_ERR(STR_WARN, "warning assertion '%s'.", #__expr);           \
         }                                                                       \
     )} while(0)
 

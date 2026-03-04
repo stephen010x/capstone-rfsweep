@@ -3,6 +3,7 @@
 // build: gcc simple_plplot_live.c -o simple_plplot_live -lplplot -lm
 #include <stdio.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <math.h>
 #include <plplot/plplot.h>
 
@@ -15,10 +16,22 @@
 
 
 
+__inline__ float n_to_log(float n) {
+    return 20.0*log10(fabs(n));
+}
+
+
+__inline__ float log_to_n(float log) {
+    return pow(10.0, log/20.0);
+}
+
+
+
+
 int plot_fbins(fbins_t *fbins, float xstart, float xend, int xlen, bool do_average) {
     int err, xjump;
     float xbin, ymin = 0, ymax = 0;
-    PLFLT x[xlen], y[xlen], y1[xlen], y2[xlen];
+    PLFLT x[xlen], y[xlen], yd[xlen], y1[xlen], y2[xlen];
 
     (void)err;
 
@@ -58,6 +71,11 @@ int plot_fbins(fbins_t *fbins, float xstart, float xend, int xlen, bool do_avera
         y[i] = (double)(sqrt(imag*imag + real*real));
         if (y[i] > ymax) ymax = y[i];
         if (y[i] < ymin) ymin = y[i];
+
+        // get log of magnitude
+        yd[i] = (double)n_to_log((float)y[i]);
+        if (yd[i] > ymax) ymax = yd[i];
+        if (yd[i] < ymin) ymin = yd[i];
     }
 
     ymax *= 2;
@@ -73,17 +91,23 @@ int plot_fbins(fbins_t *fbins, float xstart, float xend, int xlen, bool do_avera
     // xlabel, ylabel, title
     pllab("x", "y", "Test");
 
+    #if 1
     // draw line 1
-    plcol0(7);      // set color
+    plcol0(9);      // set color
     plline(lenof(x), x, y1);
 
     // draw line 2
     plcol0(8);      // set color
     plline(lenof(x), x, y2);
+    #endif
 
     // draw line 3
-    plcol0(9);      // set color
+    plcol0(7);      // set color
     plline(lenof(x), x, y);
+
+    // draw line 4
+    plcol0(10);      // set color
+    plline(lenof(x), x, yd);
 
 //     // wait until keypress
 //     printf("TEST: Press key to continue...\n");

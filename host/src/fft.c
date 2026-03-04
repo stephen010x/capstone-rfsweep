@@ -1,4 +1,7 @@
 
+#include <math.h>
+#include <stdlib.h>
+
 #define kiss_fft_scalar float
 #include "kissfft/kiss_fft.h"
 #include "rfsweep/host.h"
@@ -41,6 +44,26 @@ typedef kiss_fft_cpx kiss_fft_cpx_t;
 
 
 
+// __inline__ float fabs(float n) {
+//     return (n > 0) ? n : -n;
+// }
+
+
+
+__inline__ float n_to_log(float n) {
+    return 20.0*log10(fabs(n));
+}
+
+
+__inline__ float log_to_n(float log) {
+    return pow(10.0, log/20.0);
+}
+
+
+
+
+
+
 int fbins_fft(fbins_t *fbins_in, fbins_t *fbins_out) {
     kiss_fft_cfg_t cfg;
     //kiss_fft_cpx_t *cpx_in;
@@ -62,6 +85,8 @@ int fbins_fft(fbins_t *fbins_in, fbins_t *fbins_out) {
 
     return 0;
 }
+
+
 
 
 static __destruct void exit_fft(void) {
@@ -91,6 +116,23 @@ int fbins_average(fbins_t *fbins_in, fbins_t *fbins_out) {
         fbins_out->bins[0][i].real /= fbins_in->flen;
         fbins_out->bins[0][i].imag /= fbins_in->flen;
     }
+
+    return 0;
+}
+
+
+
+int fbins_log(fbins_t *fbins_in, fbins_t *fbins_out) {
+
+    // init out bins
+    fbins_init(fbins_out, fbins_in->flen, fbins_in->blen);
+
+    // populate out with average
+    for (int i = 0; i < fbins_in->flen; i++) {
+    for (int j = 0; j < fbins_in->blen; j++) {
+        fbins_out->bins[i][j].real = n_to_log(fbins_in->bins[i][j].real);
+        fbins_out->bins[i][j].imag = n_to_log(fbins_in->bins[i][j].imag);
+    }}
 
     return 0;
 }

@@ -37,7 +37,7 @@ static __construct void time_init(void) {
     struct timespec time;
 
     err = clock_gettime(CLOCK_MONOTONIC, &time);
-    fassert(("unable to get system time", !err));
+    vassert(("unable to get system time", !err));
 
     start_us = _timespec_to_us(&time);
 

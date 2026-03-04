@@ -144,15 +144,18 @@ static __construct void init_gpio(void) {
 
     // init gpio library
     err = gpioInitialise();
-    fassert(("failed to initilize gpio library", !err));
+    #ifndef _RASPI
+    warnf("not compiled with pigpio library");
+    #endif
+    vassert(("failed to initilize gpio library", !err));
 
     // set the used gpio range to outputs with no pull resistors
     for (int i = 16; i <= 23; i++) {
         err = gpioSetMode(i, PI_OUTPUT);
-        fassert(("failed to set gpio pin modes", !err));
+        vassert(("failed to set gpio pin modes", !err));
 
         err = gpioSetPullUpDown(i, PI_PUD_OFF);
-        fassert(("failed to disable gpio pull resistors", !err));
+        vassert(("failed to disable gpio pull resistors", !err));
     }
 
     // some pin output setup and defaults
@@ -164,15 +167,15 @@ static __construct void init_gpio(void) {
     err |= gpioWrite(GPIO_MS1,     0);
     err |= gpioWrite(GPIO_MS2,     0);
     err |= gpioWrite(GPIO_MS3,     0);
-    fassert(("failed to set gpio defaults", !err));
+    vassert(("failed to set gpio defaults", !err));
 
     // create step thread
     err = pthread_create(&tthread[0], NULL, &_step_thread, NULL);
-    fassert(("failed to create step thread", !err));
+    vassert(("failed to create step thread", !err));
 
     // create multistep thread
     err = pthread_create(&tthread[1], NULL, &_multistep_thread, NULL);
-    fassert(("failed to create step thread", !err));
+    vassert(("failed to create step thread", !err));
 }
 
 
@@ -180,12 +183,16 @@ static __destruct void exit_gpio(void) {
     void *retval;
 
     // cancel threads
-    pthread_cancel(tthread[0]);
-    pthread_cancel(tthread[1]);
-    pthread_join(tthread[0], &retval);
-    wassert(("tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
-    pthread_join(tthread[1], &retval);
-    wassert(("tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
+    if (tthread[0] != 0) {
+        pthread_cancel(tthread[0]);
+        pthread_join(tthread[0], &retval);
+        wassert(("tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
+    }
+    if (tthread[1] != 0) {
+        pthread_cancel(tthread[1]);
+        pthread_join(tthread[1], &retval);
+        wassert(("tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
+    }
 
     // terminate gpio
     gpioTerminate();

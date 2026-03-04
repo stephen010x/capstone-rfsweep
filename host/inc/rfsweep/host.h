@@ -38,10 +38,23 @@ typedef struct {
 //     sbin_t *bins;
 // } sbins_t;
 
+
+// this is for internal use
+// this is where the actual data is stored
 typedef struct {
-    int flen; // number of sbins
-    int blen; // number of bins per sbin
+    int refcount;
+    int len;
+    fbin_t *data;
+} _bins_data_t;
+
+
+// this contains a lot of pointers to the data stored by _bins_data_t
+// allows shallow slice copies
+typedef struct {
+    int flen; // number of fbins
+    int blen; // number of bins per fbin
     fbin_t **bins;
+    _bins_data_t *ref;
 } fbins_t;
 
 
@@ -50,7 +63,7 @@ typedef struct {
 #ifndef MY_HACKRF_SOURCE
 typedef void hackrf_device_t;
 #else
-#include "libhackrf/hackrf.h"
+//#include "libhackrf/hackrf.h"
 typedef hackrf_device hackrf_device_t;
 #endif
 
@@ -62,8 +75,8 @@ typedef struct {
     double   srate_hz;
     uint64_t freq_hz;
     uint32_t band_hz;
-    uint32_t lna_gain;
-    uint32_t vga_gain;
+    uint32_t lna_gain;  // steps of 8 dB, 0-40 dB
+    uint32_t vga_gain;  // steps of 2 dB, 0-62 dB
     //volatile uint16_t samps;
     uint16_t samps;
     uint8_t  amp_enable;
@@ -83,16 +96,24 @@ typedef struct {
 
 
 
+
 ///////////////
-// hackrf.c
+// bins.c
 int fbins_init(fbins_t *fbins, int flen, int blen);
 fbins_t *fbins_new(int flen, int blen);
 void fbins_free(fbins_t *fbins);
+int fbins_segment(fbins_t *fbins_in, fbins_t *fbins_out, int bins, int overlap);
 
+
+
+
+
+
+///////////////
+// hackrf.c
 void hparams_defaults(hparams_t *params);
 int hparams_init(hparams_t *params);
 void hparams_free(hparams_t *params);
-
 
 uint32_t hackrf_real_bandwidth(uint32_t band_hz);
 int hackrf_read(hparams_t *params, fbins_t *fbins);
@@ -100,9 +121,6 @@ int hackrf_stop(hparams_t *params);
 int hackrf_is_finished(hparams_t *params);
 void hackrf_wait_until_finished(hparams_t *params);
 
-// consider moving to source file
-int hackrf_open_board(hackrf_device_t **device);
-int hackrf_free_board(hackrf_device_t *device);
 
 
 
@@ -110,6 +128,7 @@ int hackrf_free_board(hackrf_device_t *device);
 // fft.c
 int fbins_fft(fbins_t *fbins_in, fbins_t *fbins_out);
 int fbins_average(fbins_t *fbins_in, fbins_t *fbins_out);
+int fbins_log(fbins_t *fbins_in, fbins_t *fbins_out);
 
 
 
