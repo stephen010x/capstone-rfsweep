@@ -5,14 +5,33 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <math.h>
-#include <plplot/plplot.h>
-
 
 #include "utils/debug.h"
-
 #include "rfsweep/host.h"
 #include "kissfft/kiss_fft.h"
 
+// https://plplot.sourceforge.net/docbook-manual/plplot-html-5.15.0/index.html
+// https://plplot.sourceforge.net/docbook-manual/plplot-html-5.15.0/API.html
+
+#ifndef _RASPI
+#include <plplot/plplot.h>
+#endif
+
+
+
+
+
+
+#ifdef _RASPI
+typedef float PLFLT;
+int plsetopt(char*, char*) {return -1;}
+void plinit(void) {}
+void plcol0(int) {}
+void plenv(float, float, float, float, int, int) {}
+void pllab(char*, char*, char*) {}
+void plline(int, float[], float[]) {}
+void plend(void) {}
+#endif
 
 
 
@@ -27,13 +46,25 @@ __inline__ float log_to_n(float log) {
 
 
 
+// DEBUG(
+// static __construct void _plot_init(void) {
+// 	warnf("not compiled with plplot library");
+// }
+// )
+
+
 
 int plot_fbins(fbins_t *fbins, float xstart, float xend, int xlen, bool do_average) {
+	(void)fbins; (void)xstart; (void)xend; (void)xlen; (void)do_average;
+	
+    #ifndef _RASPI
+    
     int err, xjump;
     float xbin, ymin = 0, ymax = 0;
     PLFLT x[xlen], y[xlen], yd[xlen], y1[xlen], y2[xlen];
 
     (void)err;
+
 
     DEBUG(
     if (fbins->flen != 1) {
@@ -116,6 +147,12 @@ int plot_fbins(fbins_t *fbins, float xstart, float xend, int xlen, bool do_avera
 
     // end graph
     plend();
+
+    #else
+
+    assert(("not compiled with plplot library", false), -1);
+
+    #endif
 
     return 0;
 }

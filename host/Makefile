@@ -28,9 +28,17 @@ CC := gcc
 # https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
 CFLAGS := -std=gnu23 -fvisibility=internal -I/usr/include/libusb-1.0
 # -llibhackrf.so -lhackrf
-LFLAGS := -L./lib/kissfft/ -lusb-1.0 -Wl,-Bstatic -lkissfft-float -Wl,-Bdynamic -lplplot -lm
+LFLAGS := -L./lib/kissfft/ -lusb-1.0 -Wl,-Bstatic -lkissfft-float -Wl,-Bdynamic -lm
 BFLAGS := -Wall -Wextra
 #LIBS   :=
+
+IS_ARM := $(shell echo | $(CC) -dM -E - | grep -E '__arm__|__aarch64__' >/dev/null && echo yes)
+ifneq ($(IS_ARM),yes)
+LFLAGS += -lplplot
+else
+LFLAGS += -lpigpio
+endif
+
 
 DB := gdb
 DBFLAGS :=
@@ -207,8 +215,8 @@ dynamic_release: _dynamic _release $(LIBBINTARG).so
 
 $(BINTARG): $(OBJS)
 	mkdir -p $(dir $@)
-	#$(CC) $(BFLAGS) -o $@ -o $(basename $@) $^ -L$(LIBDIR) $(LFLAGS)
 	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
+#	$(CC) $(BFLAGS) -o $@ -o $(basename $@) $^ -L$(LIBDIR) $(LFLAGS)
 
 $(LIBBINTARG).a: $(OBJS)
 	mkdir -p $(dir $@)
@@ -243,7 +251,8 @@ clean:
 
 
 run:
-	./$(BINTARG)
+	sudo ./$(BINTARG)
+#	sudo chrt -f 50 ./$(BINTARG)
 
 
 gdb:

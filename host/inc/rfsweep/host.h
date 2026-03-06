@@ -1,7 +1,7 @@
 #ifndef RFSWEEP_HOST_H
 #define RFSWEEP_HOST_H
 
-#if defined(__arm__)
+#if defined(__arm__) || defined(__aarch64__)
 #define _RASPI
 #endif
 
@@ -160,6 +160,7 @@ int stepper_multistep(step_dir_t dir, int32_t steps);
 //int stepper_set_angle(int dir, float angle);
 //int stepper_set_origin(void);
 //int32_t stepper_get_offset(void);
+void stepper_test(void);
 
 
 #endif

@@ -26,7 +26,7 @@ static uint64_t start_us = 0;
 
 
 __inline__ int64_t _timespec_to_us(struct timespec *time) {
-    return (int64_t)time->tv_nsec / 1000 + (int64_t)time->tv_sec * (int64_t)10e6;
+    return (int64_t)time->tv_nsec / 1000 + (int64_t)time->tv_sec * (int64_t)1e6;
 }
 
 
@@ -114,6 +114,6 @@ void micros_test(void) {
     times[11] = micros();
 
     for (int i = 0; i <= 11; i++)
-        debugf("%d) %ld us", i, times[i]);
+        debugf("%d) %lld us", i, (long long)times[i]);
 }
 )

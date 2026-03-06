@@ -24,14 +24,21 @@ typedef struct global_state_t {} state;
 int main(void) {
     int err;
 
+    micros_test();
+
     err = stepper_enable(true);
     assert(("failed to enable stepper motor", !err), err);
 
     err = stepper_mode(STEP_MODE_1_1);
     assert(!err, err); 
 
-    for(int i = 0; i < 400; i++)
-        stepper_step(STEP_DIR_CLOCKWISE);
+	stepper_test();
+
+	for(;;) {
+		stepper_step(STEP_DIR_CLOCKWISE);
+		micros_block_for(20e3);
+		debugf("step");
+	}
 
     #if 0
     //hackrf_device_t *device;

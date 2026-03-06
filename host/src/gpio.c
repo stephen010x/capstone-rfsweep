@@ -5,13 +5,13 @@
 #include <sched.h>
 #include <stdatomic.h>
 
-#ifdef _RASPI
-#include <pigpio.h>
-#endif
-
 #include "utils/debug.h"
 #include "utils/macros.h"
 #include "rfsweep/host.h"
+
+#ifdef _RASPI
+#include <pigpio.h>
+#endif
 
 
 // https://media.pbclinear.com/pdfs/pbc-linear-data-sheets/data-sheet-stepper-motor-support.pdf
@@ -57,7 +57,7 @@
 #ifndef MAX_STEPS_PER_SEC
 #define MAX_STEPS_PER_SEC 400
 #endif
-#define MIN_MICROS_PER_STEP ((int64_t)10e6/MAX_STEPS_PER_SEC)
+#define MIN_MICROS_PER_STEP ((int64_t)1e6/MAX_STEPS_PER_SEC)
 
 
 
@@ -85,6 +85,7 @@
 
 #define PI_OUTPUT  -1
 #define PI_PUD_OFF -1
+#define PI_INIT_FAILED -1
 
 int gpioInitialise(void) {return -1;}
 int gpioSetMode(unsigned int, unsigned int) {return -1;}
@@ -142,12 +143,13 @@ static pthread_t tthread[2];
 static __construct void init_gpio(void) {
     int err; 
 
-    // init gpio library
-    err = gpioInitialise();
     #ifndef _RASPI
     warnf("not compiled with pigpio library");
     #endif
-    vassert(("failed to initilize gpio library", !err));
+    
+    // init gpio library
+    err = gpioInitialise();
+    vassert(("failed to initilize gpio library", err != PI_INIT_FAILED));
 
     // set the used gpio range to outputs with no pull resistors
     for (int i = 16; i <= 23; i++) {
@@ -169,11 +171,14 @@ static __construct void init_gpio(void) {
     err |= gpioWrite(GPIO_MS3,     0);
     vassert(("failed to set gpio defaults", !err));
 
+
     // create step thread
+    debugf("creating tthread 0");
     err = pthread_create(&tthread[0], NULL, &_step_thread, NULL);
     vassert(("failed to create step thread", !err));
 
     // create multistep thread
+    debugf("creating tthread 1");
     err = pthread_create(&tthread[1], NULL, &_multistep_thread, NULL);
     vassert(("failed to create step thread", !err));
 }
@@ -182,17 +187,24 @@ static __construct void init_gpio(void) {
 static __destruct void exit_gpio(void) {
     void *retval;
 
+    debugf("canceling threads");
+
     // cancel threads
     if (tthread[0] != 0) {
         pthread_cancel(tthread[0]);
         pthread_join(tthread[0], &retval);
         wassert(("tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
+    } else {
+    	debugf("tthread 0 successfully canceled");
     }
     if (tthread[1] != 0) {
         pthread_cancel(tthread[1]);
         pthread_join(tthread[1], &retval);
         wassert(("tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
+    } else {
+    	debugf("tthread 1 successfully canceled");
     }
+
 
     // terminate gpio
     gpioTerminate();
@@ -210,8 +222,10 @@ static void *_step_thread(void *args) {
 	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     
     for(;;) {
-        while(!global.dostep)
+        while(!global.dostep) {
             sched_yield();
+        	pthread_testcancel();
+        }
 
         // turn on step, stepping motor
         err = gpioWrite(GPIO_STEP, 1);
@@ -250,8 +264,10 @@ static void *_multistep_thread(void *args) {
     
     for(;;) {
         // wait until there are steps to step
-        while(global.multistep == 0)
+        while(global.multistep == 0) {
             sched_yield();
+            pthread_testcancel();
+        }
 
         // step in the direction of the last set dir
         stepper_step(global.dir);
@@ -370,6 +386,10 @@ int stepper_step(step_dir_t dir) {
     while (global.dostep)
         sched_yield();
 
+	// activate stepper
+	// the stepper thread will set this to zero when finished
+    global.dostep = 1;
+
     // set direction
     err = _stepper_setdir(dir);
     assert(!err, err);
@@ -397,4 +417,24 @@ int stepper_multistep(step_dir_t dir, int32_t steps) {
     global.multistep = steps;
 
     return 0;
+}
+
+
+
+
+void stepper_test(void) {
+
+	long long int lastus = micros();
+	long long int totalus = 0;
+    for(int i = 0; i < 400; i++) {
+    	long long int newus;
+    	
+        stepper_step(STEP_DIR_CLOCKWISE);
+        
+        newus = micros();
+        //debugf("%lld %lld", newus - lastus, micros());
+    	totalus += newus - lastus;
+    	lastus = newus;
+    }
+    debugf("step average delta %lld us", totalus/400);
 }
