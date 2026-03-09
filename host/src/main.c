@@ -43,10 +43,15 @@ int main(void) {
 
 	stepper_mode(STEP_MODE_1_16);
     assert(!err, err); 
-	for(int i = 0;; i++) {
+    
+    int step = 0;
+	for(int i = 0; step > 400 || step < -400; i++) {
 		stepper_step(STEP_DIR_CLOCKWISE);
 		micros_block_for(10e3);
-		debugf("step");
+		//debugf("step");
+		
+		step = stepper_getsteps();
+		debugf("step %d %d", step>>4, step&0xF);
 	}
 
     #if 0

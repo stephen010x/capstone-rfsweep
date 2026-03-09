@@ -161,6 +161,8 @@ int stepper_multistep(step_dir_t dir, int32_t steps);
 //int stepper_set_origin(void);
 //int32_t stepper_get_offset(void);
 void stepper_test(void);
+int32_t stepper_getsteps(void);
+void stepper_setorigin(void);
 
 
 #endif

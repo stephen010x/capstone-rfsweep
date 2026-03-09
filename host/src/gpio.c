@@ -107,6 +107,7 @@ static void *_step_thread(void *args);
 static void *_multistep_thread(void *args);
 static int _stepper_setdir(step_dir_t dir);
 static void _step_inc(void);
+static void _step_dec(void);
 
 
 
@@ -117,8 +118,8 @@ static void _step_inc(void);
 //static volatile uint8_t g_fstep;    // fractional steps 0-15 (out of 16)
 //static volatile step_mode_t g_mode;
 static struct {
-    volatile _Atomic uint8_t step;       // full steps 0-199
-    volatile _Atomic uint8_t fstep;      // fractional steps 0-15 (out of 16)
+    volatile _Atomic int32_t step;      // full steps 0-199 (overflows)
+    volatile _Atomic int8_t fstep;      // fractional steps 0-15 (out of 16)
     volatile step_mode_t mode;
     volatile _Atomic uint8_t mode_mult;
     volatile _Atomic step_dir_t dir;
@@ -345,6 +346,7 @@ static int _stepper_setdir(step_dir_t dir) {
     );
 
     if (global.dir != dir) {
+        debugf("changing direction to %d", dir);
         err = gpioWrite(GPIO_DIR, dir);
         assert(("failed write to GPIO_DIR", !err), err);
         global.dir = dir;
@@ -359,17 +361,45 @@ static int _stepper_setdir(step_dir_t dir) {
 static void _step_inc(void) {
     pthread_mutex_lock(&global.step_mutex);
 
-    uint8_t step  = global.step;
-    uint8_t fstep = global.fstep;
+    int32_t step  = global.step;
+    int8_t fstep = global.fstep;
     
     fstep += global.mode_mult;
     if (fstep >= 16) {
         step++;
         fstep -= 16;
     }
-    if (step >= 200) {
-        step = 0;
+    // let the programmer mod to get this
+    // that way they can also get total steps
+    // if (step >= 200) {
+    //     step = 0;
+    // }
+
+    global.step = step;
+    global.fstep = fstep;
+
+    pthread_mutex_unlock(&global.step_mutex);
+}
+
+
+
+
+static void _step_dec(void) {
+    pthread_mutex_lock(&global.step_mutex);
+
+    int32_t step  = global.step;
+    int8_t fstep = global.fstep;
+    
+    fstep -= global.mode_mult;
+    if (fstep < 0) {
+        step--;
+        fstep += 16;
     }
+    // let the programmer mod to get this
+    // that way they can also get total steps
+    // if (step >= 200) {
+    //     step = 0;
+    // }
 
     global.step = step;
     global.fstep = fstep;
@@ -398,7 +428,10 @@ int stepper_step(step_dir_t dir) {
     assert(!err, err);
 
     // increment step and fstep counter
-    _step_inc();
+    if (dir == STEP_DIR_CLOCKWISE)
+        _step_inc();
+    else
+        _step_dec();
 
     return 0;
 }
@@ -442,3 +475,21 @@ void stepper_test(void) {
     debugf("step average delta %lld us", totalus/400);
 }
 )
+
+
+//                  signed  unsigned
+// returns 0b 0000 SSSS SSSS FFFF
+// or 0x0SSF
+int32_t stepper_getsteps(void) {
+    pthread_mutex_lock(&global.step_mutex);
+    return (int32_t)global.step<<4 | (int32_t)global.fstep;
+    pthread_mutex_unlock(&global.step_mutex);
+}
+
+
+
+void stepper_setorigin(void) {
+    pthread_mutex_lock(&global.step_mutex);
+    global.step = 0;
+    pthread_mutex_unlock(&global.step_mutex);
+}
