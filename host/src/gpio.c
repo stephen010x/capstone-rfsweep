@@ -176,6 +176,7 @@ static __construct void init_gpio(void) {
     err |= gpioWrite(GPIO_NSLEEP,  1);
     err |= gpioWrite(GPIO_NENABLE, 1);
     err |= gpioWrite(GPIO_STEP,    0);
+    err |= gpioWrite(GPIO_DIR,     0);
     err |= gpioWrite(GPIO_MS1,     0);
     err |= gpioWrite(GPIO_MS2,     0);
     err |= gpioWrite(GPIO_MS3,     0);
