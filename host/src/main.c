@@ -19,12 +19,19 @@ typedef struct global_state_t {} state;
 
 
 
+// void __destruct main_exit(void) {
+// 	debugf("disabling stepper");
+// 	stepper_enable(false);
+// }
+
+
+
 
 
 int main(void) {
     int err;
 
-    micros_test();
+    DEBUG(micros_test();)
 
     err = stepper_enable(true);
     assert(("failed to enable stepper motor", !err), err);
@@ -32,11 +39,12 @@ int main(void) {
     err = stepper_mode(STEP_MODE_1_1);
     assert(!err, err); 
 
-	stepper_test();
+	DEBUG(stepper_test();)
 
-	for(;;) {
-		stepper_step(STEP_DIR_CLOCKWISE);
-		micros_block_for(20e3);
+	stepper_mode(STEP_MODE_1_4);
+	for(int i = 0;; i++) {
+		stepper_step(STEP_DIR_COUNTERCLOCK);
+		micros_block_for(10e3);
 		debugf("step");
 	}
 

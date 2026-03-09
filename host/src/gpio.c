@@ -162,8 +162,8 @@ static __construct void init_gpio(void) {
 
     // some pin output setup and defaults
     err = 0;
-    err |= gpioWrite(GPIO_NRESET,  0);
-    err |= gpioWrite(GPIO_NSLEEP,  0);
+    err |= gpioWrite(GPIO_NRESET,  1);
+    err |= gpioWrite(GPIO_NSLEEP,  1);
     err |= gpioWrite(GPIO_NENABLE, 1);
     err |= gpioWrite(GPIO_STEP,    0);
     err |= gpioWrite(GPIO_MS1,     0);
@@ -328,6 +328,8 @@ int stepper_mode(step_mode_t mode) {
 
     // calculate mode multiplier
     global.mode_mult = 1 << (4 - ((mode == 0b111) ? 0b100 : mode));
+    
+    debugf("mode set to %d with mult %d", mode, global.mode_mult);
 
     return 0;
 }
@@ -421,7 +423,7 @@ int stepper_multistep(step_dir_t dir, int32_t steps) {
 
 
 
-
+DEBUG(
 void stepper_test(void) {
 
 	long long int lastus = micros();
@@ -438,3 +440,4 @@ void stepper_test(void) {
     }
     debugf("step average delta %lld us", totalus/400);
 }
+)
