@@ -31,7 +31,7 @@ typedef struct global_state_t {} state;
 int main(void) {
     int err;
 
-    DEBUG(micros_test();)
+    //DEBUG(micros_test();)
 
     err = stepper_enable(true);
     assert(("failed to enable stepper motor", !err), err);
@@ -41,18 +41,25 @@ int main(void) {
 // 
 // 	DEBUG(stepper_test();)
 
-	stepper_mode(STEP_MODE_1_16);
+	stepper_mode(STEP_MODE_1_4);
     assert(!err, err); 
-    
+
+    stepper_setorigin();
     int step = 0;
-	for(int i = 0; step < 400 || step > -400; i++) {
+	for(int i = 0; (step>>4 < 200) && (step>>4 > -400); i++) {
 		stepper_step(STEP_DIR_CLOCKWISE);
-		micros_block_for(10e3);
+		//micros_block_for(10e3);
 		//debugf("step");
 		
 		step = stepper_getsteps();
-		debugf("step %d %d", step>>4, step&0xF);
+		//debugf("step %d %d", step>>4, step&0xF);
 	}
+
+	// take out of microstepping mode
+    stepper_mode(STEP_MODE_1_1);
+
+    // disable motor
+    stepper_enable(false);
 
     #if 0
     //hackrf_device_t *device;

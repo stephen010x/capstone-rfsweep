@@ -4,6 +4,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <stdatomic.h>
+#include <signal.h>
 
 #include "utils/debug.h"
 #include "utils/macros.h"
@@ -53,9 +54,10 @@
 
 
 
-//#define MAX_STEPS_PER_SEC 2000
 #ifndef MAX_STEPS_PER_SEC
-#define MAX_STEPS_PER_SEC 400
+// this is the max steps per second for the base step
+// size. It is multipled by the microstep resolution
+#define MAX_STEPS_PER_SEC 100
 #endif
 #define MIN_MICROS_PER_STEP ((int64_t)1e6/MAX_STEPS_PER_SEC)
 
@@ -108,6 +110,7 @@ static void *_multistep_thread(void *args);
 static int _stepper_setdir(step_dir_t dir);
 static void _step_inc(void);
 static void _step_dec(void);
+//static void _signandler_2(int sig);
 
 
 
@@ -121,7 +124,7 @@ static struct {
     volatile _Atomic int32_t step;      // full steps 0-199 (overflows)
     volatile _Atomic int8_t fstep;      // fractional steps 0-15 (out of 16)
     volatile step_mode_t mode;
-    volatile _Atomic uint8_t mode_mult;
+    volatile _Atomic uint8_t mode_mult; // changed this to 2pow exponent
     volatile _Atomic step_dir_t dir;
     volatile _Atomic uint32_t multistep;
     volatile _Atomic uint8_t dostep;
@@ -151,6 +154,12 @@ static __construct void init_gpio(void) {
     // init gpio library
     err = gpioInitialise();
     vassert(("failed to initilize gpio library", err != PI_INIT_FAILED));
+
+    debugf("MAX_STEPS_PER_SEC   = %lld", (int64_t)MAX_STEPS_PER_SEC);
+    debugf("MIN_MICROS_PER_STEP = %lld", (int64_t)MIN_MICROS_PER_STEP);
+
+    // create ctrl-c signal handler
+    //signal(2, &_signandler_2);
 
     // set the used gpio range to outputs with no pull resistors
     for (int i = 16; i <= 23; i++) {
@@ -185,6 +194,8 @@ static __construct void init_gpio(void) {
 }
 
 
+
+
 static __destruct void exit_gpio(void) {
     void *retval;
 
@@ -206,10 +217,25 @@ static __destruct void exit_gpio(void) {
     	debugf("tthread 1 successfully canceled");
     }
 
+    // take out of microstepping mode
+    //stepper_mode(STEP_MODE_1_1);
+
+    // disable motor
+    //stepper_enable(false);
 
     // terminate gpio
     gpioTerminate();
+
+    // flush all remaining print statements
+    fflush(stdout);
 }
+
+
+
+// static void _signandler_2(int sig) {
+//     if (sig == 2) // which it should be
+//         exit_gpio();
+// }
 
 
 
@@ -230,16 +256,16 @@ static void *_step_thread(void *args) {
 
         // turn on step, stepping motor
         err = gpioWrite(GPIO_STEP, 1);
-        wassert(("failed write to GPIO_DIR", !err));
+        wassert(("failed write to GPIO_STEP", !err));
 
         //micros_block_for(5); // minimum of 1us
-        micros_block_for(MIN_MICROS_PER_STEP>>1);
+        micros_block_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
         
         // turn off step, in prep for next turn-on
         err = gpioWrite(GPIO_STEP, 0);
-        wassert(("failed write to GPIO_DIR", !err));
+        wassert(("failed write to GPIO_STEP", !err));
         
-        micros_block_for(MIN_MICROS_PER_STEP>>1);
+        micros_block_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
 
         // reset dostep
         global.dostep = 0;
@@ -329,9 +355,9 @@ int stepper_mode(step_mode_t mode) {
     global.mode = mode;
 
     // calculate mode multiplier
-    global.mode_mult = 1 << (4 - ((mode == 0b111) ? 0b100 : mode));
+    global.mode_mult = (4 - ((mode == 0b111) ? 0b100 : mode));
     
-    debugf("mode set to %d with mult %d", mode, global.mode_mult);
+    debugf("mode set to %d with mult %d", mode, 1<<global.mode_mult);
 
     return 0;
 }
@@ -364,7 +390,7 @@ static void _step_inc(void) {
     int32_t step  = global.step;
     int8_t fstep = global.fstep;
     
-    fstep += global.mode_mult;
+    fstep += 1<<global.mode_mult;
     if (fstep >= 16) {
         step++;
         fstep -= 16;
@@ -390,7 +416,7 @@ static void _step_dec(void) {
     int32_t step  = global.step;
     int8_t fstep = global.fstep;
     
-    fstep -= global.mode_mult;
+    fstep -= 1<<global.mode_mult;
     if (fstep < 0) {
         step--;
         fstep += 16;
