@@ -319,9 +319,9 @@ int stepper_mode(step_mode_t mode) {
     )
 
     err = 0;
-    err |= gpioWrite(GPIO_MS1, mode & MASK_MS1);
-    err |= gpioWrite(GPIO_MS2, mode & MASK_MS2);
-    err |= gpioWrite(GPIO_MS3, mode & MASK_MS3);
+    err |= gpioWrite(GPIO_MS1, !!(mode & MASK_MS1));
+    err |= gpioWrite(GPIO_MS2, !!(mode & MASK_MS2));
+    err |= gpioWrite(GPIO_MS3, !!(mode & MASK_MS3));
     assert(("failed write to GPIO_MSx", !err), err);
 
     global.mode = mode;
