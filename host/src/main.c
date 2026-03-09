@@ -36,14 +36,15 @@ int main(void) {
     err = stepper_enable(true);
     assert(("failed to enable stepper motor", !err), err);
 
-    err = stepper_mode(STEP_MODE_1_1);
+//     err = stepper_mode(STEP_MODE_1_1);
+//     assert(!err, err); 
+// 
+// 	DEBUG(stepper_test();)
+
+	stepper_mode(STEP_MODE_1_16);
     assert(!err, err); 
-
-	DEBUG(stepper_test();)
-
-	stepper_mode(STEP_MODE_1_4);
 	for(int i = 0;; i++) {
-		stepper_step(STEP_DIR_COUNTERCLOCK);
+		stepper_step(STEP_DIR_CLOCKWISE);
 		micros_block_for(10e3);
 		debugf("step");
 	}

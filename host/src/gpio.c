@@ -315,7 +315,8 @@ int stepper_mode(step_mode_t mode) {
     int err;
 
     DEBUG(
-    assert(("step mode must be within the range 0 to 5", (mode >= 0 && mode <= 5)), -1);
+    assert(("step mode must be within the range 0 to 4 or 7", 
+        (mode >= 0 && mode <= 4) || mode == 7), -1);
     )
 
     err = 0;

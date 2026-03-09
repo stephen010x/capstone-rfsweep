@@ -18,8 +18,8 @@
 #define STEP_MODE_1_8   0b011
 #define STEP_MODE_1_16  0b111
 
-#define STEP_DIR_CLOCKWISE      0
-#define STEP_DIR_COUNTERCLOCK   1
+#define STEP_DIR_COUNTERCLOCK   0
+#define STEP_DIR_CLOCKWISE      1
 
 typedef int step_dir_t;
 typedef int step_mode_t;
