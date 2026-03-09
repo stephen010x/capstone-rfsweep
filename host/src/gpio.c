@@ -395,11 +395,6 @@ static void _step_dec(void) {
         step--;
         fstep += 16;
     }
-    // let the programmer mod to get this
-    // that way they can also get total steps
-    // if (step >= 200) {
-    //     step = 0;
-    // }
 
     global.step = step;
     global.fstep = fstep;
@@ -481,9 +476,11 @@ void stepper_test(void) {
 // returns 0b 0000 SSSS SSSS FFFF
 // or 0x0SSF
 int32_t stepper_getsteps(void) {
+    int32_t retval;
     pthread_mutex_lock(&global.step_mutex);
-    return (int32_t)global.step<<4 | (int32_t)global.fstep;
+    retval = (int32_t)global.step<<4 | (int32_t)global.fstep;
     pthread_mutex_unlock(&global.step_mutex);
+    return retval;
 }
 
 
