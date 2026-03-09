@@ -45,7 +45,7 @@ int main(void) {
     assert(!err, err); 
     
     int step = 0;
-	for(int i = 0; step > 400 || step < -400; i++) {
+	for(int i = 0; step < 400 || step > -400; i++) {
 		stepper_step(STEP_DIR_CLOCKWISE);
 		micros_block_for(10e3);
 		//debugf("step");
