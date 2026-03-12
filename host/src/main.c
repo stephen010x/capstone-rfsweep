@@ -4,7 +4,7 @@
 #include <string.h>
 #include <sched.h>
 
-#include "utils/debug.h"
+#include "toolkit/debug.h"
 #include "rfsweep/host.h"
 #include "rfsweep/host.h"
 

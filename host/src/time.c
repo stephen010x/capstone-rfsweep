@@ -4,8 +4,8 @@
 #include <sched.h>
 
 
-#include "utils/debug.h"
-#include "utils/macros.h"
+#include "toolkit/debug.h"
+#include "toolkit/macros.h"
 #include "rfsweep/host.h"
 
 

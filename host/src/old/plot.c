@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "utils/debug.h"
+#include "toolkit/debug.h"
 #include "rfsweep/host.h"
 #include "kissfft/kiss_fft.h"
 

@@ -11,8 +11,8 @@
 //#include "kissfft/kiss_fft.h"
 
 //#include "hackrf.h"
-#include "utils/debug.h"
-#include "utils/macros.h"
+#include "toolkit/debug.h"
+#include "toolkit/macros.h"
 
 
 #define MY_HACKRF_SOURCE

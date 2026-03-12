@@ -5,8 +5,8 @@
 #define kiss_fft_scalar float
 #include "kissfft/kiss_fft.h"
 #include "rfsweep/host.h"
-#include "utils/debug.h"
-#include "utils/macros.h"
+#include "toolkit/debug.h"
+#include "toolkit/macros.h"
 
 
 
