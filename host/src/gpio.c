@@ -184,12 +184,12 @@ static __construct void init_gpio(void) {
 
 
     // create step thread
-    debugf("creating tthread 0");
+    debugf("creating gpio tthread 0");
     err = pthread_create(&tthread[0], NULL, &_step_thread, NULL);
     vassert(("failed to create step thread", !err));
 
     // create multistep thread
-    debugf("creating tthread 1");
+    debugf("creating gpio tthread 1");
     err = pthread_create(&tthread[1], NULL, &_multistep_thread, NULL);
     vassert(("failed to create step thread", !err));
 }
@@ -200,22 +200,22 @@ static __construct void init_gpio(void) {
 static __destruct void exit_gpio(void) {
     void *retval;
 
-    debugf("canceling threads");
+    debugf("canceling gpio threads");
 
     // cancel threads
     if (tthread[0] != 0) {
         pthread_cancel(tthread[0]);
         pthread_join(tthread[0], &retval);
-        wassert(("tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
+        wassert(("gpio tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
     } else {
-    	debugf("tthread 0 successfully canceled");
+        debugf("gpio tthread 0 successfully canceled");
     }
     if (tthread[1] != 0) {
         pthread_cancel(tthread[1]);
         pthread_join(tthread[1], &retval);
-        wassert(("tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
+        wassert(("gpio tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
     } else {
-    	debugf("tthread 1 successfully canceled");
+        debugf("gpio tthread 1 successfully canceled");
     }
 
     // take out of microstepping mode
@@ -247,12 +247,12 @@ static void *_step_thread(void *args) {
 
     // ensure that this thread is cancelable
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     
     for(;;) {
         while(!global.dostep) {
             sched_yield();
-        	pthread_testcancel();
+            pthread_testcancel();
         }
 
         // turn on step, stepping motor
@@ -288,7 +288,7 @@ static void *_multistep_thread(void *args) {
 
     // ensure that this thread is cancelable
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
-	pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
+    pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     
     for(;;) {
         // wait until there are steps to step
@@ -441,8 +441,8 @@ int stepper_step(step_dir_t dir) {
     while (global.dostep)
         sched_yield();
 
-	// activate stepper
-	// the stepper thread will set this to zero when finished
+    // activate stepper
+    // the stepper thread will set this to zero when finished
     global.dostep = 1;
 
     // set direction
@@ -482,17 +482,17 @@ int stepper_multistep(step_dir_t dir, int32_t steps) {
 DEBUG(
 void stepper_test(void) {
 
-	long long int lastus = micros();
-	long long int totalus = 0;
+    long long int lastus = micros();
+    long long int totalus = 0;
     for(int i = 0; i < 400; i++) {
-    	long long int newus;
-    	
+        long long int newus;
+        
         stepper_step(STEP_DIR_CLOCKWISE);
         
         newus = micros();
         //debugf("%lld %lld", newus - lastus, micros());
-    	totalus += newus - lastus;
-    	lastus = newus;
+        totalus += newus - lastus;
+        lastus = newus;
     }
     debugf("step average delta %lld us", totalus/400);
 }

@@ -1,3 +1,4 @@
+#if 0
 
 // simple_plplot_live.c
 // build: gcc simple_plplot_live.c -o simple_plplot_live -lplplot -lm
@@ -157,3 +158,4 @@ int plot_fbins(fbins_t *fbins, float xstart, float xend, int xlen, bool do_avera
     return 0;
 }
 
+#endif

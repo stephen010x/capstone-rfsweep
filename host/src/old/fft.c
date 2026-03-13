@@ -1,3 +1,4 @@
+#if 0
 
 #include <math.h>
 #include <stdlib.h>
@@ -136,3 +137,5 @@ int fbins_log(fbins_t *fbins_in, fbins_t *fbins_out) {
 
     return 0;
 }
+
+#endif

@@ -33,6 +33,15 @@ typedef struct {
     float imag;
 } fbin_t;
 
+
+typedef struct {
+    //uint8_t real;
+    //uint8_t imag;
+    int8_t real;
+    int8_t imag;
+} fbin8_t;
+
+
 // typedef struct sbins_t {
 //     int len;
 //     sbin_t *bins;
@@ -171,9 +180,6 @@ void stepper_setorigin(void);
 
 ///////////////
 // net.c
-// assert little endian
-
-
 #define NET_READ  POLLIN
 #define NET_WRITE POLLOUT
 

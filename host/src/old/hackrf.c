@@ -1,3 +1,4 @@
+#if 0
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -565,3 +566,5 @@ struct hackrf_device_list {
 };
 
 */
+
+#endif
