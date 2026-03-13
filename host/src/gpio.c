@@ -155,8 +155,8 @@ static __construct void init_gpio(void) {
     err = gpioInitialise();
     vassert(("failed to initilize gpio library", err != PI_INIT_FAILED));
 
-    debugf("MAX_STEPS_PER_SEC   = %lld", (int64_t)MAX_STEPS_PER_SEC);
-    debugf("MIN_MICROS_PER_STEP = %lld", (int64_t)MIN_MICROS_PER_STEP);
+    debugf("MAX_STEPS_PER_SEC   = %lld", (long long)MAX_STEPS_PER_SEC);
+    debugf("MIN_MICROS_PER_STEP = %lld", (long long)MIN_MICROS_PER_STEP);
 
     // create ctrl-c signal handler
     //signal(2, &_signandler_2);

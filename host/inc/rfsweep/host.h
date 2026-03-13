@@ -165,4 +165,44 @@ int32_t stepper_getsteps(void);
 void stepper_setorigin(void);
 
 
+
+
+
+
+///////////////
+// net.c
+// assert little endian
+
+
+#define NET_READ  POLLIN
+#define NET_WRITE POLLOUT
+
+//struct _net_struct;
+
+typedef int net_mode_t;
+// TODO: these two should be combined into a struct
+typedef uint32_t magic_num_t;
+typedef int32_t size_num_t;
+typedef struct _net_struct net_t;
+
+extern const magic_num_t magic_num;
+extern const char *const LOOPBACK;
+extern const char *const LOCALHOST;
+
+
+
+int net_connect(net_t *net, const char *ip, uint16_t port, int timeout_ms);
+int net_start(net_t *net, uint16_t port, int backlog);
+int net_accept(net_t *netin, net_t *netout, int timeout_ms);
+int net_await(net_t *net, net_mode_t mode, int timeout_ms);
+bool net_is_open(net_t *net);
+int net_close(net_t *net, int timeout_sec);
+int net_write(size_num_t count; net_t *restrict net, const int8_t buff[restrict count], size_num_t count, int timeout_ms);
+int net_write_raw(size_t count; net_t *restrict net, const int8_t buff[restrict count], size_t count, int timeout_ms);
+size_num_t net_readsize(net_t *net, int timeout_ms);
+ssize_t net_read(size_num_t count; net_t *restrict net, int8_t buff[restrict count], size_num_t count, int timeout_ms);
+ssize_t net_read_raw(size_t count; net_t *restrict net, int8_t buff[restrict count], size_t count, int timeout_ms, int flags);
+void net_tests(void);
+
+
 #endif

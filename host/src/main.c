@@ -33,6 +33,12 @@ int main(void) {
 
     //DEBUG(micros_test();)
 
+    DEBUG(
+    printf("-----------------------------\n");
+    net_tests();
+    printf("-----------------------------\n");
+    )
+
     err = stepper_enable(true);
     assert(("failed to enable stepper motor", !err), err);
     
@@ -43,23 +49,23 @@ int main(void) {
 // 
 // 	DEBUG(stepper_test();)
 
-	stepper_mode(STEP_MODE_1_4);
+    stepper_mode(STEP_MODE_1_4);
     assert(!err, err); 
 
     stepper_setorigin();
     int step = 0;
-	for(int i = 0; (step>>4 <= 200) && (step>>4 >= -200); i++) {
-		stepper_step(STEP_DIR_CLOCKWISE);
-		//micros_block_for(10e3);
-		//debugf("step");
-		
-		step = stepper_getsteps();
-		//debugf("step %d %d", step>>4, step&0xF);
-	}
+    for(int i = 0; (step>>4 <= 200) && (step>>4 >= -200); i++) {
+        stepper_step(STEP_DIR_CLOCKWISE);
+        //micros_block_for(10e3);
+        //debugf("step");
+        
+        step = stepper_getsteps();
+        //debugf("step %d %d", step>>4, step&0xF);
+    }
 
-	micros_block_for(10e5);
+    micros_block_for(10e5);
 
-	// take out of microstepping mode
+    // take out of microstepping mode
     stepper_mode(STEP_MODE_1_1);
 
     // disable motor
