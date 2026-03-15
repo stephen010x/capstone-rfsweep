@@ -26,20 +26,24 @@ typedef int step_mode_t;
 
 
 
-typedef struct {
-    //uint8_t real;
-    //uint8_t imag;
-    float real;
-    float imag;
-} fbin_t;
+// typedef struct {
+//     //uint8_t real;
+//     //uint8_t imag;
+//     float real;
+//     float imag;
+// } fbin_t;
+
+
+// typedef struct {
+//     int8_t real;
+//     int8_t imag;
+// } fbin8_t;
 
 
 typedef struct {
-    //uint8_t real;
-    //uint8_t imag;
     int8_t real;
     int8_t imag;
-} fbin8_t;
+} fbin_t;
 
 
 // typedef struct sbins_t {
@@ -48,23 +52,38 @@ typedef struct {
 // } sbins_t;
 
 
-// this is for internal use
-// this is where the actual data is stored
-typedef struct {
-    int refcount;
-    int len;
-    fbin_t *data;
-} _bins_data_t;
+// // this is for internal use
+// // this is where the actual data is stored
+// typedef struct {
+//     int refcount;
+//     int len;
+//     fbin_t *data;
+// } _bins_data_t;
 
 
-// this contains a lot of pointers to the data stored by _bins_data_t
-// allows shallow slice copies
+// // this contains a lot of pointers to the data stored by _bins_data_t
+// // allows shallow slice copies
+// typedef struct {
+//     int flen; // number of fbins
+//     int blen; // number of bins per fbin
+//     fbin_t **bins;
+//     _bins_data_t *ref;
+// } fbins_t;
+
+
+
+
+
+
+
+
 typedef struct {
-    int flen; // number of fbins
-    int blen; // number of bins per fbin
-    fbin_t **bins;
-    _bins_data_t *ref;
-} fbins_t;
+    float32_t angle;
+    uint32_t band_hz;
+    uint64_t freq_hz;
+    int32_t bincount;    // number of bins
+    fbin_t bins[0];
+} databin_t;
 
 
 
@@ -172,6 +191,9 @@ int stepper_multistep(step_dir_t dir, int32_t steps);
 void stepper_test(void);
 int32_t stepper_getsteps(void);
 void stepper_setorigin(void);
+uint8_t stepper_get_multpow(void);
+//int16_t stepper_get_steps_per_rev(void);
+int stepper_stepto(int32_t angle, step_dir_t dir);
 
 
 
@@ -199,15 +221,15 @@ extern const char *const LOCALHOST;
 
 int net_connect(net_t *net, const char *ip, uint16_t port, int timeout_ms);
 int net_start(net_t *net, uint16_t port, int backlog);
-int net_accept(net_t *netin, net_t *netout, int timeout_ms);
-int net_await(net_t *net, net_mode_t mode, int timeout_ms);
-bool net_is_open(net_t *net);
+int net_accept(const net_t *restrict netin, net_t *restrict netout, int timeout_ms)
+int net_await(const net_t *net, net_mode_t mode, int timeout_ms);
+bool net_is_open(const net_t *net);
 int net_close(net_t *net, int timeout_sec);
-int net_write(size_num_t count; net_t *restrict net, const int8_t buff[restrict count], size_num_t count, int timeout_ms);
-int net_write_raw(size_t count; net_t *restrict net, const int8_t buff[restrict count], size_t count, int timeout_ms);
-size_num_t net_readsize(net_t *net, int timeout_ms);
-ssize_t net_read(size_num_t count; net_t *restrict net, int8_t buff[restrict count], size_num_t count, int timeout_ms);
-ssize_t net_read_raw(size_t count; net_t *restrict net, int8_t buff[restrict count], size_t count, int timeout_ms, int flags);
+int net_write(size_num_t count; const net_t *restrict net, const int8_t buff[restrict count], size_num_t count, int timeout_ms);
+int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[restrict count], size_t count, int timeout_ms);
+size_num_t net_readsize(const net_t *net, int timeout_ms);
+ssize_t net_read(size_num_t count; const net_t *restrict net, int8_t buff[restrict count], size_num_t count, int timeout_ms);
+ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restrict count], size_t count, int timeout_ms, int flags);
 void net_tests(void);
 
 

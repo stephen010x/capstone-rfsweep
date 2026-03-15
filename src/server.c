@@ -1,0 +1,827 @@
+
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
+#include <pthread.h>
+//#include <sched.h>
+
+
+#include "toolkit/debug.h"
+#include "rfsweep.h"
+
+
+
+#define GOLDEN_RATIO ((float)1.61803)
+
+// multiplier for reallocs
+#define QUEUE_MULT   GOLDEN_RATIO
+// starting queue alloc size
+#define QUEUE_START  16
+
+#define MEASURE_STEP_MODE  STEP_MODE_1_16
+#define STEPS_PER_REV      (200*16)
+
+//#define STEPS_PER_REV (200*16)
+
+
+
+
+
+
+// enum {
+//     COMMAND_NULL = 0,
+//     COMMAND_RESET,      // reset program
+//     COMMAND_RESTART,    // reset device
+//     COMMAND_GETLOGS,    // pulls debug and error messages of program
+//     COMMAND_MEASURE,    // run measurements
+// };
+// typedef int8_t command_type_t;
+
+/*
+rfsweep send reset
+rfsweep send measure --
+*/
+
+
+// typedef struct __packed {
+//     int8_t type;
+//     
+//     union {
+//     
+//         struct {
+//             int8_t command;
+// 
+//             union {
+//                 struct {
+//                     int16_t delta;      // resolution (how many total steps)
+//                     uint32_t lna_gain;  // steps of 8 dB, 0-40 dB
+//                     uint32_t vga_gain;  // steps of 2 dB, 0-62 dB
+//                     double   srate_hz;
+//                     uint64_t freq_hz;
+//                     uint32_t band_hz;
+//                     uint32_t samps;     // samples per step
+//                     uint8_t  amp_enable;
+//                     uint8_t  stepmod;   // mod micro-step size to this. 16 is full step
+//                 } measure;
+// 
+//             };
+//             
+//         } command;
+// 
+//         
+//         struct {
+//             int32_t size;
+//             int8_t data[0];
+//         } data;
+// 
+//     }
+//     
+// } message_t;
+
+
+
+
+
+
+
+// we don't need this, as we can just send one message
+// at a time, forcing the client to keep tally of how many
+// databins we are sending
+// this way the bins all don't have to be the same size either
+// though they probably all still will be.
+// // all databins should be of equal size
+// typedef struct {
+//     int32_t binsize;    // bytes per bin
+//     int32_t bincount;   // number of bins
+//     int8_t data[0];
+// } databin_array_t;
+
+
+
+
+
+static int binqueue_init(void);
+static void binqueue_free(void);
+static databin_t *binqueue_pop(void);
+//__inline__ int binqueue_items(void);
+//static void binqueue_lock(void);
+//static void binqueue_unlock(void);
+
+static int _data_thread_start(net_t *client);
+static int _data_thread_end(void);
+static void *_data_thread(net_t *client);
+
+static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath);
+static int _server_measure(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params);
+static int _server_send_logs(const net_t *restrict client, const char *restrict logpath);
+
+
+
+
+
+
+// thread safe
+// for sending databins
+// will free databins when it sends them
+static volatile struct {
+    int        index;
+    int        size;    // in terms of entries, not bytes
+    databin_t *bins;
+    //bool       enable;
+} _binqueue = {
+    .index = 0,
+    .size  = 0,
+    .bins  = NULL,
+    //.enable = false,
+};
+
+
+static bool _run_server      = false;
+static bool _run_data_thread = false;
+
+static pthread_t tthread[1];
+static pthread_mutex_t _binqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static const char *_server_sdr_serial SERVER_SDR_SERIAL;
+
+
+
+
+#define PSEUDOMSG (*(message_t*)NULL)
+
+
+
+// returns size of message
+// if negative, then an error has occured
+ssize_t message_type_getsize(message_type_t type, int32_t data_bytes) {
+
+    if ((type < 0) || (type >= MESSAGE_TYPE_END))
+        error(("message is an invalid type", -1));
+
+    switch (type) {
+        case MESSAGE_DATA:
+            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.data) + (size_t)databytes;
+        
+        case MESSAGE_MEASURE:
+            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.measure);
+
+        // all other message types are just the type
+        // with no following data
+        default:
+            return sizeof(PSEUDOMSG.type);
+    }
+}
+
+
+
+
+
+ssize_t message_getsize(const message_t *msg) {
+    return message_type_getsize(msg->type, msg->data.size);
+}
+
+
+
+
+
+// return value must be freed by "free"
+message_t *message_new(message_type_t type, int32_t data_bytes) {
+    message_t *msg;
+    ssize_t size;
+
+    size = message_type_getsize(type, data_bytes);
+    assert(size > 0, NULL);
+
+    msg = malloc(size);
+
+    if (msg != NULL)
+        msg->type = type;
+
+    return msg;
+}
+
+
+
+
+// allocates new message. Must be freed.
+message_t *message_read(const net_t *net, int timeout_ms) {
+    message_t *msg;
+    ssize_t bytes, bytes2;
+    
+    // wait for incoming message
+    bytes = net_readsize(net, timeout_ms);
+    assert(bytes < 1, NULL);
+    
+    // allocate  message
+    msg = malloc(bytes);
+
+    // read incoming message
+    bytes2 = net_read(net, (void*)msg, bytes, timeout_ms);
+    assert(bytes < 1, (free(msg), NULL));
+    assert(("message size vs bytes read mismatch", bytes2 == bytes), (free(msg), NULL));
+    assert(("message size misreported. message corrupt", message_getsize(msg) == bytes), (free(msg), NULL));
+
+    return msg;
+}
+
+
+
+
+
+
+int message_write(const net_t *restrict net, const message_t *restrict msg, int timeout_ms) {
+    int err;
+
+    err = net_write(net, (void*)msg, message_getsize(msg), timeout_ms);
+    assert(!err, -1);
+
+    return 0;
+}
+
+
+
+
+
+
+
+static __construct void _init(void) {
+    int err;
+    // mutex should be locked before anything else.
+    // that way everyone who tries to modify binqueue
+    // is blocked until it is initilized
+    //pthread_mutex_lock(&_binqueue_mutex);
+
+    err = binqueue_init();
+    fassert(!err);
+}
+
+
+
+
+static __destruct void _exit(void) {
+    binqueue_free();
+}
+
+
+
+
+
+// don't call this within binqueue_lock
+// don't call this function more than once, or 
+// really bad things will happen
+// Nevermind.
+// Just call this from main thread rather than
+// the thread handling the queue
+static int binqueue_init(void) {
+    void *mem;
+
+    pthread_mutex_unlock(&_binqueue_mutex);
+    
+    mem = malloc(QUEUE_START * sizeof(void*));
+    assert(mem != NULL);
+
+    _binqueue = (typeof(_binqueue)){
+        .index = 0,
+        .alloc = QUEUE_START,
+        .bins  = mem,
+    }
+
+    // unlock mutex for everyone (nevermind)
+    pthread_mutex_unlock(&_binqueue_mutex);
+    
+    return 0;
+}
+
+
+
+
+
+
+// don't call this within binqueue_lock
+static void binqueue_free(void) {
+    void *bin;
+
+    pthread_mutex_lock(&_binqueue_mutex);
+
+    if (_binqueue.index != 0)
+        warnf("freeing queue with %d entries left", _binqueue.index);
+
+    // pop and free any remaining bins in queue
+    for (int i = 0; i < _binqueue.index; i++) {
+        bin = binqueue_pop();
+        free(bin);
+    }
+
+    // free bin pointer queue
+    free(_binqueue.bins);
+
+    pthread_mutex_unlock(&_binqueue_mutex);
+}
+
+
+
+
+
+// void binqueue_wait_until_empty(void) {
+//     while 
+//     sched_yield();
+// }
+
+
+
+
+DEBUG(
+// I wonder if making this static, or declaring it in a function
+// would still force it to behave the way I want it to
+// (that is, immune to compiler optimizations)
+volatile int _sink;
+)
+
+
+// don't call this within binqueue_lock
+int binqueue_push(databin_t *bin) {
+    void *mem;
+    int size;
+
+    pthread_mutex_lock(&_binqueue_mutex);
+
+    size = _binqueue.size;
+
+    // will segfault if bin is invalid memory.
+    // better here than later.
+    DEBUG(
+    _sink = bin->bincount;
+    )
+
+    // if new index will exceed queue size,
+    // reallocate to bigger queue
+    if (_binqueue.index + 1 == size) {
+
+        // if multiplier too small to change it, then increment
+        if (size * (QUEUE_MULT-1) >= 1)
+            size *= QUEUE_MULT;
+        else
+            size++;
+
+        // reallocate bins to new size
+        mem = realloc(_binqueue.bins, _binqueue.size);
+        // error check
+        if (mem == NULL) pthread_mutex_unlock(&_binqueue_mutex);
+        assert(mem != NULL, -1);
+        
+
+        _binqueue.size = size;
+        _binqueue.bins = mem;
+    }
+
+    _binqueue.bins[_binqueue.index] = bin;
+    _binqueue.index++;
+
+    pthread_mutex_unlock(&_binqueue_mutex);
+
+    return 0;
+}
+
+
+
+
+
+// call this within binqueue_lock
+// nevermind
+databin_t *binqueue_pop(void) {
+    void *mem;
+
+    pthread_mutex_lock(&_binqueue_mutex);
+
+    DEBUG(
+    // segfault if no items
+    if (_binqueue.index == 0) segfault();
+    )
+
+    _binqueue.index--;
+
+    mem = _binqueue.bins[_binqueue.index]
+    
+    pthread_mutex_unlock(&_binqueue_mutex);
+    
+    return mem;
+}
+
+
+__soft_inline int binqueue_get_items(void) {
+    int retval;
+
+    pthread_mutex_lock(&_binqueue_mutex);
+    retval = _binqueue.index;
+    pthread_mutex_unlock(&_binqueue_mutex);
+
+    return retval;
+}
+
+
+// // lock binqueue from threads
+// static void binqueue_lock(void) {
+//     pthread_mutex_lock(&_binqueue_mutex);
+// }
+// 
+// // unlock binqueue from threads
+// static void binqueue_unlock(void) {
+//     pthread_mutex_unlock(&_binqueue_mutex);
+// }
+
+
+
+
+
+
+
+static int _data_thread_start(net_t *client) {
+    int err;
+
+    debugf("creating data thread");
+
+    //err = binqueue_init();
+    //assert(("failed to init binqueue", !err), -1);
+
+    //_run_data_thread = true;
+    
+    err = pthread_create(&tthread[0], NULL, (void*)&_data_thread, client);
+    assert(("failed to create data thread", !err), -1);
+    
+    return 0;
+}
+
+
+
+// will block until thread closes naturally, 
+// or is already closed
+// returns value returned by closed thread
+static int _data_thread_end(void) {
+    void *retval;
+    int err;
+
+    debugf("waiting for data thread to exit");
+
+    _run_data_thread = false;
+
+    // cancel threads
+    if (tthread[0] != 0) {
+        err = pthread_join(tthread[0], &retval);
+        assert(("data thread failed to exit", !err), -1);
+        assert(("data thread returned error", retval == 0), (int)(intptr_t)retval);
+        debugf("data thread successfully exited");
+    } else {
+        warnf("tried to cancel data thread, which is not running");
+    }
+
+    //binqueue_free();
+
+    return (int)(intptr_t)retval;
+}
+
+
+
+
+
+// basically, this just waits until there is something in the queue, and then it sends it off.
+static void *_data_thread(net_t *client) {
+    int err;
+    fbins_t *fbins;
+    message_t *msg;
+
+    _run_data_thread = true;
+
+    while (_run_data_thread) {
+
+        // loop as long as there are items in the queue
+        while(binqueue_get_items()) {
+
+            // pop item from queue
+            fbins = binqueue_pop();
+            assert(fbins != NULL, return (void*)-1);
+
+            // create new message
+            msg = message_new(MESSAGE_DATA, fbins_sizeof(fbins));
+
+            // populate message
+            memcpy(msg->data.data, fbins, fbins_sizeof(fbins));
+
+            // send item from queue
+            err = message_write(client, msg, 1000);
+
+            // free message and fbins
+            free(msg);
+            free(fbins);
+
+            // handle error
+            assert(!err, err);
+        }
+
+        // otherwise yield thread
+        shed_yield();
+    }
+
+    return (void*)0;
+}
+
+
+
+
+
+
+
+
+// run server (main thread)
+//static void *_server_thread(void *port) {
+int server_run(uint16_t port, const char *logpath) {
+    int err;
+    net_t server, client;
+    ssize_t bytes;
+    message_t *msg;
+
+    // start listening for incoming connections
+    //net_start(&server, (uint16_t)(uintptr_t)port, 1);
+    net_start(&server, port, 1);
+
+    _run_server = true;
+    
+    while(_run_server) {
+
+        // to avoid badness if we need to free it after an error
+        msg = NULL;
+
+        // wait for incoming connection, no timeout
+        err = net_accept(&server, &client, -1);
+        assert(!err, -1);
+
+        // message loop until client closes connection
+        //while(net_is_open(&client)) {
+
+//         // wait for incoming message
+//         bytes = net_readsize(&client, 1000);
+//         if (bytes < 1) goto close_client;
+//         
+//         // allocate buffer for message
+//         msg = malloc(bytes);
+// 
+//         // read incoming message, timeout 1 second
+//         bytes = net_read(&client, (void*)msg, bytes, 1000);
+//         if (bytes < 1) goto close_client;
+
+        // wait for incoming message
+        msg = message_read(&client, 1000)
+
+        // handle message
+        _server_message_handler(&client, msg, logpath);
+        
+        //}
+
+        // free msg buffer and close client
+        close_client:
+        free(msg);
+        net_close(&client, 1000);
+
+    }
+
+    // close server listener
+    net_close(&server, 1000);
+
+    return 0;
+}
+
+
+
+
+
+
+
+static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath) {
+    int err;
+    hparams_t params;
+
+    switch (msg->type) {
+
+        // reset program
+        case MESSAGE_RESET:
+            _run_server = false;
+            return 0;
+
+
+        // restart whole system
+        case MESSAGE_RESTART:
+            err = system("systemctl reboot");
+            return err;
+
+
+        // return error logs
+        case MESSAGE_GETLOGS:
+            err = _server_send_logs(client, logpath);
+            return err;
+
+
+        case MESSAGE_MEASURE:
+            err = 0;
+        
+            // start data thread
+            err = _data_thread_start(client);
+            assert(!err, err);
+
+            // init hackrf
+            err = hparams_init(&params);
+            if (err) goto end_thread;
+
+            // TODO: add transmit code here
+
+            // enable motor
+            stepper_enable(true);
+            // wait for stepper motor to align after turnon
+            micros_block_for(1e6);
+            // set origin
+            stepper_setorigin();
+            // set step mode
+            stepper_mode(MEASURE_STEP_MODE);
+
+            // start measurements
+            err = _server_measure(client, msg, &params);
+
+        end_motor:
+            // quick pause
+            micros_block_for(1e6);
+            // step back to origin
+            stepper_stepto(0, STEP_DIR_CLOCKWISE);
+            // take out of microstepping mode
+            stepper_mode(STEP_MODE_1_1);
+            // wait for motor to settle before turnoff
+            micros_block_for(1e6);
+            // disable motor
+            stepper_enable(false);
+
+            // close hackrf
+            hparams_free(&params);
+
+            // end data thread
+        end_thread:
+            _data_thread_end(client);
+            
+            return err;
+
+
+        // client only or invalid messages
+        default:
+            warnf("received unsupported message \"%s\" (%d)", message_type_str(msg->type), msg->type);
+            return -1;
+    }
+}
+
+
+
+
+
+
+char* message_type_str(message_type_t type) {
+    switch (type) {
+        case MESSAGE_NULL:        return "MESSAGE_NULL";
+        case MESSAGE_RECEIVED:    return "MESSAGE_RECEIVED";
+        case MESSAGE_SUCCESS:     return "MESSAGE_SUCCESS";
+        case MESSAGE_DATA:        return "MESSAGE_DATA";
+        case MESSAGE_RESET:       return "MESSAGE_RESET";
+        case MESSAGE_RESTART:     return "MESSAGE_RESTART";
+        case MESSAGE_GETLOGS:     return "MESSAGE_GETLOGS";
+        case MESSAGE_MEASURE:     return "MESSAGE_MEASURE";
+        case MESSAGE_UNSUPPORTED: return "MESSAGE_UNSUPPORTED";
+        case MESSAGE_END:         return "MESSAGE_END";
+        default:                  return "INVALID MESSAGE"
+    }
+}
+
+
+
+
+
+
+
+static int _server_measure(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params) {
+    int err;
+    
+    // full rotation is from 0.0 to 1.0
+    //float angle, delta;
+    //int steps;
+    //int err;
+
+    // set vars
+    // steps = msg->measure.steps;
+    // angle = 0.0;
+    // delta = 1.0 / steps;
+
+    // setup params
+    params->srate_hz   = msg->measure.srate_hz;
+    params->freq_hz    = msg->measure.freq_hz;
+    params->band_hz    = msg->measure.band_hz;
+    params->lna_gain   = msg->measure.lna_gain;
+    params->vga_gain   = msg->measure.vga_gain;
+    params->amp_enable = msg->measure.amp_enable;
+    params->samps      = msg->measure.samps;
+    params->serial     = _server_sdr_serial;
+
+    // start data collection loop
+    for (int i = 0; i < steps; i++) {
+        int32_t angle;
+
+        // calculate angle
+        angle = (int32_t)roundf((float)STEPS_PER_REV * (float)i / (float)msg->measure.steps);
+        // round to snap step size
+        angle = (angle >> msg->measure.snappow) << msg->measure.snappow;
+        // set param "pretty" angle
+        params.angle = 360.0f * angle / (float)STEPS_PER_REV;
+
+        // move to desired angle
+        stepper_stepto(angle, STEP_DIR_CLOCKWISE);
+
+        // take measurement
+        err = hackrf_read(params);
+        assert(!err);
+
+        // wait until measurement complete
+        hackrf_wait_until_finished(params);
+    }
+
+    
+
+    return 0;
+}
+
+
+
+
+
+
+
+static int _server_send_logs(const net_t *restrict client, const char *restrict logpath) {
+    FILE *file;
+    size_t size, rsize;
+    int err;
+    //int8_t *buff;
+    message_t *msg;
+
+    // open file
+    file = fopen(logpath, "rb");
+    assert(("problem opening file. path may be invalid", file != NULL), -1);
+
+    // get file length
+    // seek end of file
+    err = fseek(file, 0, SEEK_END);
+    if (err) {
+        fclose(file);
+        error(-2);
+    }
+    size = ftell(file);
+    if (size < 0) {
+        fclose(file);
+        error(-3);
+    }
+
+    // allocate message
+    //buff = malloc(size+1);  // plus one extra to inject null terminator
+    msg = message_new(MESSAGE_DATA, size+1) // plus one extra to inject null terminator
+    if (msg == NULL) {
+        fclose(file);
+        error(("failed to allocate space for message", -4));
+    }
+
+    // rewind file for actual reading
+    rewind(file);
+
+    // read file into string
+    rsize = fread(msg->data.data, 1, size, file);
+    
+    // close file.
+    fclose(file);
+
+    // error check fread
+    if (rsize < size) {
+        free(msg);
+        error(-5);
+    }
+
+    // add null terminator
+    msg->data.data[size] = '\n';   
+
+    // send message
+    err = message_write(client, msg, 1000);
+
+    // free buffer
+    free(msg);
+
+    // check message errors
+    assert(!err, -6);
+    
+    return 0;
+}
+
+
+
+
+
+

@@ -16,7 +16,7 @@
 
 
 #define MY_HACKRF_SOURCE
-#include "rfsweep/host.h"
+#include "rfsweep.h"
 
 
 // https://github.com/greatscottgadgets/hackrf/blob/main/host/libhackrf/src/hackrf.h
@@ -46,17 +46,41 @@ typedef hackrf_transfer hackrf_transfer_t;
 
 
 
-static int hackrf_open_board(hackrf_device_t **device);
+static int hackrf_open_board(hackrf_device_t **device, const char* serial)
 // consider making this a void return
 static int hackrf_free_board(hackrf_device_t *device);
 static int setup_receiver_params(hackrf_device_t *device, hparams_t *params);
-static int begin_receiver(hackrf_device_t *device, hparams_t *params, fbins_t *fbins);
+static int begin_receiver(hackrf_device_t *device, hparams_t *params);
 static int stop_receiver(hackrf_device_t *device);
 static int rx_callback(hackrf_transfer_t *transfer);
 
 
 //typedef struct global_state_t {} state;
 
+
+
+
+
+
+// simply call free to free this
+fbins_t *fbins_new(int32_t bcount) {
+    fbins_t *mem;
+
+    mem = malloc(sizeof(fbins_t) + bcount * sizeof(fbin_t));
+    assert(mem != NULL, NULL);
+
+    mem->bcount = bcount;
+    
+    return mem;
+}
+
+
+
+
+
+size_t fbins_sizeof(fbins_t *fbins) {
+    return sizeof(fbins_t) + fbins->bcount * sizeof(fbin_t);
+}
 
 
 
@@ -69,7 +93,8 @@ void hparams_defaults(hparams_t *params) {
         .band_hz  = 10e6,
         .lna_gain = 16,
         .vga_gain = 20,
-        .samps = 10,
+        .samps = 1,
+        //.bins = 2048,
         .amp_enable = false,
     };
 }
@@ -81,7 +106,7 @@ void hparams_defaults(hparams_t *params) {
 int hparams_init(hparams_t *params) {
     int err;
     hparams_defaults(params);
-    err = hackrf_open_board(&params->_device);
+    err = hackrf_open_board(&params->_device, params->serial);
     assert(("failed to open board", !err), err);
     return 0;
 }
@@ -108,7 +133,7 @@ uint32_t hackrf_real_bandwidth(uint32_t band_hz) {
 
 
 
-int hackrf_read(hparams_t *params, fbins_t *fbins) {
+int hackrf_read(hparams_t *params) {
     int err;
     //hackrf_device_t* device;
 
@@ -119,7 +144,7 @@ int hackrf_read(hparams_t *params, fbins_t *fbins) {
     err = setup_receiver_params(params->_device, params);
     assert(("problem setting up receiver params", !err), err);
 
-    err = begin_receiver(params->_device, params, fbins);
+    err = begin_receiver(params->_device, params);
     assert(("problem starting receiver", !err), err);
 
     // loops forever.
@@ -164,7 +189,7 @@ static __destruct void exit_libhackrf(void) {
 
 // initilizes library and opens board
 //int open_board(hackrf_device **device) {
-static int hackrf_open_board(hackrf_device_t **device) {
+static int hackrf_open_board(hackrf_device_t **device, const char* serial) {
     int err;
     //uint16_t version, usb_version;
     DEBUG(read_partid_serialno_t rpisn;)
@@ -184,7 +209,7 @@ static int hackrf_open_board(hackrf_device_t **device) {
 
 
     // open first available hackrf device
-    err = hackrf_open(device);
+    err = hackrf_open_by_serial(device, serial);
     assert(("hackrf device could not be opened", err == HACKRF_SUCCESS), err);
 
 
@@ -210,6 +235,7 @@ static int hackrf_open_board(hackrf_device_t **device) {
     for (int i = 0; i < 4; i++)
         printf("%04x", rpisn.serial_no[i]);
     printf("\n");
+    
     )
     
     return 0;
@@ -301,7 +327,7 @@ static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
 
 
 
-static int begin_receiver(hackrf_device_t *device, hparams_t *params, fbins_t *fbins) {
+static int begin_receiver(hackrf_device_t *device, hparams_t *params) {
     int err;
 
     // enable antenna
@@ -318,10 +344,17 @@ static int begin_receiver(hackrf_device_t *device, hparams_t *params, fbins_t *f
     const uint32_t offset,
     const enum sweep_style style);*/
 
-    params->_fbins = fbins;
+    //params->_fbins = fbins;
 
     // malloc space for fbins
-    fbins_init(fbins, params->samps, (int)hackrf_get_transfer_buffer_size(device)>>1);
+    //fbins_init(fbins, params->samps, (int)hackrf_get_transfer_buffer_size(device)>>1);
+
+    // malloc fbins
+    // nevermind
+    
+    // setup loop params
+    //params->_ibin = 0;
+    params->_isamp = 0;
     
 
     err = hackrf_start_rx(device, (hackrf_sample_block_cb_fn)rx_callback, params);
@@ -363,49 +396,157 @@ void hackrf_wait_until_finished(hparams_t *params) {
 }
 
 
+// static int rx_callback(hackrf_transfer_t *transfer) {
+//     // printf("PRINTING BUFFER (length %d)", transfer->buffer_length);
+//     // for (int i = 0; i < transfer->buffer_length; i++)
+//     //     printf("%d ", transfer->buffer[i]);
+//     // printf("BREAK\n");
+//     // printf("\n");
+//     // return 0;
+// 
+//     hparams_t *params = transfer->rx_ctx;
+//     fbins_t *fbins = params->_fbins;
+// 
+//     //params->samps--;
+// 
+//     //debugf("read %d bytes from hackrf", transfer->buffer_length);
+//     
+//     // assert that buffer length is a multiple of 2 (even)
+//     DEBUG(assert((transfer->buffer_length % 2 == 0), -1);)
+//     // assert that fbins length is equal to buffer length
+//     DEBUG(assert(("bins are of unequal length", transfer->buffer_length>>1 == fbins->blen), -1);)
+//     
+// 
+//     // assert that the typeof(fbins->bins[0].real) is signed
+//     /*_Static_assert((typeof(fbins->bins[0].real))0 - 1 < (typeof(fbins->bins[0].real))0,
+//         "typeof(fbins->bins[0].real) must be signed")*/
+//     // assert that the typeof(fbins->bins[0].real) is a float
+//     _Static_assert(__builtin_types_compatible_p(float, typeof(fbins->bins[0][0].real)),
+//         "typeof(fbins->bins[0].real) must be a float");
+//     #define _RX_NORMALIZE(__n) (((int8_t)(__n - 128))/256.0f)
+// 
+//     #if 1
+//     for (int i = 0; i < transfer->buffer_length; i += 2) {
+//         fbins->bins[params->_i][i>>1].real = (float)_RX_NORMALIZE(transfer->buffer[i+0]);
+//         fbins->bins[params->_i][i>>1].imag = (float)_RX_NORMALIZE(transfer->buffer[i+1]);
+//     }
+//     #endif
+// 
+//     // this to test speeds
+//     // it seems like the bottleneck is libhackrf, which is probably due to usb rates and overhead
+//     //memcpy(&fbins->bins[params->_i][0].real, transfer->buffer, transfer->buffer_length);
+// 
+//     // return zero will continue transfer
+//     // whereas return nonzero will stop transfer
+//     return (++params->_i >= params->samps);
+// }
+
+
+
+
+
+
+
+// static int rx_callback(hackrf_transfer_t *transfer) {
+// 
+//     hparams_t *params = transfer->rx_ctx;
+//     fbins_t *fbins = params->_fbins;
+// 
+//     // assert that buffer length is a multiple of 2 (even)
+//     DEBUG(assert((transfer->buffer_length % 2 == 0), -1);)
+//     
+//     // assert that the typeof(fbins->bins[0].real) is a float
+//     _Static_assert(__builtin_types_compatible_p(float, typeof(fbins->bins[0][0].real)),
+//         "typeof(fbins->bins[0].real) must be a float");
+// 
+//     // #if 1
+//     // for (int i = 0; i < transfer->buffer_length; i += 2) {
+//     //     fbins->bins[params->_i][i>>1].real = (float)_RX_NORMALIZE(transfer->buffer[i+0]);
+//     //     fbins->bins[params->_i][i>>1].imag = (float)_RX_NORMALIZE(transfer->buffer[i+1]);
+//     // }
+//     // #endif
+// 
+//     // transfer buffer length rounded down to multiple of bin length
+//     int transfer_length = transfer->buffer_length - transfer->buffer_length % params->bins;
+// 
+//     for (int i = 0; i < transfer_length; i += 2) {
+// 
+// 
+// 
+// 
+//         // if all bins are filled, then move on to next sample
+//         if (params->_ibin > params->bins) {
+//             params->_isamp++;
+//             params->_ibin = 0;
+//         }
+// 
+//         // if all samples filled, then quit
+//         if (params->_isamp > params->samps) {
+//             return 1;
+//         }
+//     }
+// 
+//     // if we make it here, it means that the samps aren't filled, and we must take
+//     // another bulk sample
+// 
+//     // return zero will continue transfer
+//     // return nonzero will stop transfer
+//     // continue transfer
+//     return 0;
+// }
+
+
+
+
+
+
+
+
+
+// this nightmare is what I get for writing the hackrf code before the server code
 static int rx_callback(hackrf_transfer_t *transfer) {
-    // printf("PRINTING BUFFER (length %d)", transfer->buffer_length);
-    // for (int i = 0; i < transfer->buffer_length; i++)
-    //     printf("%d ", transfer->buffer[i]);
-    // printf("BREAK\n");
-    // printf("\n");
-    // return 0;
-
+    int err;
+    fbins_t *fbins;
     hparams_t *params = transfer->rx_ctx;
-    fbins_t *fbins = params->_fbins;
+    //fbins_t *fbins = params->_fbins;
 
-    //params->samps--;
-
-    //debugf("read %d bytes from hackrf", transfer->buffer_length);
-    
     // assert that buffer length is a multiple of 2 (even)
     DEBUG(assert((transfer->buffer_length % 2 == 0), -1);)
-    // assert that fbins length is equal to buffer length
-    DEBUG(assert(("bins are of unequal length", transfer->buffer_length>>1 == fbins->blen), -1);)
     
-
-    // assert that the typeof(fbins->bins[0].real) is signed
-    /*_Static_assert((typeof(fbins->bins[0].real))0 - 1 < (typeof(fbins->bins[0].real))0,
-        "typeof(fbins->bins[0].real) must be signed")*/
     // assert that the typeof(fbins->bins[0].real) is a float
     _Static_assert(__builtin_types_compatible_p(float, typeof(fbins->bins[0][0].real)),
         "typeof(fbins->bins[0].real) must be a float");
-    #define _RX_NORMALIZE(__n) (((int8_t)(__n - 128))/256.0f)
 
-    #if 1
-    for (int i = 0; i < transfer->buffer_length; i += 2) {
-        fbins->bins[params->_i][i>>1].real = (float)_RX_NORMALIZE(transfer->buffer[i+0]);
-        fbins->bins[params->_i][i>>1].imag = (float)_RX_NORMALIZE(transfer->buffer[i+1]);
-    }
-    #endif
+    // assert that size of fbin_t is 2 bytes
+    _Static_assert(sizeof(fbin_t) == (1<<1), "fbin_t must be 2 bytes in size");
 
-    // this to test speeds
-    // it seems like the bottleneck is libhackrf, which is probably due to usb rates and overhead
-    //memcpy(&fbins->bins[params->_i][0].real, transfer->buffer, transfer->buffer_length);
+    // we are just going to directly push this into the binqueue
+    // as defined in server.c
+    // technically anyone can pop it, so it is *fine*
+    fbins = fbins_new(transfer->buffer_length>>1);
+    assert(fbins != NULL, 1);
+
+    // record fbin properties
+    *fbins = {
+        .angle    = params->angle,
+        .band_hz  = params->band_hz,
+        .freq_hz  = params->freq_hz,
+        .srate_hz = params->srate_hz,
+        .timestamp_us = micros(),
+        .bcount   = transfer->buffer_length>>1,
+    };
+
+    // copy buffer over to fbins
+    memcpy(fbins->bins, transfer->buffer, transfer->buffer_length);
+
+    // push into binqueue
+    err = binqueue_push(fbins);
+    assert(!err, 1);
+    
 
     // return zero will continue transfer
-    // whereas return nonzero will stop transfer
-    return (++params->_i >= params->samps);
+    // return nonzero will stop transfer
+    return (++params->_isamp >= params->samps);
 }
 
 

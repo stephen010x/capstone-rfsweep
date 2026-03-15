@@ -19,7 +19,7 @@
 #include "toolkit/debug.h"
 #include "toolkit/debug.h"
 
-#include "rfsweep/host.h"
+#include "rfsweep.h"
 
 
 
@@ -298,7 +298,7 @@ static int _net_start(int fd, net_t *net, uint16_t port, int backlog) {
 // returns zero if connection established, and nonzero if error
 // while(err = net_accept(fd, ));
 // timeout of 0 is non-blocking, -1 is no timeout
-int net_accept(net_t *netin, net_t *netout, int timeout_ms) {
+int net_accept(const net_t *restrict netin, net_t *restrict netout, int timeout_ms) {
     int err, newfd;
     socklen_t outsize;
 
@@ -363,7 +363,7 @@ int net_accept(net_t *netin, net_t *netout, int timeout_ms) {
 // If this is for the listener socket, then it should not return due to 
 // a disconnect, and instead should only return when there is a pending connection
 // it returns errno
-int net_await(net_t *net, net_mode_t mode, int timeout_ms) {
+int net_await(const net_t *net, net_mode_t mode, int timeout_ms) {
     int err, err2;
     socklen_t elen;
     struct pollfd pfd;
@@ -444,7 +444,7 @@ int net_await(net_t *net, net_mode_t mode, int timeout_ms) {
 // detect if connection is still open
 // will not close file descriptor, so make sure to do that
 // yourself after calling this function
-bool net_is_open(net_t *net) {
+bool net_is_open(const net_t *net) {
     char buf;
     ssize_t n;
 
@@ -524,7 +524,7 @@ int net_close(net_t *net, int timeout_sec) {
 
 // returns zero on success, and nonzero on error
 // if it returns nonzero, you will want to close the connection
-int net_write(size_num_t count; net_t *restrict net, const int8_t buff[restrict count], size_num_t count, int timeout_ms) {
+int net_write(size_num_t count; const net_t *restrict net, const int8_t buff[restrict count], size_num_t count, int timeout_ms) {
     int err;
 
     // write the magic number
@@ -549,7 +549,7 @@ int net_write(size_num_t count; net_t *restrict net, const int8_t buff[restrict 
 
 
 // returns zero on success, and nonzero on error
-int net_write_raw(size_t count; net_t *restrict net, const int8_t buff[restrict count], size_t count, int timeout_ms) {
+int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[restrict count], size_t count, int timeout_ms) {
     ssize_t n;
     size_t total = 0;
     int err;
@@ -602,7 +602,7 @@ int net_write_raw(size_t count; net_t *restrict net, const int8_t buff[restrict 
 
 
 // returns size of transmission
-size_num_t net_readsize(net_t *net, int timeout_ms) {
+size_num_t net_readsize(const net_t *net, int timeout_ms) {
     ssize_t retsize;
     // both magic number and size will be read into here
     int8_t buff[sizeof(magic_num_t) + sizeof(size_num_t)];
@@ -625,7 +625,7 @@ size_num_t net_readsize(net_t *net, int timeout_ms) {
 
 
 // returns data read, not counting magic number and size byte
-ssize_t net_read(size_num_t count; net_t *restrict net, int8_t buff[restrict count], size_num_t count, int timeout_ms) {
+ssize_t net_read(size_num_t count; const net_t *restrict net, int8_t buff[restrict count], size_num_t count, int timeout_ms) {
     size_num_t size;
     ssize_t retsize;
     magic_num_t magic;
@@ -667,7 +667,7 @@ ssize_t net_read(size_num_t count; net_t *restrict net, int8_t buff[restrict cou
 // will block until data is written
 // the timeout only compares against time it is waiting, not the total read time
 // return number of bytes read if successful. return -1 for error.
-ssize_t net_read_raw(size_t count; net_t *restrict net, int8_t buff[restrict count], size_t count, int timeout_ms, int flags) {
+ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restrict count], size_t count, int timeout_ms, int flags) {
     int err;
     ssize_t n;
     size_t total;

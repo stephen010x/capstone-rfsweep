@@ -6,7 +6,7 @@
 
 #include "toolkit/debug.h"
 #include "toolkit/macros.h"
-#include "rfsweep/host.h"
+#include "rfsweep.h"
 
 
 static uint64_t start_us = 0;

@@ -8,7 +8,7 @@
 
 #include "toolkit/debug.h"
 #include "toolkit/macros.h"
-#include "rfsweep/host.h"
+#include "rfsweep.h"
 
 #ifdef _RASPI
 #include <pigpio.h>
@@ -143,6 +143,16 @@ static pthread_t tthread[2];
 
 
 
+uint8_t stepper_get_multpow(void) {
+    return global.mode_mult;
+}
+
+
+
+
+
+
+
 
 static __construct void init_gpio(void) {
     int err; 
@@ -207,15 +217,20 @@ static __destruct void exit_gpio(void) {
         pthread_cancel(tthread[0]);
         pthread_join(tthread[0], &retval);
         wassert(("gpio tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
+        if (retval == PTHREAD_CANCELED))
+            debugf("gpio tthread 0 successfully canceled");
     } else {
-        debugf("gpio tthread 0 successfully canceled");
+        warnf("tried to cancel gpio tthread 0 not running");
     }
+    
     if (tthread[1] != 0) {
         pthread_cancel(tthread[1]);
         pthread_join(tthread[1], &retval);
         wassert(("gpio tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
+        if (retval == PTHREAD_CANCELED))
+            debugf("gpio tthread 1 successfully canceled");
     } else {
-        debugf("gpio tthread 1 successfully canceled");
+        warnf("tried to cancel gpio tthread 1 not running");
     }
 
     // take out of microstepping mode
@@ -516,4 +531,20 @@ void stepper_setorigin(void) {
     pthread_mutex_lock(&global.step_mutex);
     global.step = 0;
     pthread_mutex_unlock(&global.step_mutex);
+}
+
+
+
+
+
+// full revolusion is from 0-200 or 0-3200 depending on mode
+// blocks until it reaches that angle
+int stepper_stepto(int32_t angle, step_dir_t dir) {
+    int err;
+    while (mod(angle - global.steps, 200) != 0) {
+        err = stepper_step(dir);
+        assert(!err, err);
+    }
+    stepper_wait();
+    return 0;
 }
