@@ -4,7 +4,7 @@
 # https://sourceware.org/binutils/docs/ld/Options.html
 
 
-TARGET := host
+TARGET := rfsweep
 #INCLUDEE := hackrf.h
 
 TMPDIR := tmp
@@ -130,16 +130,16 @@ LFLAGS  := $(LFLAGS) $(LIBBINS)
 
 
 ifeq ($(OS),Windows_NT) 
-    $(error Winbows not yet implemented)
+	$(error Winbows not yet implemented)
 else
-    OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
-    ifeq ($(OS),Linux)
-    	LINUX := LINUX
-    	#BLFLAGS += -target *-*-linux-gnu
-    	#MAKEOSFILE := make/linux.mk
-    else
+	OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
+	ifeq ($(OS),Linux)
+		LINUX := LINUX
+		#BLFLAGS += -target *-*-linux-gnu
+		#MAKEOSFILE := make/linux.mk
+	else
 		$(error Incompatable operating system)
-    endif
+	endif
 endif
 
 
@@ -207,10 +207,17 @@ LFLAGS += $(LINUX_LFLAGS)
 BFLAGS += $(LINUX_BFLAGS)
 
 
-dynamic: dynamic_$(DEFAULT)
-dynamic_fast: _dynamic _fast $(LIBBINTARG).so
-dynamic_debug: _dynamic _debug $(LIBBINTARG).so
-dynamic_release: _dynamic _release $(LIBBINTARG).so
+# dynamic: dynamic_$(DEFAULT)
+# dynamic_fast: _dynamic _fast $(LIBBINTARG).so
+# dynamic_debug: _dynamic _debug $(LIBBINTARG).so
+# dynamic_release: _dynamic _release $(LIBBINTARG).so
+
+
+endif
+#==========================================
+#==========================================
+
+
 
 
 $(BINTARG): $(OBJS)
@@ -261,11 +268,6 @@ gdb:
 
 analyze:
 	readelf -a $(BINTARG)
-
-
-endif
-#==========================================
-#==========================================
 
 
 

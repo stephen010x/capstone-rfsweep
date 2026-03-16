@@ -27,6 +27,8 @@
 
 
 
+#define SERVER_TIMEOUT 10000    /*ten seconds*/
+
 
 
 
@@ -114,6 +116,7 @@ static int _data_thread_end(void);
 static void *_data_thread(net_t *client);
 
 static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath);
+static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params)
 static int _server_measure(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params);
 static int _server_send_logs(const net_t *restrict client, const char *restrict logpath);
 
@@ -145,6 +148,19 @@ static pthread_t tthread[1];
 static pthread_mutex_t _binqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static const char *_server_sdr_serial SERVER_SDR_SERIAL;
+
+
+static const int16_t _msg_received    = MESSAGE_RECEIVED;
+static const int16_t _msg_failure     = MESSAGE_FAILURE;
+static const int16_t _msg_success     = MESSAGE_SUCCESS;
+static const int16_t _msg_unsupported = MESSAGE_UNSUPPORTED;
+static const int16_t _msg_end         = MESSAGE_UNSUPPORTED;
+
+#define CONST_MSG_RECEIVED      (*(const message_t*)&_msg_received)
+#define CONST_MSG_FAILURE       (*(const message_t*)&_msg_failure)
+#define CONST_MSG_SUCCESS       (*(const message_t*)&_msg_success)
+#define CONST_MSG_UNSUPPORTED   (*(const message_t*)&_msg_unsupported)
+#define CONST_MSG_END           (*(const message_t*)&_msg_end)
 
 
 
@@ -509,7 +525,7 @@ static void *_data_thread(net_t *client) {
             memcpy(msg->data.data, fbins, fbins_sizeof(fbins));
 
             // send item from queue
-            err = message_write(client, msg, 1000);
+            err = message_write(client, msg, SERVER_TIMEOUT);
 
             // free message and fbins
             free(msg);
@@ -560,18 +576,18 @@ int server_run(uint16_t port, const char *logpath) {
         //while(net_is_open(&client)) {
 
 //         // wait for incoming message
-//         bytes = net_readsize(&client, 1000);
+//         bytes = net_readsize(&client, SERVER_TIMEOUT);
 //         if (bytes < 1) goto close_client;
 //         
 //         // allocate buffer for message
 //         msg = malloc(bytes);
 // 
 //         // read incoming message, timeout 1 second
-//         bytes = net_read(&client, (void*)msg, bytes, 1000);
+//         bytes = net_read(&client, (void*)msg, bytes, SERVER_TIMEOUT);
 //         if (bytes < 1) goto close_client;
 
         // wait for incoming message
-        msg = message_read(&client, 1000)
+        msg = message_read(&client, SERVER_TIMEOUT)
 
         // handle message
         _server_message_handler(&client, msg, logpath);
@@ -581,12 +597,12 @@ int server_run(uint16_t port, const char *logpath) {
         // free msg buffer and close client
         close_client:
         free(msg);
-        net_close(&client, 1000);
+        net_close(&client, SERVER_TIMEOUT);
 
     }
 
     // close server listener
-    net_close(&server, 1000);
+    net_close(&server, SERVER_TIMEOUT);
 
     return 0;
 }
@@ -600,76 +616,41 @@ int server_run(uint16_t port, const char *logpath) {
 static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath) {
     int err;
     hparams_t params;
+    
 
     switch (msg->type) {
 
         // reset program
         case MESSAGE_RESET:
+            err = message_write(client, &CONST_MSG_RECEIVED, SERVER_TIMEOUT);
             _run_server = false;
-            return 0;
+            return err;
 
 
         // restart whole system
         case MESSAGE_RESTART:
-            err = system("systemctl reboot");
+            err = message_write(client, &CONST_MSG_RECEIVED, SERVER_TIMEOUT);
+            err |= system("systemctl reboot");
             return err;
 
 
         // return error logs
         case MESSAGE_GETLOGS:
             err = _server_send_logs(client, logpath);
+            if (err) err |= message_write(client, &CONST_MSG_ERROR, SERVER_TIMEOUT);
             return err;
 
 
         case MESSAGE_MEASURE:
-            err = 0;
-        
-            // start data thread
-            err = _data_thread_start(client);
-            assert(!err, err);
-
-            // init hackrf
-            err = hparams_init(&params);
-            if (err) goto end_thread;
-
-            // TODO: add transmit code here
-
-            // enable motor
-            stepper_enable(true);
-            // wait for stepper motor to align after turnon
-            micros_block_for(1e6);
-            // set origin
-            stepper_setorigin();
-            // set step mode
-            stepper_mode(MEASURE_STEP_MODE);
-
-            // start measurements
-            err = _server_measure(client, msg, &params);
-
-        end_motor:
-            // quick pause
-            micros_block_for(1e6);
-            // step back to origin
-            stepper_stepto(0, STEP_DIR_CLOCKWISE);
-            // take out of microstepping mode
-            stepper_mode(STEP_MODE_1_1);
-            // wait for motor to settle before turnoff
-            micros_block_for(1e6);
-            // disable motor
-            stepper_enable(false);
-
-            // close hackrf
-            hparams_free(&params);
-
-            // end data thread
-        end_thread:
-            _data_thread_end(client);
-            
+            err = _server_measure_start(client, msg, &params);
+            if (err) err |= message_write(client, &CONST_MSG_ERROR, SERVER_TIMEOUT);
+            else     err |= message_write(client, &CONST_MSG_END,   SERVER_TIMEOUT);
             return err;
 
 
         // client only or invalid messages
         default:
+            message_write(client, &CONST_MSG_UNSUPPORTED, SERVER_TIMEOUT);
             warnf("received unsupported message \"%s\" (%d)", message_type_str(msg->type), msg->type);
             return -1;
     }
@@ -695,6 +676,62 @@ char* message_type_str(message_type_t type) {
         default:                  return "INVALID MESSAGE"
     }
 }
+
+
+
+
+
+
+
+
+static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params) {
+        int err;
+
+        // start data thread
+        err = _data_thread_start(client);
+        assert(!err, err);
+
+        // init hackrf
+        err = hparams_init(params);
+        if (err) goto end_thread;
+
+        // TODO: add transmit code here
+
+        // enable motor
+        stepper_enable(true);
+        // wait for stepper motor to align after turnon
+        micros_block_for(1e6);
+        // set origin
+        stepper_setorigin();
+        // set step mode
+        stepper_mode(MEASURE_STEP_MODE);
+
+        // start measurements
+        err = _server_measure(client, msg, params);
+
+    end_motor:
+        // quick pause
+        micros_block_for(1e6);
+        // step back to origin
+        stepper_stepto(0, STEP_DIR_CLOCKWISE);
+        // take out of microstepping mode
+        stepper_mode(STEP_MODE_1_1);
+        // wait for motor to settle before turnoff
+        micros_block_for(1e6);
+        // disable motor
+        stepper_enable(false);
+
+        // close hackrf
+        hparams_free(params);
+
+        // end data thread
+    end_thread:
+        err |= _data_thread_end(client);
+        assert(!err, err);
+        
+        return err;
+}
+
 
 
 
@@ -809,7 +846,7 @@ static int _server_send_logs(const net_t *restrict client, const char *restrict 
     msg->data.data[size] = '\n';   
 
     // send message
-    err = message_write(client, msg, 1000);
+    err = message_write(client, msg, SERVER_TIMEOUT);
 
     // free buffer
     free(msg);

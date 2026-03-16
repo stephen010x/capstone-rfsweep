@@ -84,7 +84,7 @@ typedef struct __packed {
     float32_t angle;        // 0
     uint32_t  band_hz;      // 4
     uint64_t  freq_hz;      // 8
-    double    srate_hz;     // 16
+    float64_t srate_hz;     // 16
     int64_t   timestamp_us; // 24   // added because these will be sent out of order
                             // 32
     int32_t   bcount;
@@ -176,9 +176,12 @@ extern const char *const LOCALHOST;
 // all of these must be explicit sizes to ensure proper serialization
 // so no int. Instead, int32_t
 // also explicit packing is a good idea as well
+// all client commands requires the server to send a response
 enum {
     MESSAGE_NULL = 0,
+    MESSAGE_ERROR,      // Ideally this would return an error code, but I am lazy
     MESSAGE_RECEIVED,
+    MESSAGE_FAILURE,
     MESSAGE_SUCCESS,
     //MESSAGE_COMMAND,
     MESSAGE_DATA,
@@ -186,6 +189,8 @@ enum {
     MESSAGE_RESTART,    // reset device
     MESSAGE_GETLOGS,    // pulls debug and error messages of program
     MESSAGE_MEASURE,    // run measurements
+    MESSAGE_TRANSMIT_ENABLE,
+    MESSAGE_TRANSMIT_DISABLE,
     MESSAGE_UNSUPPORTED,// message is not supported by server (likely a response only message)
     MESSAGE_END,        // signal to client that measurements are done
 
@@ -207,25 +212,33 @@ typedef struct __packed {
     
         struct {
             // receiver
-            int16_t  steps;     // how many total steps in a full revolution
+            //uint32_t _p0;       // padding
             uint32_t lna_gain;  // steps of 8 dB, 0-40 dB
             uint32_t vga_gain;  // steps of 2 dB, 0-62 dB
             
-            double   srate_hz;
+            float64_t srate_hz;
             uint64_t freq_hz;
             
             uint32_t band_hz;
             int32_t  samps;     // samples per angle
             //int32_t  bins;      // how many bins per sample
+            
+            int16_t  steps;     // how many total steps in a full revolution
+            
             uint8_t  amp_enable;
             uint8_t  snappow;   // round micro-step size to this pow2 exponent.
-            uint16_t _p0;       // padding
 
             // transmitter
             // TODO: add transmitter params here
             
         } measure;
 
+
+        struct {
+            uint64_t freq_hz;
+            uint32_t band_hz;
+            uint8_t  amp_enable;
+        } transmit_enable;
 
         
         struct {
@@ -244,6 +257,15 @@ typedef struct __packed {
 } message_t;
 
 
+
+
+
+
+extern const char *str_help;
+extern const char *str_help_server;
+extern const char *str_help_misc;
+extern const char *str_help_transmit;
+extern const char *str_help_measure;
 
 
 
