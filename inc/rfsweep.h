@@ -22,8 +22,32 @@
 #define STEP_DIR_CLOCKWISE      1
 
 
-#define SERVER_SDR_SERIAL NULL
-#define CLIENT_SDR_SERIAL NULL
+
+
+
+
+#define DEFAULT_IP     "10.42.0.1"
+#define DEFAULT_PORT   12345
+#define DEFAULT_LOG    NULL
+#define DEFAULT_SAMPS  10
+#define DEFAULT_SNAP   16
+#define DEFAULT_STEPS  360
+
+#define DEFAULT_FREQ   2.4e6
+#define DEFAULT_BAND   10e6
+#define DEFAULT_SRATE  10e6
+#define DEFAULT_LNA    16
+#define DEFAULT_VGA    20
+
+#define DEFAULT_RSERIAL  NULL
+#define DEFAULT_TSERIAL  NULL
+
+
+
+
+
+//#define SERVER_SDR_SERIAL NULL
+//#define CLIENT_SDR_SERIAL NULL
 
 
 
@@ -181,8 +205,9 @@ enum {
     MESSAGE_NULL = 0,
     MESSAGE_ERROR,      // Ideally this would return an error code, but I am lazy
     MESSAGE_RECEIVED,
-    MESSAGE_FAILURE,
+    //MESSAGE_FAILURE,
     MESSAGE_SUCCESS,
+    MESSAGE_POLL,       // server lets client know it is busy to avoid timeout
     //MESSAGE_COMMAND,
     MESSAGE_DATA,
     MESSAGE_RESET,      // reset program
@@ -194,7 +219,7 @@ enum {
     MESSAGE_UNSUPPORTED,// message is not supported by server (likely a response only message)
     MESSAGE_END,        // signal to client that measurements are done
 
-    MESSAGE_TYPE_END,   // this or anything past this is invalid
+    MESSAGE_TYPE_LEN,   // this or anything past this is invalid
 };
 typedef int8_t message_type_t;
 
@@ -266,6 +291,52 @@ extern const char *str_help_server;
 extern const char *str_help_misc;
 extern const char *str_help_transmit;
 extern const char *str_help_measure;
+
+
+
+// extern const int16_t _msg_received;
+// extern const int16_t _msg_failure;
+// extern const int16_t _msg_success;
+// extern const int16_t _msg_unsupported;
+// extern const int16_t _msg_end;
+
+
+
+
+typedef struct {
+    int mode;
+
+    union {
+
+        // general
+        const char *logpath;
+        const char *fpath;
+        const char *ip;
+        uint16_t  port;
+        bool      out_binary;
+
+        // control
+        const char *rserial;
+        const char *tserial;
+        int32_t   samps;
+        uint8_t   snappow;
+        bool      transmit_enable;
+        int16_t   steps;
+        float32_t angle;
+        bool      is_verbose;
+
+        // hackrf
+        uint64_t  freq_hz;
+        uint32_t  band_hz;
+        uint8_t   amp_enable;
+        float64_t srate_hz;
+        uint32_t  lna_gain;
+        uint32_t  vga_gain;
+    };
+} globalstate_t;
+
+
+
 
 
 
@@ -389,6 +460,30 @@ int binqueue_push(databin_t *bin);
 databin_t *binqueue_pop(void);
 int binqueue_get_items(void);
 
-int server_run(uint16_t port, const char *logpath);
+//int server_run(uint16_t port, const char *logpath);
+int server_run(globalstate_t *state);
+
+
+
+
+
+
+///////////////
+// strto.c
+float64_t strtof64(const char *str);
+float32_t strtof32(const char *str);
+uint64_t  strtou64(const char *str);
+uint32_t  strtou32(const char *str);
+uint16_t  strtou16(const char *str);
+uint8_t    strtou8(const char *str);
+int64_t   strtoi64(const char *str);
+int32_t   strtoi32(const char *str);
+int16_t   strtoi16(const char *str);
+int8_t     strtoi8(const char *str);
+
+
+
+
+
 
 #endif

@@ -1,4 +1,5 @@
 
+#include "rfsweep.h"
 
 
 
@@ -8,6 +9,8 @@
 const char *str_help =
     "USAGE:"                                                            "\n"
     "        rfsweep -h"                                                "\n"
+    "        rfsweep --defaults"                                        "\n"
+    "        rfsweep test (debug only)"                                 "\n"
     "        rfsweep <command> -h"                                      "\n"
     "        rfsweep <command> [options]"                               "\n"
     ""                                                                  "\n"
@@ -22,13 +25,18 @@ const char *str_help =
     "        getlogs     Return remote server error logs."              "\n"
     "        transmit    Enable/disable remote server transmitter."     "\n"
     "        measure     Run remote server measurements."               "\n"
+    "        rotate      Set angle of motor."                           "\n"
+    "        receive     Run measurements without rotation."            "\n"
     ""                                                                  "\n"
     "OPTIONS"                                                           "\n"
     "        -h"                                                        "\n"
     "            Print help message."                                   "\n"
     ""                                                                  "\n"
     "        <command> -h"                                              "\n"
-    "            Print command help message."                           "\n";
+    "            Print command help message."                           "\n"
+    ""                                                                  "\n"
+    "        --defaults"                                                "\n"
+    "            Print out all default values of relevant flags."       "\n";
 
 
 
@@ -47,6 +55,9 @@ const char *str_help_server =
     "OPTIONS"                                                           "\n"
     "        -h"                                                        "\n"
     "            Print help message."                                   "\n"
+    ""                                                                  "\n"
+    "        -v"                                                        "\n"
+    "            Verbose. Echos parameters."                            "\n"
     ""                                                                  "\n"
     "        --log=<filepath>"                                          "\n"
     "            Path to log file."                                     "\n"
@@ -108,6 +119,9 @@ const char *str_help_transmit =
     "        -h"                                                        "\n"
     "            Print help message."                                   "\n"
     ""                                                                  "\n"
+    "        -v"                                                        "\n"
+    "            Verbose. Echos parameters."                            "\n"
+    ""                                                                  "\n"
     "        --ip=<ip>"                                                 "\n"
     "            Server ip address."                                    "\n"
     ""                                                                  "\n"
@@ -135,6 +149,7 @@ const char *str_help_transmit =
 const char *str_help_measure =
     "USAGE:"                                                            "\n"
     "        rfsweep measure [options]"                                 "\n"
+    "        rfsweep receive [options]"                                 "\n"
     ""                                                                  "\n"
     "DESCRIPTION"                                                       "\n"
     "        Request to server to run measurements, returning them"     "\n"
@@ -148,6 +163,9 @@ const char *str_help_measure =
     "OPTIONS"                                                           "\n"
     "        -h"                                                        "\n"
     "            Print help message."                                   "\n"
+    ""                                                                  "\n"
+    "        -v"                                                        "\n"
+    "            Verbose. Echos parameters."                            "\n"
     ""                                                                  "\n"
     "        --ip=<ip>"                                                 "\n"
     "            Server ip address."                                    "\n"
@@ -188,3 +206,31 @@ const char *str_help_measure =
     ""                                                                  "\n"
     "        --binary"                                                  "\n"
     "            Output results in binary instead of ascii."            "\n";
+
+
+
+
+
+// TODO: finish these
+const char *str_rotate  = "Help string for \"receive\" not written yet\n";
+const char *str_receive = "Help string for \"receive\" not written yet\n";
+
+
+
+
+
+
+const char *str_help_defaults =
+    "DEFAULTS"                                  "\n"
+    "        --ip="         #DEFAULT_IP         "\n"
+    "        --port="       #DEFAULT_PORT       "\n"
+    "        --rserial="    #DEFAULT_RSERIAL    "\n"
+    "        --tserial="    #DEFAULT_TSERIAL    "\n"
+    "        --samps="      #DEFAULT_SAMPS      "\n"
+    "        --snap="       #DEFAULT_SNAP       "\n"
+    "        --steps="      #DEFAULT_STEPS      "\n"
+    "        --freq="       #DEFAULT_FREQ       "\n"
+    "        --band="       #DEFAULT_BAND       "\n"
+    "        --srate="      #DEFAULT_SRATE      "\n"
+    "        --lna-gain="   #DEFAULT_LNA        "\n"
+    "        --vga-gain="   #DEFAULT_VGA        "\n";

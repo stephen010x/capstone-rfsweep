@@ -2,14 +2,21 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdlib.h>
 #include <string.h>
+#include <math.h>
+#include <inttypes.h>
 //#include <sched.h>
 
 #include "toolkit/debug.h"
 #include "rfsweep.h"
 
 
-
+// TODO:
+// Add commands:
+// test
+// move (to angle)
+// receive (no sweep)
 
 
 
@@ -17,8 +24,10 @@
 
 
 // char chart
-//   4   8      16              32                              64
-//xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|
+/* 
+   4   8      16              32                              64
+xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|
+*/
 
 // max chars per argument
 #define MAX_ARG_CHARS 32
@@ -37,6 +46,8 @@ enum {
     MODE_GETLOGS,
     MODE_TRANSMIT,
     MODE_MEASURE,
+    MODE_ROTATE,
+    MODE_RECEIVE,
 };
 
 
@@ -45,9 +56,9 @@ enum {
     
     // general flags
     FLAG_LOG,
+    FLAG_FILE,
     FLAG_IP,
     FLAG_PORT,
-    FLAG_FILE,
     FLAG_BINARY,
 
     // control flags
@@ -55,6 +66,8 @@ enum {
     FLAG_TSERIAL,
     FLAG_SAMPS,
     FLAG_SNAP,
+    FLAG_ANGLE,
+    FLAG_STEPS,
 
     // hackrf flags
     FLAG_FREQ,
@@ -63,6 +76,9 @@ enum {
     FLAG_SRATE,
     FLAG_LNA_GAIN,
     FLAG_VGA_GAIN,
+
+    // misc
+    FLAG_DEFAULTS,
 };
 
 
@@ -123,52 +139,70 @@ typedef int arghandler_t(int flagtype, const char *flag, const char *val, int ar
 
 
 
-typedef struct {
-    int mode;
+// typedef struct {
+//     int mode;
+// 
+//     union {
+//     
+//         struct {
+//             const char *logpath;
+//             uint16_t port;
+//         } server;
+// 
+// 
+//         struct {
+//             char *ip;
+//             uint16_t port;
+//             
+//             uint64_t  freq_hz;
+//             uint32_t  band_hz;
+//             uint8_t   amp_enable;
+//             bool enable;
+// 
+//             char *rserial;
+//             char *tserial;
+//         } transmit;
+// 
+// 
+//         struct {
+//             const char *ip;
+//             uint16_t port;
+//         
+//             float64_t srate_hz;
+//             uint64_t  freq_hz;
+//             uint32_t  band_hz;
+//             uint32_t  lna_gain;
+//             uint32_t  vga_gain;
+//             int32_t   samps;
+//             int16_t   steps;
+//             uint8_t   amp_enable;
+//             uint8_t   snappow;
+// 
+//             const char *fpath;
+//             bool out_binary;
+//         } enable;
+//     };
+// } globalstate_t;
 
-    union {
-    
-        struct {
-            const char *logpath;
-            uint16_t port;
-        } server;
 
 
-        struct {
-            char *ip;
-            uint16_t port;
-            
-            uint64_t  freq_hz;
-            uint32_t  band_hz;
-            uint8_t   amp_enable;
-            bool enable;
-
-            char *rserial;
-            char *tserial;
-        } transmit;
 
 
-        struct {
-            const char *ip;
-            uint16_t port;
-        
-            float64_t srate_hz;
-            uint64_t  freq_hz;
-            uint32_t  band_hz;
-            uint32_t  lna_gain;
-            uint32_t  vga_gain;
-            int32_t   samps;
-            int16_t   steps;
-            uint8_t   amp_enable;
-            uint8_t   snappow;
 
-            const char *fpath;
-            bool out_binary;
-        } enable;
-    };
-} globalstate_t;
-
-globalstate_t global;
+globalstate_t global = {
+    .ip       = DEFAULT_IP,
+    .port     = DEFAULT_PORT,
+    .rserial  = DEFAULT_RSERIAL,
+    .tserial  = DEFAULT_TSERIAL,
+    .samps    = DEFAULT_SAMPS,
+    .snappow  = DEFAULT_SNAP,
+    .steps    = DEFAULT_STEPS,
+    .freq_hz  = DEFAULT_FREQ,
+    .band_hz  = DEFAULT_BAND,
+    .srate_hz = DEFAULT_SRATE,
+    .lna_gain = DEFAULT_LNA,
+    .vga_gain = DEFAULT_VGA,
+};
 
 
 
@@ -188,11 +222,13 @@ static const stringmap_t modestrings[] = {
     {.mode = MODE_GETLOGS,  .string = "getlogs" },
     {.mode = MODE_TRANSMIT, .string = "transmit"},
     {.mode = MODE_MEASURE,  .string = "measure" },
+    {.mode = MODE_ROTATE,   .string = "rotate"  },
+    {.mode = MODE_RECEIVE,  .string = "receive" },
 };
 
 
 static const stringmap_t flagstrings[] = {
-    {.mode = FLAG_H,        .string = "h"       },
+    //{.mode = FLAG_H,        .string = "h"       },
     {.mode = FLAG_LOG,      .string = "log"     },
     {.mode = FLAG_IP,       .string = "ip"      },
     {.mode = FLAG_PORT,     .string = "port"    },
@@ -208,7 +244,24 @@ static const stringmap_t flagstrings[] = {
     {.mode = FLAG_SRATE,    .string = "srate"   },
     {.mode = FLAG_LNA_GAIN, .string = "lna-gain"},
     {.mode = FLAG_VGA_GAIN, .string = "vga-gain"},
+    {.mode = FLAG_DEFAULTS, .string = "defaults"},
 };
+
+
+
+
+
+
+
+static int parse_args(int argc, const char *argv[], arghandler_t handler, void* data);
+static int parse_mode(char *str);
+static uint64_t parse_shortflags(char *str);
+static void print_help(int mode);
+static int eval_args(void);
+
+arghandler_t argh_mode;
+arghandler_t argh_flags;
+
 
 
 
@@ -223,9 +276,9 @@ int main(int argc, char *argv[]) {
     // arguments will also be evaluated here
     // so that we don't have malloc the serial or ip strings
     // that are put into the global state
-    err = parse_args(argc-1, argv+1, argh_main, NULL);
+    err = parse_args(argc-1, argv+1, argh_mode, NULL);
     if (err) {
-        printf(str_help);
+        print_help(global.mode);
         return err;
     }
 
@@ -310,7 +363,6 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
 
         _error:
         alertf(STR_ERROR, "unable to parse argument \"%s\"", argv[i]);
-        printf(str_help);
         return -2;
         
 
@@ -368,6 +420,15 @@ static int parse_longflag(char *str) {
 
 
 
+// // return 1 if true, 0 if false, and negative if invalid
+// static int8_t parse_truthy(char *str) {
+//     int diff;
+// 
+//     diff = strcmp(str, "true");
+// }
+
+
+
 static uint64_t parse_shortflags(char *str) {
     uint64_t flag;
 
@@ -397,7 +458,7 @@ static uint64_t parse_shortflags(char *str) {
 
 
 
-static int argh_main(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
+static int argh_mode(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
     int err;
 
     switch (type) {
@@ -405,11 +466,12 @@ static int argh_main(int type, const char *str, const char *val, int argc, const
 
         // if contains h flag, then print help. otherwise complain
         case FLAGTYPE_SINGLE:
-            if (parse_shortflags(str) ! FLAG_h) {
-                printf(str_help);
+            if (parse_shortflags(str) & (1<<FLAG_h)) {
+                print_help(MODE_NULL);
+                return argc;
+                
             } else {
                 alertf(STR_ERROR, "only -h flag supported without specifying mode");
-                printf(str_help);
                 return -1;
             }
             break;
@@ -417,7 +479,6 @@ static int argh_main(int type, const char *str, const char *val, int argc, const
             
         case FLAGTYPE_DOUBLE:
             alertf(STR_ERROR, "only -h flag supported without specifying mode");
-            printf(str_help);
             return -2;
 
             
@@ -425,40 +486,41 @@ static int argh_main(int type, const char *str, const char *val, int argc, const
             global.mode = parse_mode(str);
             
             switch (parse_mode(str)) {
+
                 case MODE_SERVER:
-                    err = parse_args(argc, argv, argh_server, NULL);
+                case MODE_RESET:
+                case MODE_RESTART:
+                case MODE_GETLOGS:
+                case MODE_MEASURE:
+                    err = parse_args(argc, argv, argh_flags, NULL);
                     if (err) return -3;
                     break;
-                    
-                case MODE_RESET:
-                    err = parse_args(argc, argv, argh_reset, NULL);
-                    if (err) return -4;
-                    break;
-                    
-                case MODE_RESTART:
-                    err = parse_args(argc, argv, argh_restart, NULL);
-                    if (err) return -5;
-                    break;
-                    
-                case MODE_GETLOGS:
-                    err = parse_args(argc, argv, argh_getlogs, NULL);
-                    if (err) return -6;
-                    break;
+
+
+                case MODE_ROTATE:
+                case MODE_RECEIVE:
+                    alertf(STR_ERROR, "\"rfsweep %s\" not yet supported", str);
+                    return -4;
+                
                     
                 case MODE_TRANSMIT:
-                    err = parse_args(argc, argv, argh_transmit, NULL);
-                    if (err) return -7;
-                    break;
+                    if (strcmp(argv[0], "enable") == 0) {
+                        global.transmit_enable = true;
+                    } else if (strcmp(argv[0], "disable") == 0) {
+                        global.transmit_enable = false;
+                    } else {
+                        alertf(STR_ERROR, "expected \"rfweep transmit enable\" or \"rfweep transmit disable\"");
+                        return -5
+                    }
                     
-                case MODE_MEASURE:
-                    err = parse_args(argc, argv, argh_measure, NULL);
-                    if (err) return -8;
+                    err = parse_args(argc-1, argv+1, argh_flags, NULL);
+                    if (err) return -6;
                     break;
+                
 
                 default:
-                    alertf(STR_ERROR, "unrecognized mode \"%s\"");
-                    printf(str_help);
-                    return -9;
+                    alertf(STR_ERROR, "unrecognized mode \"%s\"", str);
+                    return -7;
             }
             break;
 
@@ -480,17 +542,26 @@ static int argh_main(int type, const char *str, const char *val, int argc, const
 
 
 
-static int argh_server(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
+
+static int argh_flags(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
     int err;
+    uint64_t sflags;
+    //char *end;
+    //float64_t val;
 
     switch (type) {
         // if contains h flag, then print help. otherwise complain
         case FLAGTYPE_SINGLE:
-            if (parse_shortflags(str) ! FLAG_h) {
-                printf(str_help);
+            sflags = parse_shortflags(str);
+            if (sflags & (1<<FLAG_h)) {
+                print_help(global.mode);
+                return argc;
+                
+            } else if (sflags ! (1<<FLAG_v)) {
+                global.is_verbose = true;
+                
             } else {
                 alertf(STR_ERROR, "unrecognized flags \"-%s\"", str);
-                printf(str_help);
                 return -1;
             }
             break;
@@ -499,48 +570,120 @@ static int argh_server(int type, const char *str, const char *val, int argc, con
         case FLAGTYPE_DOUBLE:
 
             switch (parse_longflag(str)) {
+            
+                case FLAG_BINARY:
+                case FLAG_AMPLIFY:
+                    if (val[0] != '\0')
+                        alertf(STR_ERROR, "flag assignment not expected \"--%s=%s\"", str, val);
+                    return -2;
+            }
+
+
+            errno = 0;
+            switch (parse_longflag(str)) {
 
                 case FLAG_LOG:
-                    global.logpath = str;
+                    global.logpath = val;
+                    break;
+
+                case FLAG_FILE:
+                    global.fpath = val;
+                    break;
+
+                case FLAG_IP:
+                    global.ip = val;
                     break;
 
                 case FLAG_PORT:
-                    global.port = (uint16_t)atoi(str);
+                    global.port = strtou16(val);
+                    if (errno) return -3;
                     break;
 
-                case FLAG_TSERIAL:
-                    global.tserial = str;
+                case FLAG_BINARY:
+                    global.binary = true;
                     break;
 
                 case FLAG_RSERIAL:
-                    global.rserial = str;
+                    global.rserial = val;
+                    break;
+
+                case FLAG_TSERIAL:
+                    global.tserial = val;
+                    break;
+
+                case FLAG_SAMPS:
+                    global.samps = strtoi32(val);
+                    if (errno) return -4;
+                    break;
+
+                case FLAG_SNAP:
+                    global.snappow = strtou8(val);
+                    if (errno) return -5;
+                    break;
+
+                case FLAG_ANGLE:
+                    global.angle = strtof32(val);
+                    if (errno) return -6;
+                    break;
+
+                case FLAG_STEPS:
+                    global.steps = strtoi16(val);
+                    if (errno) return -7;
+                    break;
+
+                case FLAG_FREQ:
+                    global.freq_hz = strtou64(val);
+                    if (errno) return -8;
+                    break;
+
+                case FLAG_BAND:
+                    global.band_hz = strtou32(val);
+                    if (errno) return -9;
+                    break;
+
+                case FLAG_AMPLIFY:
+                    global.amp_enable = true;
+                    break;
+
+                case FLAG_SRATE:
+                    global.srate_hz = strtof64(val);
+                    if (errno) return -10;
+                    break;
+
+                case FLAG_LNA_GAIN:
+                    global.lna_gain = strtou32(val);
+                    if (errno) return -11;
+                    break;
+
+                case FLAG_VGA_GAIN:
+                    global.vga_gain = strtou32(val);
+                    if (errno) return -12;
                     break;
 
                 default:
                     alertf(STR_ERROR, "unrecognized flag \"--%s\"", str);
-                    printf(str_help);
-                    return -2
+                    return -13
             
             }
-
-            // recursively parse next argument
-            err = parse_args(argc, argv, argh_server, NULL);
-            if (err) return -8;
             break;
 
             
         case FLAGTYPE_PLAIN:
             alertf(STR_ERROR, "unrecognized option \"%s\"", str);
-            printf(str_help);
-            break;
+            return -14
 
             
         case FLAGTYPE_EMPTY:
             // TODO: Run with default values here
             // Actually, just run here in general, this is where the recursive
             // loop would end
-            break;
+            eval_args();
+            return argc;
     }
+
+    // recursively parse next argument
+    err = parse_args(argc, argv, argh_server, NULL);
+    if (err) return -15;
 
     return argc;
 }
@@ -549,8 +692,24 @@ static int argh_server(int type, const char *str, const char *val, int argc, con
 
 
 
-static int argh_reset(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
 
+
+static void print_help(int mode) {
+    char *str;
+    
+    switch (mode) {
+        case MODE_SERVER:   str = str_help_server;   break;
+        case MODE_RESET:    str = str_help_reset;    break;
+        case MODE_RESTART:  str = str_help_restart;  break;
+        case MODE_GETLOGS:  str = str_help_getlogs;  break;
+        case MODE_MEASURE:  str = str_help_measure;  break;
+        case MODE_TRANSMIT: str = str_help_transmit; break;
+        case MODE_RECEIVE:  str = str_help_receive;  break;
+        case MODE_ROTATE:   str = str_help_rotate;   break;
+        default:            str = str_help;
+    }
+
+    printf("%s", str);
 }
 
 
@@ -558,38 +717,50 @@ static int argh_reset(int type, const char *str, const char *val, int argc, cons
 
 
 
-static int argh_restart(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
 
+
+
+static int eval_args(void) {
+    int err;
+
+    err = 0;
+
+    switch (global.mode) {
+        case MODE_SERVER:
+            err = server_run(&global);
+            break;
+            
+        case MODE_RESET:
+            err = client_request_reset(&global);
+            break;
+            
+        case MODE_RESTART:
+            err = client_request_restart(&global);
+            break;
+            
+        case MODE_GETLOGS:
+            err = client_request_getlogs(&global);
+            break;
+            
+        case MODE_MEASURE:
+            err = client_request_measure(&global);
+            break;
+            
+        case MODE_ROTATE:
+            alertf(STR_ERROR, "rotate mode not yet supported");
+            return -1
+            
+        case MODE_RECEIVE:
+            alertf(STR_ERROR, "receive mode not yet supported");
+            return -2;
+            
+        case MODE_TRANSMIT:
+            alertf(STR_ERROR, "transmit mode not yet supported");
+            return -3;
+    }
+
+    return err;
 }
-
-
-
-
-
-
-static int argh_getlogs(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
-
-}
-
-
-
-
-
-
-
-static int argh_transmit(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
-
-}
-
-
-
-
-
-
-static int argh_measure(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
-
-}
-
 
 
 

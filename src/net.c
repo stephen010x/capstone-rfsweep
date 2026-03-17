@@ -169,6 +169,7 @@ static int _net_connect(int fd, net_t *net, const char *ip, uint16_t port, int t
 
     // async wait for connection via fd
     // https://www.man7.org/linux/man-pages/man2/connect.2.html
+    errno = 0;
     err = connect(fd, (struct sockaddr*)&sa, sizeof(sa));
     assert((!err || (errno == EAGAIN) || (errno == EALREADY) || (errno == EINPROGRESS)), errno);
 
@@ -260,6 +261,7 @@ static int _net_start(int fd, net_t *net, uint16_t port, int backlog) {
 
     // bind port to socket
     // https://www.man7.org/linux/man-pages/man2/bind.2.html
+    errno = 0;
     err = bind(fd, (struct sockaddr *)&sa, sizeof(sa));
     if (err) return errno;
     
@@ -268,6 +270,7 @@ static int _net_start(int fd, net_t *net, uint16_t port, int backlog) {
     // listen for client. Refuse if any more than 'backlog' clients 
     // waiting for a connection
     // https://www.man7.org/linux/man-pages/man2/listen.2.html
+    errno = 0;
     err = listen(fd, backlog);
     if (err) return errno;
 
@@ -315,6 +318,7 @@ int net_accept(const net_t *restrict netin, net_t *restrict netout, int timeout_
     // accepts incoming connection
     // since nonblocking, it can error if no connection, which is fine
     // https://www.man7.org/linux/man-pages/man2/accept.2.html
+    errno = 0;
     newfd = accept4(netin->fd, (struct sockaddr*)&netout->sa, &outsize, SOCK_NONBLOCK);
     if (newfd == -1) {
         //_net_err(errno, false);
@@ -380,7 +384,8 @@ int net_await(const net_t *net, net_mode_t mode, int timeout_ms) {
         //.events = POLLOUT,  // checks if can be written to
         .events = mode,
     };
-    tryagain: 
+    tryagain:
+    errno = 0;
     err = poll(&pfd, 1, timeout_ms);
 
     // DEBUG(
@@ -424,6 +429,7 @@ int net_await(const net_t *net, net_mode_t mode, int timeout_ms) {
     // // poll just waits for changes, not catches errors, so this is needed
     // // get connection error
     elen = sizeof(err2);
+    errno = 0;
     err = getsockopt(net->fd, SOL_SOCKET, SO_ERROR, &err2, &elen);
     assert(!err, errno);
     if (err2) {
@@ -448,10 +454,11 @@ bool net_is_open(const net_t *net) {
     char buf;
     ssize_t n;
 
-    DEBUG(errno = 0);
+    //DEBUG(errno = 0);
     
     // attempt to peek at buffer
     // https://www.man7.org/linux/man-pages/man2/recv.2.html
+    errno = 0;
     n = recv(net->fd, &buf, 1, MSG_PEEK | MSG_DONTWAIT);
     
     if (n > 0) return true;         // peer alive
@@ -560,6 +567,7 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
     
         // partial writes can occur, so we need to make sure it is fully written
         // https://www.man7.org/linux/man-pages/man2/write.2.html
+        errno = 0;
         n = write(net->fd, buff+total, count-total);
 
         // handle the error
@@ -677,6 +685,7 @@ ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restri
 
         // incoming reads can be fragmented, so we have to loop
         // https://www.man7.org/linux/man-pages/man2/read.2.html
+        errno = 0;
         n = recv(net->fd, buff+total, count-total, flags);
 
         // handle the error

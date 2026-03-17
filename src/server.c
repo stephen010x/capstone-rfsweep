@@ -27,7 +27,7 @@
 
 
 
-#define SERVER_TIMEOUT 10000    /*ten seconds*/
+#define SERVER_TIMEOUT 10000    /* ten seconds */
 
 
 
@@ -115,10 +115,12 @@ static int _data_thread_start(net_t *client);
 static int _data_thread_end(void);
 static void *_data_thread(net_t *client);
 
-static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath);
+// static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath);
+static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg);
 static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params)
 static int _server_measure(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params);
-static int _server_send_logs(const net_t *restrict client, const char *restrict logpath);
+// static int _server_send_logs(const net_t *restrict client, const char *restrict logpath);
+static int _server_send_logs(const net_t *client);
 
 
 
@@ -141,26 +143,33 @@ static volatile struct {
 };
 
 
-static bool _run_server      = false;
-static bool _run_data_thread = false;
+static bool _run_server;
+static bool _run_data_thread;
+static bool _err_data_thread;
 
 static pthread_t tthread[1];
 static pthread_mutex_t _binqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static const char *_server_sdr_serial SERVER_SDR_SERIAL;
+//static const char *_server_sdr_serial SERVER_SDR_SERIAL;
+
+static globalstate_t *state;
 
 
 static const int16_t _msg_received    = MESSAGE_RECEIVED;
-static const int16_t _msg_failure     = MESSAGE_FAILURE;
+//static const int16_t _msg_failure     = MESSAGE_FAILURE;
+static const int16_t _msg_error       = MESSAGE_ERROR;
 static const int16_t _msg_success     = MESSAGE_SUCCESS;
 static const int16_t _msg_unsupported = MESSAGE_UNSUPPORTED;
-static const int16_t _msg_end         = MESSAGE_UNSUPPORTED;
+static const int16_t _msg_end         = MESSAGE_END;
+static const int16_t _msg_poll        = MESSAGE_POLL;
 
-#define CONST_MSG_RECEIVED      (*(const message_t*)&_msg_received)
-#define CONST_MSG_FAILURE       (*(const message_t*)&_msg_failure)
-#define CONST_MSG_SUCCESS       (*(const message_t*)&_msg_success)
-#define CONST_MSG_UNSUPPORTED   (*(const message_t*)&_msg_unsupported)
-#define CONST_MSG_END           (*(const message_t*)&_msg_end)
+#define CONST_MSG_RECEIVED     (*(const message_t*)&_msg_received)
+//#define CONST_MSG_FAILURE      (*(const message_t*)&_msg_failure)
+#define CONST_MSG_ERROR        (*(const message_t*)&_msg_error)
+#define CONST_MSG_SUCCESS      (*(const message_t*)&_msg_success)
+#define CONST_MSG_UNSUPPORTED  (*(const message_t*)&_msg_unsupported)
+#define CONST_MSG_END          (*(const message_t*)&_msg_end)
+#define CONST_MSG_POLL         (*(const message_t*)&_msg_end)
 
 
 
@@ -474,13 +483,14 @@ static int _data_thread_start(net_t *client) {
 // will block until thread closes naturally, 
 // or is already closed
 // returns value returned by closed thread
-static int _data_thread_end(void) {
+static int _data_thread_end(bool end_with_error) {
     void *retval;
     int err;
 
     debugf("waiting for data thread to exit");
 
     _run_data_thread = false;
+    _err_data_thread = end_with_error;
 
     // cancel threads
     if (tthread[0] != 0) {
@@ -508,6 +518,7 @@ static void *_data_thread(net_t *client) {
     message_t *msg;
 
     _run_data_thread = true;
+    _err_data_thread = false;
 
     while (_run_data_thread) {
 
@@ -532,13 +543,22 @@ static void *_data_thread(net_t *client) {
             free(fbins);
 
             // handle error
-            assert(!err, err);
+            assert(!err, (void*)err);
         }
 
-        // otherwise yield thread
+        // otherwise send poll and delay
+        //err = message_write(client, CONST_MSG_POLL, SERVER_TIMEOUT);
+        //otherwise yield
         shed_yield();
     }
 
+    // send end or error message
+    if (_err_data_thread)
+        err = message_write(client, CONST_MSG_ERROR, SERVER_TIMEOUT);
+    else
+        err = message_write(client, CONST_MSG_END, SERVER_TIMEOUT);
+
+    assert(!err, (void*)err);
     return (void*)0;
 }
 
@@ -551,15 +571,20 @@ static void *_data_thread(net_t *client) {
 
 // run server (main thread)
 //static void *_server_thread(void *port) {
-int server_run(uint16_t port, const char *logpath) {
+//int server_run(uint16_t port, const char *logpath) {
+int server_run(globalstate_t *_state) {
     int err;
     net_t server, client;
     ssize_t bytes;
     message_t *msg;
 
+
+    state = _state;
+    
+
     // start listening for incoming connections
     //net_start(&server, (uint16_t)(uintptr_t)port, 1);
-    net_start(&server, port, 1);
+    net_start(&server, state->port, 1);
 
     _run_server = true;
     
@@ -590,7 +615,7 @@ int server_run(uint16_t port, const char *logpath) {
         msg = message_read(&client, SERVER_TIMEOUT)
 
         // handle message
-        _server_message_handler(&client, msg, logpath);
+        _server_message_handler(&client, msg);
         
         //}
 
@@ -613,7 +638,7 @@ int server_run(uint16_t port, const char *logpath) {
 
 
 
-static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath) {
+static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg) {
     int err;
     hparams_t params;
     
@@ -636,15 +661,15 @@ static int _server_message_handler(const net_t *restrict client, const message_t
 
         // return error logs
         case MESSAGE_GETLOGS:
-            err = _server_send_logs(client, logpath);
+            err = _server_send_logs(client);
             if (err) err |= message_write(client, &CONST_MSG_ERROR, SERVER_TIMEOUT);
             return err;
 
 
         case MESSAGE_MEASURE:
             err = _server_measure_start(client, msg, &params);
-            if (err) err |= message_write(client, &CONST_MSG_ERROR, SERVER_TIMEOUT);
-            else     err |= message_write(client, &CONST_MSG_END,   SERVER_TIMEOUT);
+            //if (err) err |= message_write(client, &CONST_MSG_ERROR, SERVER_TIMEOUT);
+            //else     err |= message_write(client, &CONST_MSG_END,   SERVER_TIMEOUT);
             return err;
 
 
@@ -726,7 +751,7 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
 
         // end data thread
     end_thread:
-        err |= _data_thread_end(client);
+        err |= _data_thread_end(!err);
         assert(!err, err);
         
         return err;
@@ -760,7 +785,8 @@ static int _server_measure(const net_t *restrict client, const message_t *restri
     params->vga_gain   = msg->measure.vga_gain;
     params->amp_enable = msg->measure.amp_enable;
     params->samps      = msg->measure.samps;
-    params->serial     = _server_sdr_serial;
+    //params->serial     = _server_sdr_serial;
+    params->serial     = state->rserial;
 
     // start data collection loop
     for (int i = 0; i < steps; i++) {
@@ -795,7 +821,7 @@ static int _server_measure(const net_t *restrict client, const message_t *restri
 
 
 
-static int _server_send_logs(const net_t *restrict client, const char *restrict logpath) {
+static int _server_send_logs(const net_t *client) {
     FILE *file;
     size_t size, rsize;
     int err;
@@ -803,7 +829,7 @@ static int _server_send_logs(const net_t *restrict client, const char *restrict 
     message_t *msg;
 
     // open file
-    file = fopen(logpath, "rb");
+    file = fopen(state->logpath, "rb");
     assert(("problem opening file. path may be invalid", file != NULL), -1);
 
     // get file length
