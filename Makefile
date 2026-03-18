@@ -28,7 +28,8 @@ CC := gcc
 # https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
 CFLAGS := -std=gnu23 -fvisibility=internal -I/usr/include/libusb-1.0 -D__ENABLE_SYSMESSAGES__
 # -llibhackrf.so -lhackrf
-LFLAGS := -L./lib/kissfft/ -lusb-1.0 -Wl,-Bstatic -lkissfft-float -Wl,-Bdynamic -lm
+#LFLAGS := -L./lib/kissfft/ -lusb-1.0 -Wl,-Bstatic -lkissfft-float -Wl,-Bdynamic -lm
+LFLAGS := -lusb-1.0 -Wl,-Bstatic -Wl,-Bdynamic -lm
 BFLAGS := -Wall -Wextra
 #LIBS   :=
 
