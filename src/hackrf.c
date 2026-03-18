@@ -231,10 +231,10 @@ static int hackrf_open_board(hackrf_device_t **device, const char* serial) {
     assert(!err, err);
 
     // print out serial number
-    printf("[debug] : device opened with serial #");
+    fprintf(stderr, "[debug] : device opened with serial #");
     for (int i = 0; i < 4; i++)
-        printf("%04x", rpisn.serial_no[i]);
-    printf("\n");
+        fprintf(stderr, "%04x", rpisn.serial_no[i]);
+    fprintf(stderr, "\n");
     
     )
     

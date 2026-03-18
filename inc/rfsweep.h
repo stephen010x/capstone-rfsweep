@@ -109,7 +109,7 @@ typedef struct __packed {
     uint32_t  band_hz;      // 4
     uint64_t  freq_hz;      // 8
     float64_t srate_hz;     // 16
-    int64_t   timestamp_us; // 24   // added because these will be sent out of order
+    int64_t   timestamp_us; // 24   // added because these can be sent out of order
                             // 32
     int32_t   bcount;
     fbin_t    bins[0];      // 36
@@ -204,7 +204,7 @@ extern const char *const LOCALHOST;
 enum {
     MESSAGE_NULL = 0,
     MESSAGE_ERROR,      // Ideally this would return an error code, but I am lazy
-    MESSAGE_RECEIVED,
+    //MESSAGE_RECEIVED,
     //MESSAGE_FAILURE,
     MESSAGE_SUCCESS,
     MESSAGE_POLL,       // server lets client know it is busy to avoid timeout
@@ -218,6 +218,10 @@ enum {
     MESSAGE_TRANSMIT_DISABLE,
     MESSAGE_UNSUPPORTED,// message is not supported by server (likely a response only message)
     MESSAGE_END,        // signal to client that measurements are done
+
+    // TODO: implement this message
+    //       Also implement a ctrl-c capture that will close the connection before killing
+    MESSAGE_CANCEL,     // client tell server to stop
 
     MESSAGE_TYPE_LEN,   // this or anything past this is invalid
 };
@@ -482,6 +486,16 @@ int16_t   strtoi16(const char *str);
 int8_t     strtoi8(const char *str);
 
 
+
+
+
+
+///////////////
+// client.c
+int client_request_reset(globalstate_t *state);
+int client_request_restart(globalstate_t *state);
+int client_request_getlogs(globalstate_t *state);
+int client_request_measure(globalstate_t *state);
 
 
 

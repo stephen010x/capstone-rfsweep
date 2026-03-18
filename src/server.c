@@ -155,7 +155,7 @@ static pthread_mutex_t _binqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
 static globalstate_t *state;
 
 
-static const int16_t _msg_received    = MESSAGE_RECEIVED;
+//static const int16_t _msg_received    = MESSAGE_RECEIVED;
 //static const int16_t _msg_failure     = MESSAGE_FAILURE;
 static const int16_t _msg_error       = MESSAGE_ERROR;
 static const int16_t _msg_success     = MESSAGE_SUCCESS;
@@ -163,7 +163,7 @@ static const int16_t _msg_unsupported = MESSAGE_UNSUPPORTED;
 static const int16_t _msg_end         = MESSAGE_END;
 static const int16_t _msg_poll        = MESSAGE_POLL;
 
-#define CONST_MSG_RECEIVED     (*(const message_t*)&_msg_received)
+//#define CONST_MSG_RECEIVED     (*(const message_t*)&_msg_received)
 //#define CONST_MSG_FAILURE      (*(const message_t*)&_msg_failure)
 #define CONST_MSG_ERROR        (*(const message_t*)&_msg_error)
 #define CONST_MSG_SUCCESS      (*(const message_t*)&_msg_success)
@@ -554,9 +554,9 @@ static void *_data_thread(net_t *client) {
 
     // send end or error message
     if (_err_data_thread)
-        err = message_write(client, CONST_MSG_ERROR, SERVER_TIMEOUT);
+        err = message_write(client, &CONST_MSG_ERROR, SERVER_TIMEOUT);
     else
-        err = message_write(client, CONST_MSG_END, SERVER_TIMEOUT);
+        err = message_write(client, &CONST_MSG_END, SERVER_TIMEOUT);
 
     assert(!err, (void*)err);
     return (void*)0;
@@ -689,7 +689,7 @@ static int _server_message_handler(const net_t *restrict client, const message_t
 char* message_type_str(message_type_t type) {
     switch (type) {
         case MESSAGE_NULL:        return "MESSAGE_NULL";
-        case MESSAGE_RECEIVED:    return "MESSAGE_RECEIVED";
+        //case MESSAGE_RECEIVED:    return "MESSAGE_RECEIVED";
         case MESSAGE_SUCCESS:     return "MESSAGE_SUCCESS";
         case MESSAGE_DATA:        return "MESSAGE_DATA";
         case MESSAGE_RESET:       return "MESSAGE_RESET";
