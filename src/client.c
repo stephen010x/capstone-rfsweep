@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <inttypes.h>
 
+#include "toolkit/debug.h"
 #include "rfsweep.h"
 
 
@@ -13,7 +14,7 @@
 // int client_read();
 // int client_
 
-CLIENT_TIMEOUT 1000     /* one second */
+#define CLIENT_TIMEOUT 1000     /* one second */
 
 
 
@@ -32,8 +33,8 @@ static const int16_t _msg_getlogs = MESSAGE_GETLOGS;
 
 
 
-static int _client_request(globalstate_t *state, msg_t *msg);
-static int _handle_measuredata(message_t *msg);
+static int _client_request(const globalstate_t *restrict state, const message_t *restrict msg);
+static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg);
 static int _client_msg_handler(const message_t *msg);
 static int _write_strto_file(const char *restrict path, const char *restrict c, const char *restrict format, va_list vlist);
 static int dump_strto_file(const char *restrict path, const char *restrict format, ...);
@@ -46,7 +47,7 @@ static int append_strto_file(const char *restrict path, const char *restrict for
 static const char *msgstr[MESSAGE_TYPE_LEN] = {
     [MESSAGE_NULL]              = "NULL",
     [MESSAGE_ERROR]             = "ERROR",
-    [MESSAGE_RECEIVED]          = "RECEIVED",
+    //[MESSAGE_RECEIVED]          = "RECEIVED",
     [MESSAGE_SUCCESS]           = "SUCCESS",
     [MESSAGE_POLL]              = "POLL",
     [MESSAGE_DATA]              = "DATA",
@@ -58,43 +59,46 @@ static const char *msgstr[MESSAGE_TYPE_LEN] = {
     [MESSAGE_TRANSMIT_DISABLE]  = "TRANSMIT_DISABLE",
     [MESSAGE_UNSUPPORTED]       = "UNSUPPORTED",
     [MESSAGE_END]               = "END",
-}
+    //[MESSAGE_STOP]              = "STOP",
+};
 
 
 
 static const char *outformatstr = "timestamp(us) angle(degrees) freq(Hz) bandwidth(Hz) "
-                                  "samplerate(Hz) bincount [real imag ...]\n"
+                                  "samplerate(Hz) bincount [real imag ...]\n";
 
 
 
 
 
 
-static int _client_request(globalstate_t *state, msg_t *msg) {
+static int _client_request(const globalstate_t *restrict state, const message_t *restrict msg) {
     int err;
     net_t net;
-    message_t msg;
+    //message_t *msg;
 
     // connect to server
-    err = net_connect(&net, state.ip, state.port, CLIENT_TIMEOUT);
+    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
     assert(!err, err);
 
     // send request to server
     err = message_write(&net, msg, CLIENT_TIMEOUT);
     jassert(!err, _exit_net);
 
+    // we dont need the msg pointer anymore, so we reuse it
     // read response from server
     msg = message_read(&net, CLIENT_TIMEOUT);
     if (msg == NULL) err = -1;
     jassert(!err, _exit_net);
 
     // handle response from server
-    err = _client_msg_handler(&msg);
+    err = _client_msg_handler(msg);
     jassert(!err, _exit_msg);
 
     _exit_msg:
     // free message
-    free(msg);
+    // discard const qualifier since we reused the msg ptr
+    free(*(message_t**)&msg);
     
     _exit_net:
     // free net
@@ -132,7 +136,7 @@ int client_request_getlogs(globalstate_t *state) {
     message_t *msg;
 
     // connect to server
-    err = net_connect(&net, state.ip, state.port, CLIENT_TIMEOUT);
+    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
     assert(!err, err);
 
     // send request to server
@@ -157,10 +161,10 @@ int client_request_getlogs(globalstate_t *state) {
             jassert(("data is missing null terminator",
                     (msg->data.data[msg->data.size-1] != '\0')), _exit_msg);
             // print data to stdout or file
-            if (state.logpath == NULL) {
+            if (state->logpath == NULL) {
                 printf("%s", (char*)msg->data.data);
             } else {
-                err = dump_strto_file(state.logpath, "%s", (char*)msg->data.data);
+                err = dump_strto_file(state->logpath, "%s", (char*)msg->data.data);
                 jassert(!err, _exit_msg);
             }
             break;
@@ -193,8 +197,10 @@ int client_request_measure(globalstate_t *state) {
     net_t net;
     message_t *msg;
 
+    debugf("Starting measurements...");
+
     // connect to server
-    err = net_connect(&net, state.ip, state.port, CLIENT_TIMEOUT);
+    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
     assert(!err, err);
 
     // send request to server
@@ -218,18 +224,30 @@ int client_request_measure(globalstate_t *state) {
                 err = -2;
                 goto _exit_msg;
 
+
+            case MESSAGE_POLL:
+                // comment this out later
+                debugf("Server POLLING...");
+                break;
+
         
             case MESSAGE_DATA:
-                if (!state.out_binary)
+                if (!state->out_binary) {
                     // print format information
-                    if (state.outfile) {
-                        dump_strto_file(state.outfile, outformatstr);
+                    if (state->fpath) {
+                        dump_strto_file(state->fpath, outformatstr);
                     } else {
                         printf(outformatstr);
                     }
-                    
-                err = _handle_measuredata(msg);
+                }
+                err = _handle_measuredata(state, msg);
                 break;
+
+            case MESSAGE_END:
+                debugf("Measurements complete.");
+                err = 0;
+                free(msg);
+                goto _exit_net;
 
 
             default:
@@ -257,28 +275,28 @@ int client_request_measure(globalstate_t *state) {
 
 
 
-static int _handle_measuredata(message_t *msg) {
+static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg) {
     int err;
     fbins_t *fbins;
 
-    fbins = msg->data.data;
+    fbins = (void*)msg->data.data;
 
     // make sure that sizes check out
-    assert(msg->data.size == fbins_sizeof(fbins), -1);
+    assert(((size_t)msg->data.size == fbins_sizeof(fbins)), -1);
 
     // if outputting binary
-    if (state.out_binary) {
+    if (state->out_binary) {
         alertf(STR_ERROR, "binary output not supported yet");
         return -1;
 
 
     // if ascii output and no output file
-    } else if (state.file == NULL) {
+    } else if (state->fpath == NULL) {
 
         // print out params
         printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-               fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
-               fbins->band_hz, fbins->srate_hz, fbins->bcount);
+               fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
+               fbins->band_hz, (double)fbins->srate_hz, fbins->bcount);
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++)
@@ -293,18 +311,24 @@ static int _handle_measuredata(message_t *msg) {
     } else {
 
         // print out params
-        append_strto_file(state.file, "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+        err = append_strto_file(state->fpath, "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
                fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
                fbins->band_hz, fbins->srate_hz, fbins->bcount);
+        assert(!err, -2);
 
         // print out bins
-        for (int i = 0; i < fbins->bcount; i++)
-            append_strto_file(state.file, " %" PRIu8 " %" PRIu8,
+        for (int i = 0; i < fbins->bcount; i++) {
+            err = append_strto_file(state->fpath, " %" PRIu8 " %" PRIu8,
                    fbins->bins[fbins->bcount-1].real,
                    fbins->bins[fbins->bcount-1].imag);
+            assert(!err, -3);
+        }
             
-        append_strto_file(state.file, "\n");
+        err = append_strto_file(state->fpath, "\n");
+        assert(!err, -4);
     }
+
+    return 0;
 }
 
 
@@ -332,7 +356,7 @@ static int _client_msg_handler(const message_t *msg) {
                 DEBUG(fassert(msgstr[msg->type] != NULL);)
                 //alertf(STR_WARN, "received unexpected \"%s\" message from server", msgstr[msg->type]);
                 alertf(STR_ERROR, "received unexpected \"%s\" message from server", msgstr[msg->type]);
-                return -2
+                return -2;
             } else {
                 alertf(STR_ERROR, "received unknown message \"%d\" from server", msg->type);
                 return -3;

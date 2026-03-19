@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <sched.h>
+#include <errno.h>
 
 
 #include "toolkit/debug.h"
@@ -51,6 +52,9 @@ static __construct void time_init(void) {
 }
 
 
+
+
+
 // process uptime in microseconds
 int64_t micros(void) {
     int err;
@@ -67,21 +71,48 @@ int64_t micros(void) {
 }
 
 
-// yield wait
+// sleep wait
+// will segfault if you pass in an invalid value
 void micros_block_for(int64_t u) {
+    //int err;
+    struct timespec time;
+    struct timespec rem;
+    int64_t secs;
+
+    //int64_t uend = micros() + u;
+    
+    // calculate seconds
+    secs = u / (int64_t)1e6;
+
+    // setup time
+    time = (struct timespec) {
+        .tv_sec  = secs,
+        .tv_nsec = (u - secs * (int64_t)1e6) * 1000,
+    };
+
+    // nanosleep has a resolution equivalent to the monotonic clock
+    // which generally should be at or below 1us
+    // loops to guarentee the full time is waited
+    while ((nanosleep(&time, &rem) == -1) && (errno == EINTR))
+        time = rem;
+
+    DEBUG(
+    // fatal if nanosleep error
+    // I should use more fatals like this
+    fassert(("invalid value for microseconds", errno != EINVAL));
+    )
+}
+
+
+// busy yield wait
+void micros_busy_for(int64_t u) {
     int64_t uend = micros() + u;
+
+    //while (micros() < uend);
 
     while (micros() < uend) {
         sched_yield();
     }
-}
-
-
-// busy wait
-void micros_busy_for(int64_t u) {
-    int64_t uend = micros() + u;
-
-    while (micros() < uend);
 }
 
 

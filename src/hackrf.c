@@ -46,7 +46,7 @@ typedef hackrf_transfer hackrf_transfer_t;
 
 
 
-static int hackrf_open_board(hackrf_device_t **device, const char* serial)
+static int hackrf_open_board(hackrf_device_t **device, const char* serial);
 // consider making this a void return
 static int hackrf_free_board(hackrf_device_t *device);
 static int setup_receiver_params(hackrf_device_t *device, hparams_t *params);
@@ -209,7 +209,7 @@ static int hackrf_open_board(hackrf_device_t **device, const char* serial) {
 
 
     // open first available hackrf device
-    err = hackrf_open_by_serial(device, serial);
+    err = hackrf_open_by_serial(serial, device);
     assert(("hackrf device could not be opened", err == HACKRF_SUCCESS), err);
 
 
@@ -389,7 +389,8 @@ __weak_inline int hackrf_is_finished(hparams_t *params) {
 
 void hackrf_wait_until_finished(hparams_t *params) {
     while (!hackrf_is_finished(params))
-        sched_yield();
+        //sched_yield();
+        micros_block_for(1);
 
     // just in case call stop for clean exit
     hackrf_stop(params);
@@ -514,8 +515,8 @@ static int rx_callback(hackrf_transfer_t *transfer) {
     DEBUG(assert((transfer->buffer_length % 2 == 0), -1);)
     
     // assert that the typeof(fbins->bins[0].real) is a float
-    _Static_assert(__builtin_types_compatible_p(float, typeof(fbins->bins[0][0].real)),
-        "typeof(fbins->bins[0].real) must be a float");
+    // _Static_assert(__builtin_types_compatible_p(float, typeof(fbins->bins[0][0].real)),
+    //     "typeof(fbins->bins[0].real) must be a float");
 
     // assert that size of fbin_t is 2 bytes
     _Static_assert(sizeof(fbin_t) == (1<<1), "fbin_t must be 2 bytes in size");
@@ -527,7 +528,7 @@ static int rx_callback(hackrf_transfer_t *transfer) {
     assert(fbins != NULL, 1);
 
     // record fbin properties
-    *fbins = {
+    *fbins = (fbins_t){
         .angle    = params->angle,
         .band_hz  = params->band_hz,
         .freq_hz  = params->freq_hz,

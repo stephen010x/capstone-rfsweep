@@ -17,8 +17,6 @@
 
 
 #include "toolkit/debug.h"
-#include "toolkit/debug.h"
-
 #include "rfsweep.h"
 
 
@@ -45,22 +43,13 @@
 #define EINVADDRESS -5
 
 
-
 #define MAGIC_NUMBER ((magic_num_t)0xDEADBEEF)
 
 
 const magic_num_t magic_num = MAGIC_NUMBER;
+
 const char *const LOOPBACK  =   "0.0.0.0";
 const char *const LOCALHOST = "127.0.0.1";
-
-
-
-struct _net_struct {
-    struct sockaddr_in sa;
-    const char *ip;
-    int fd;
-    uint16_t port;
-};
 
 
 

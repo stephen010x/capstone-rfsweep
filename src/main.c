@@ -1,4 +1,5 @@
 
+
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -6,6 +7,7 @@
 #include <string.h>
 #include <math.h>
 #include <inttypes.h>
+#include <errno.h>
 //#include <sched.h>
 
 #include "toolkit/debug.h"
@@ -254,13 +256,13 @@ static const stringmap_t flagstrings[] = {
 
 
 static int parse_args(int argc, const char *argv[], arghandler_t handler, void* data);
-static int parse_mode(char *str);
-static uint64_t parse_shortflags(char *str);
+static int parse_mode(const char *str);
+static uint64_t parse_shortflags(const char *str);
 static void print_help(int mode);
 static int eval_args(void);
 
-arghandler_t argh_mode;
-arghandler_t argh_flags;
+static arghandler_t argh_mode;
+static arghandler_t argh_flags;
 
 
 
@@ -276,7 +278,7 @@ int main(int argc, char *argv[]) {
     // arguments will also be evaluated here
     // so that we don't have malloc the serial or ip strings
     // that are put into the global state
-    err = parse_args(argc-1, argv+1, argh_mode, NULL);
+    err = parse_args(argc-1, (const char **)argv+1, argh_mode, NULL);
     if (err) {
         print_help(global.mode);
         return err;
@@ -298,7 +300,8 @@ int main(int argc, char *argv[]) {
 // recursive, and rarely needs to be recursive, but is totally capable of 
 // handling recursive arguments. (so long as I have the right handler parameters)
 static int parse_args(int argc, const char *argv[], arghandler_t handler, void* data) {
-    int n, err, type;
+    //int n, err, type;
+    int n, type;
     // I think since it is all handled via the handler, 
     // we can reasonably keep the strings on the stack
     //char str[argc][MAX_ARG_CHARS];
@@ -309,7 +312,7 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
 
     // handle zero arguments
     if (argc == 0) {
-        n = handler(FLAGTYPE_EMPTY, NULL, NULL, 0. NULL, data);
+        n = handler(FLAGTYPE_EMPTY, NULL, NULL, 0, NULL, data);
         if (n < 0) return -1;
         return 0;
     }
@@ -318,15 +321,19 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
     // loop through options
     for (int i = 0; i < argc; i++) {
 
+        // bound detection
+        if (strlen(argv[i]) > MAX_ARG_CHARS - 1)
+            goto _overflow;
+
         // detect if "--flag=" flag
-        n = sscanf_s(argv[i], "--%s=", str, MAX_ARG_CHARS);
-        if (n == EOF) goto _overflow;
+        n = sscanf(argv[i], "--%s=", str);
+        //if (n == EOF) goto _overflow;
         if (n == 1) {
         
             // ensure flag follows "--flag=val" format
-            n = sscanf_s(argv[i], "--%s=%s", str, MAX_ARG_CHARS, val, MAX_ARG_CHARS);
-            if (n == EOF) goto _overflow;
-            if (n == 1) {
+            n = sscanf(argv[i], "--%s=%s", str, val);
+            //if (n == EOF) goto _overflow;
+            if (n == 2) {
                 type = FLAGTYPE_DOUBLE;
                 valptr = val;
                 goto _match;
@@ -337,24 +344,26 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
         }
 
         // detect if "--flag" flag
-        n = sscanf_s(argv[i], "--%s", str, MAX_ARG_CHARS);
-        if (n == EOF) goto _overflow;
+        n = sscanf(argv[i], "--%s", str);
+        //if (n == EOF) goto _overflow;
         if (n == 1) {
             type = FLAGTYPE_DOUBLE;
             goto _match;
         }
         
         // detect if "-flag" flag
-        n = sscanf_s(argv[i], "-%s", str, MAX_ARG_CHARS);
-        if (n == EOF) goto _overflow;
+        //n = sscanf_s(argv[i], "-%s", str, MAX_ARG_CHARS);
+        n = sscanf(argv[i], "-%s", str);
+        //if (n == EOF) goto _overflow;
         if (n == 1) {
             type = FLAGTYPE_SINGLE;
             goto _match;
         }
 
         // detect if non-flag
-        n = sscanf_s(argv[i], "%s", str, MAX_ARG_CHARS);
-        if (n == EOF) goto _overflow;
+        //n = sscanf_s(argv[i], "%s", str, MAX_ARG_CHARS);
+        n = sscanf(argv[i], "%s", str);
+        //if (n == EOF) goto _overflow;
         if (n == 1) {
             type = FLAGTYPE_PLAIN;
             goto _match;
@@ -370,7 +379,7 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
         _match:
         // passes in remaining arguments
         // returns extra arguments parsed. negative means error
-        n = handler(type, str, valptr, argc-i-1. argv+i+1, data);
+        n = handler(type, str, valptr, argc-i-1, argv+i+1, data);
         // let handler handle error print statements
         if (n < 0) return -3;
         // increment argument counter by arguments handled by handler
@@ -381,7 +390,8 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
         
 
         _overflow:
-        alertf(STR_ERROR, "flag or value exceeds %d character limit \"%s\"", (int)MAX_ARG_CHARS, argv[i]);
+        alertf(STR_ERROR, "flag or value exceeds %d character limit \"%s\"", 
+                (int)MAX_ARG_CHARS, argv[i]);
         return -3;
     }
 
@@ -394,10 +404,10 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
 
 
 // return MODE_NULL for no match
-static int parse_mode(char *str) {
+static int parse_mode(const char *str) {
     int diff;
     
-    for (int i = 0; i < lenof(modestrings); i++) {
+    for (int i = 0; i < (int)lenof(modestrings); i++) {
         diff = strcmp(str, modestrings[i].string);
         if (diff == 0) return modestrings[i].mode;
     }
@@ -407,10 +417,10 @@ static int parse_mode(char *str) {
 
 
 
-static int parse_longflag(char *str) {
+static int parse_longflag(const char *str) {
     int diff;
     
-    for (int i = 0; i < lenof(flagstrings); i++) {
+    for (int i = 0; i < (int)lenof(flagstrings); i++) {
         diff = strcmp(str, flagstrings[i].string);
         if (diff == 0) return flagstrings[i].mode;
     }
@@ -429,26 +439,26 @@ static int parse_longflag(char *str) {
 
 
 
-static uint64_t parse_shortflags(char *str) {
+static uint64_t parse_shortflags(const char *str) {
     uint64_t flag;
 
     flag = 0;
 
     // loop through every character flag in str
     // and bitwise-or them to return value
-    for (char *c = str; c[0] != '\0'; c++) {
+    for (const char *c = str; c[0] != '\0'; c++) {
     
         // check if number
         if (c[0] >= '0' &&  c[0] <= '9')
-            flag |= 1<<(c[0]-'0'+FLAG_0);
+            flag |= (uint64_t)1<<(c[0]-'0'+FLAG_0);
 
         // check if lowercase
         else if (c[0] >= 'a' &&  c[0] <= 'z')
-            flag |= 1<<(c[0]-'a'+FLAG_a);
+            flag |= (uint64_t)1<<(c[0]-'a'+FLAG_a);
 
         // check if uppercase
         else if (c[0] >= 'A' &&  c[0] <= 'Z')
-            flag |= 1<<(c[0]-'A'+FLAG_A);
+            flag |= (uint64_t)1<<(c[0]-'A'+FLAG_A);
     }
 
     return flag;
@@ -458,15 +468,18 @@ static uint64_t parse_shortflags(char *str) {
 
 
 
-static int argh_mode(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
+static int argh_mode(int type, const char *str, const char *val, int argc, 
+                     const char *argv[], void *) {
     int err;
+    (void)val; // not used here, but the recursive 
+               // callback 'argh_flags' will use thiers
 
     switch (type) {
 
 
         // if contains h flag, then print help. otherwise complain
         case FLAGTYPE_SINGLE:
-            if (parse_shortflags(str) & (1<<FLAG_h)) {
+            if (parse_shortflags(str) & ((uint64_t)1<<FLAG_h)) {
                 print_help(MODE_NULL);
                 return argc;
                 
@@ -509,8 +522,9 @@ static int argh_mode(int type, const char *str, const char *val, int argc, const
                     } else if (strcmp(argv[0], "disable") == 0) {
                         global.transmit_enable = false;
                     } else {
-                        alertf(STR_ERROR, "expected \"rfweep transmit enable\" or \"rfweep transmit disable\"");
-                        return -5
+                        alertf(STR_ERROR, "expected \"rfweep transmit enable\" "
+                                          "or \"rfweep transmit disable\"");
+                        return -5;
                     }
                     
                     err = parse_args(argc-1, argv+1, argh_flags, NULL);
@@ -530,8 +544,8 @@ static int argh_mode(int type, const char *str, const char *val, int argc, const
             break;
     }
 
-    // since we run parse_args in this function, which will consume all arguments, we return
-    // that we have parsed the remaining arguments
+    // since we run parse_args in this function, which will consume all arguments, 
+    // we return that we have parsed the remaining arguments
     return argc;
 }
 
@@ -553,11 +567,11 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
         // if contains h flag, then print help. otherwise complain
         case FLAGTYPE_SINGLE:
             sflags = parse_shortflags(str);
-            if (sflags & (1<<FLAG_h)) {
+            if (sflags & ((uint64_t)1<<FLAG_h)) {
                 print_help(global.mode);
                 return argc;
                 
-            } else if (sflags ! (1<<FLAG_v)) {
+            } else if (sflags & ((uint64_t)1<<FLAG_v)) {
                 global.is_verbose = true;
                 
             } else {
@@ -600,7 +614,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     break;
 
                 case FLAG_BINARY:
-                    global.binary = true;
+                    global.out_binary = true;
                     break;
 
                 case FLAG_RSERIAL:
@@ -662,7 +676,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
 
                 default:
                     alertf(STR_ERROR, "unrecognized flag \"--%s\"", str);
-                    return -13
+                    return -13;
             
             }
             break;
@@ -670,7 +684,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
             
         case FLAGTYPE_PLAIN:
             alertf(STR_ERROR, "unrecognized option \"%s\"", str);
-            return -14
+            return -14;
 
             
         case FLAGTYPE_EMPTY:
@@ -682,7 +696,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
     }
 
     // recursively parse next argument
-    err = parse_args(argc, argv, argh_server, NULL);
+    err = parse_args(argc, argv, argh_flags, NULL);
     if (err) return -15;
 
     return argc;
@@ -695,13 +709,13 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
 
 
 static void print_help(int mode) {
-    char *str;
+    const char *str;
     
     switch (mode) {
         case MODE_SERVER:   str = str_help_server;   break;
-        case MODE_RESET:    str = str_help_reset;    break;
-        case MODE_RESTART:  str = str_help_restart;  break;
-        case MODE_GETLOGS:  str = str_help_getlogs;  break;
+        case MODE_RESET:
+        case MODE_RESTART:
+        case MODE_GETLOGS:  str = str_help_misc;          break;
         case MODE_MEASURE:  str = str_help_measure;  break;
         case MODE_TRANSMIT: str = str_help_transmit; break;
         case MODE_RECEIVE:  str = str_help_receive;  break;
@@ -748,7 +762,7 @@ static int eval_args(void) {
             
         case MODE_ROTATE:
             alertf(STR_ERROR, "rotate mode not yet supported");
-            return -1
+            return -1;
             
         case MODE_RECEIVE:
             alertf(STR_ERROR, "receive mode not yet supported");

@@ -222,16 +222,16 @@ endif
 
 
 $(BINTARG): $(OBJS)
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
 #	$(CC) $(BFLAGS) -o $@ -o $(basename $@) $^ -L$(LIBDIR) $(LFLAGS)
 
 $(LIBBINTARG).a: $(OBJS)
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(LIBBINTARG).so: $(OBJS)
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
 
 # Lets just implement header compilation and consolidation later
@@ -241,15 +241,15 @@ $(LIBBINTARG).so: $(OBJS)
 #	# remember to create a compiled version of the header
 
 $(TMPDIR)/$(GOAL)/%.o: %.c $(TMPDIR)/$(GOAL)/%.d
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(CC) -I$(INCDIR)  $(BFLAGS) $(CFLAGS) -c $< -o $@
 
 $(TMPDIR)/$(GOAL)/%.d: %.c
-	mkdir -p $(dir $@)
-	$(CC) -I$(INCDIR) $(BFLAGS) $(CFLAGS) -MM -MT $(patsubst %.d,%.o,$@) -MF $@ $<
+	@mkdir -p $(dir $@)
+	@$(CC) -I$(INCDIR) $(BFLAGS) $(CFLAGS) -MM -MT $(patsubst %.d,%.o,$@) -MF $@ $<
 
 $(TMPDIR)/$(GOAL)/%.pp: %.c
-	mkdir -p $(dir $@)
+	@mkdir -p $(dir $@)
 	$(CC) -E -I$(INCDIR)  $(BFLAGS) $(CFLAGS) -c $< > $@
 
 

@@ -9,6 +9,17 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <netinet/in.h>
+
+#include "toolkit/macros.h"
+
+
+typedef _Float32 float32_t;
+typedef _Float64 float64_t;
+
+_Static_assert(sizeof(float32_t) == sizeof(int32_t));
+_Static_assert(sizeof(float64_t) == sizeof(int64_t));
+
 
 
 
@@ -181,13 +192,26 @@ typedef struct {
 
 //struct _net_struct;
 
+
+
+struct _net_struct {
+    struct sockaddr_in sa;
+    const char *ip;
+    int fd;
+    uint16_t port;
+};
+
+
+
 typedef int net_mode_t;
-// TODO: these two should be combined into a struct
+
+// TODO: these two should be combined into a struct/union with net_t
 typedef uint32_t magic_num_t;
 typedef int32_t size_num_t;
+
 typedef struct _net_struct net_t;
 
-extern const magic_num_t magic_num;
+//extern const magic_num_t magic_num;
 extern const char *const LOOPBACK;
 extern const char *const LOCALHOST;
 
@@ -274,14 +298,16 @@ typedef struct __packed {
             int32_t size;
             union {
                 int8_t data[0];
-                int8_t *dataptr;    // NOTE: I should have done this for sending messages
-                                    // Actually, next time, it should only be a poiner
-                                    // and reads and writes write to and from that pointer
-                                    // while the actual message data is simply packed along with it
-            }
+                int8_t *dataptr;    // NOTE: I should have done this for sending
+                                    //       messages.
+                                    //       Actually, next time, it should only be a
+                                    //       pointer and reads and writes write to and 
+                                    //       from that pointer  while the actual message
+                                    //       data is simply packed along with it.
+            };
         } data;
 
-    }
+    };
     
 } message_t;
 
@@ -310,7 +336,7 @@ extern const char *str_help_measure;
 typedef struct {
     int mode;
 
-    union {
+    struct {
 
         // general
         const char *logpath;
@@ -439,7 +465,7 @@ int net_close(net_t *net, int timeout_sec);
 bool net_is_open(const net_t *net);
 // server
 int net_start(net_t *net, uint16_t port, int backlog);
-int net_accept(const net_t *restrict netin, net_t *restrict netout, int timeout_ms)
+int net_accept(const net_t *restrict netin, net_t *restrict netout, int timeout_ms);
 // client
 int net_connect(net_t *net, const char *ip, uint16_t port, int timeout_ms);
 // read/write
@@ -459,6 +485,7 @@ ssize_t message_getsize(const message_t *msg);
 message_t *message_new(message_type_t type, int32_t data_bytes);
 message_t *message_read(const net_t *net, int timeout_ms);
 int message_write(const net_t *restrict net, const message_t *restrict msg, int timeout_ms);
+char* message_type_str(message_type_t type);
 
 int binqueue_push(databin_t *bin);
 databin_t *binqueue_pop(void);
@@ -474,16 +501,44 @@ int server_run(globalstate_t *state);
 
 ///////////////
 // strto.c
-float64_t strtof64(const char *str);
-float32_t strtof32(const char *str);
-uint64_t  strtou64(const char *str);
-uint32_t  strtou32(const char *str);
-uint16_t  strtou16(const char *str);
-uint8_t    strtou8(const char *str);
-int64_t   strtoi64(const char *str);
-int32_t   strtoi32(const char *str);
-int16_t   strtoi16(const char *str);
-int8_t     strtoi8(const char *str);
+float64_t strtof64_custom(const char *str);
+float32_t strtof32_custom(const char *str);
+uint64_t  strtou64_custom(const char *str);
+uint32_t  strtou32_custom(const char *str);
+uint16_t  strtou16_custom(const char *str);
+uint8_t    strtou8_custom(const char *str);
+int64_t   strtoi64_custom(const char *str);
+int32_t   strtoi32_custom(const char *str);
+int16_t   strtoi16_custom(const char *str);
+int8_t     strtoi8_custom(const char *str);
+
+#define strtof64(...)  strtof64_custom(__VA_ARGS__)
+#define strtof32(...)  strtof32_custom(__VA_ARGS__)
+#define strtou64(...)  strtou64_custom(__VA_ARGS__)
+#define strtou32(...)  strtou32_custom(__VA_ARGS__)
+#define strtou16(...)  strtou16_custom(__VA_ARGS__)
+#define  strtou8(...)   strtou8_custom(__VA_ARGS__)
+#define strtoi64(...)  strtoi64_custom(__VA_ARGS__)
+#define strtoi32(...)  strtoi32_custom(__VA_ARGS__)
+#define strtoi16(...)  strtoi16_custom(__VA_ARGS__)
+#define  strtoi8(...)   strtoi8_custom(__VA_ARGS__)
+
+
+
+
+
+
+
+///////////////
+// help.c
+extern const char *str_help;
+extern const char *str_server;
+extern const char *str_misc;
+extern const char *str_transmit;
+extern const char *str_measure;
+extern const char *str_defaults;
+extern const char *str_help_receive;
+extern const char *str_help_rotate;
 
 
 

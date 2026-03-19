@@ -1,4 +1,5 @@
 
+#include "toolkit/macros.h"
 #include "rfsweep.h"
 
 
@@ -10,7 +11,6 @@ const char *str_help =
     "USAGE:"                                                            "\n"
     "        rfsweep -h"                                                "\n"
     "        rfsweep --defaults"                                        "\n"
-    "        rfsweep test (debug only)"                                 "\n"
     "        rfsweep <command> -h"                                      "\n"
     "        rfsweep <command> [options]"                               "\n"
     ""                                                                  "\n"
@@ -19,6 +19,7 @@ const char *str_help =
     "        Capstone project."                                         "\n"
     ""                                                                  "\n"
     "COMMANDS:"                                                         "\n"
+    "        test        Run tests (debug build only)"                  "\n"
     "        server      Start server."                                 "\n"
     "        reset       Reset remote server."                          "\n"
     "        restart     Restart remote server system."                 "\n"
@@ -212,8 +213,8 @@ const char *str_help_measure =
 
 
 // TODO: finish these
-const char *str_rotate  = "Help string for \"receive\" not written yet\n";
-const char *str_receive = "Help string for \"receive\" not written yet\n";
+const char *str_help_rotate  = "Help string for \"receive\" not written yet\n";
+const char *str_help_receive = "Help string for \"receive\" not written yet\n";
 
 
 
@@ -221,16 +222,16 @@ const char *str_receive = "Help string for \"receive\" not written yet\n";
 
 
 const char *str_help_defaults =
-    "DEFAULTS"                                  "\n"
-    "        --ip="         #DEFAULT_IP         "\n"
-    "        --port="       #DEFAULT_PORT       "\n"
-    "        --rserial="    #DEFAULT_RSERIAL    "\n"
-    "        --tserial="    #DEFAULT_TSERIAL    "\n"
-    "        --samps="      #DEFAULT_SAMPS      "\n"
-    "        --snap="       #DEFAULT_SNAP       "\n"
-    "        --steps="      #DEFAULT_STEPS      "\n"
-    "        --freq="       #DEFAULT_FREQ       "\n"
-    "        --band="       #DEFAULT_BAND       "\n"
-    "        --srate="      #DEFAULT_SRATE      "\n"
-    "        --lna-gain="   #DEFAULT_LNA        "\n"
-    "        --vga-gain="   #DEFAULT_VGA        "\n";
+    "DEFAULTS"                                            "\n"
+    "        --ip="         STRINGIFY(DEFAULT_IP)         "\n"
+    "        --port="       STRINGIFY(DEFAULT_PORT)       "\n"
+    "        --rserial="    STRINGIFY(DEFAULT_RSERIAL)    "\n"
+    "        --tserial="    STRINGIFY(DEFAULT_TSERIAL)    "\n"
+    "        --samps="      STRINGIFY(DEFAULT_SAMPS)      "\n"
+    "        --snap="       STRINGIFY(DEFAULT_SNAP)       "\n"
+    "        --steps="      STRINGIFY(DEFAULT_STEPS)      "\n"
+    "        --freq="       STRINGIFY(DEFAULT_FREQ)       "\n"
+    "        --band="       STRINGIFY(DEFAULT_BAND)       "\n"
+    "        --srate="      STRINGIFY(DEFAULT_SRATE)      "\n"
+    "        --lna-gain="   STRINGIFY(DEFAULT_LNA)        "\n"
+    "        --vga-gain="   STRINGIFY(DEFAULT_VGA)        "\n";

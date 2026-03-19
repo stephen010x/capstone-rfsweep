@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <math.h>
 #include <pthread.h>
+#include <string.h>
+#include <sched.h>
 //#include <sched.h>
 
 
@@ -106,19 +108,19 @@ rfsweep send measure --
 
 static int binqueue_init(void);
 static void binqueue_free(void);
-static databin_t *binqueue_pop(void);
+//static databin_t *binqueue_pop(void);
 //__inline__ int binqueue_items(void);
 //static void binqueue_lock(void);
 //static void binqueue_unlock(void);
 
-static int _data_thread_start(net_t *client);
-static int _data_thread_end(void);
-static void *_data_thread(net_t *client);
+static int _data_thread_start(const net_t *client);
+static int _data_thread_end(bool end_with_error);
+static void *_data_thread(const net_t *client);
 
 // static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath);
 static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg);
-static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params)
-static int _server_measure(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params);
+static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params);
+static int _server_measure(const message_t *restrict msg, hparams_t *restrict params);
 // static int _server_send_logs(const net_t *restrict client, const char *restrict logpath);
 static int _server_send_logs(const net_t *client);
 
@@ -133,7 +135,7 @@ static int _server_send_logs(const net_t *client);
 static volatile struct {
     int        index;
     int        size;    // in terms of entries, not bytes
-    databin_t *bins;
+    databin_t **bins;
     //bool       enable;
 } _binqueue = {
     .index = 0,
@@ -157,11 +159,11 @@ static globalstate_t *state;
 
 //static const int16_t _msg_received    = MESSAGE_RECEIVED;
 //static const int16_t _msg_failure     = MESSAGE_FAILURE;
-static const int16_t _msg_error       = MESSAGE_ERROR;
-static const int16_t _msg_success     = MESSAGE_SUCCESS;
-static const int16_t _msg_unsupported = MESSAGE_UNSUPPORTED;
-static const int16_t _msg_end         = MESSAGE_END;
-static const int16_t _msg_poll        = MESSAGE_POLL;
+static const __used int16_t _msg_error       = MESSAGE_ERROR;
+static const __used int16_t _msg_success     = MESSAGE_SUCCESS;
+static const __used int16_t _msg_unsupported = MESSAGE_UNSUPPORTED;
+static const __used int16_t _msg_end         = MESSAGE_END;
+static const __used int16_t _msg_poll        = MESSAGE_POLL;
 
 //#define CONST_MSG_RECEIVED     (*(const message_t*)&_msg_received)
 //#define CONST_MSG_FAILURE      (*(const message_t*)&_msg_failure)
@@ -182,12 +184,12 @@ static const int16_t _msg_poll        = MESSAGE_POLL;
 // if negative, then an error has occured
 ssize_t message_type_getsize(message_type_t type, int32_t data_bytes) {
 
-    if ((type < 0) || (type >= MESSAGE_TYPE_END))
+    if ((type < 0) || (type >= MESSAGE_TYPE_LEN))
         error(("message is an invalid type", -1));
 
     switch (type) {
         case MESSAGE_DATA:
-            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.data) + (size_t)databytes;
+            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.data) + (size_t)data_bytes;
         
         case MESSAGE_MEASURE:
             return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.measure);
@@ -240,7 +242,10 @@ message_t *message_read(const net_t *net, int timeout_ms) {
     assert(bytes < 1, NULL);
     
     // allocate  message
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Walloc-size-larger-than="
     msg = malloc(bytes);
+    #pragma GCC diagnostic pop
 
     // read incoming message
     bytes2 = net_read(net, (void*)msg, bytes, timeout_ms);
@@ -271,7 +276,7 @@ int message_write(const net_t *restrict net, const message_t *restrict msg, int 
 
 
 
-static __construct void _init(void) {
+static __construct void _init_server(void) {
     int err;
     // mutex should be locked before anything else.
     // that way everyone who tries to modify binqueue
@@ -285,7 +290,7 @@ static __construct void _init(void) {
 
 
 
-static __destruct void _exit(void) {
+static __destruct void _exit_server(void) {
     binqueue_free();
 }
 
@@ -302,19 +307,19 @@ static __destruct void _exit(void) {
 static int binqueue_init(void) {
     void *mem;
 
-    pthread_mutex_unlock(&_binqueue_mutex);
+    //pthread_mutex_unlock(&_binqueue_mutex);
     
     mem = malloc(QUEUE_START * sizeof(void*));
-    assert(mem != NULL);
+    assert(mem != NULL, -1);
 
     _binqueue = (typeof(_binqueue)){
         .index = 0,
-        .alloc = QUEUE_START,
+        .size  = QUEUE_START,
         .bins  = mem,
-    }
+    };
 
     // unlock mutex for everyone (nevermind)
-    pthread_mutex_unlock(&_binqueue_mutex);
+    //pthread_mutex_unlock(&_binqueue_mutex);
     
     return 0;
 }
@@ -328,7 +333,7 @@ static int binqueue_init(void) {
 static void binqueue_free(void) {
     void *bin;
 
-    pthread_mutex_lock(&_binqueue_mutex);
+    //pthread_mutex_lock(&_binqueue_mutex);
 
     if (_binqueue.index != 0)
         warnf("freeing queue with %d entries left", _binqueue.index);
@@ -342,7 +347,7 @@ static void binqueue_free(void) {
     // free bin pointer queue
     free(_binqueue.bins);
 
-    pthread_mutex_unlock(&_binqueue_mutex);
+    //pthread_mutex_unlock(&_binqueue_mutex);
 }
 
 
@@ -377,7 +382,7 @@ int binqueue_push(databin_t *bin) {
     // will segfault if bin is invalid memory.
     // better here than later.
     DEBUG(
-    _sink = bin->bincount;
+    _sink = bin->bcount;
     )
 
     // if new index will exceed queue size,
@@ -427,7 +432,7 @@ databin_t *binqueue_pop(void) {
 
     _binqueue.index--;
 
-    mem = _binqueue.bins[_binqueue.index]
+    mem = _binqueue.bins[_binqueue.index];
     
     pthread_mutex_unlock(&_binqueue_mutex);
     
@@ -435,7 +440,7 @@ databin_t *binqueue_pop(void) {
 }
 
 
-__soft_inline int binqueue_get_items(void) {
+__weak_inline int binqueue_get_items(void) {
     int retval;
 
     pthread_mutex_lock(&_binqueue_mutex);
@@ -462,7 +467,7 @@ __soft_inline int binqueue_get_items(void) {
 
 
 
-static int _data_thread_start(net_t *client) {
+static int _data_thread_start(const net_t *client) {
     int err;
 
     debugf("creating data thread");
@@ -472,7 +477,7 @@ static int _data_thread_start(net_t *client) {
 
     //_run_data_thread = true;
     
-    err = pthread_create(&tthread[0], NULL, (void*)&_data_thread, client);
+    err = pthread_create(&tthread[0], NULL, (void*)&_data_thread, (void*)client);
     assert(("failed to create data thread", !err), -1);
     
     return 0;
@@ -512,7 +517,7 @@ static int _data_thread_end(bool end_with_error) {
 
 
 // basically, this just waits until there is something in the queue, and then it sends it off.
-static void *_data_thread(net_t *client) {
+static void *_data_thread(const net_t *client) {
     int err;
     fbins_t *fbins;
     message_t *msg;
@@ -527,7 +532,7 @@ static void *_data_thread(net_t *client) {
 
             // pop item from queue
             fbins = binqueue_pop();
-            assert(fbins != NULL, return (void*)-1);
+            assert(fbins != NULL, (void*)-1);
 
             // create new message
             msg = message_new(MESSAGE_DATA, fbins_sizeof(fbins));
@@ -543,13 +548,14 @@ static void *_data_thread(net_t *client) {
             free(fbins);
 
             // handle error
-            assert(!err, (void*)err);
+            assert(!err, (void*)(intptr_t)err);
         }
 
-        // otherwise send poll and delay
-        //err = message_write(client, CONST_MSG_POLL, SERVER_TIMEOUT);
+        // otherwise send poll and delay for 200 ms
+        err = message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
+        micros_block_for(200000);
         //otherwise yield
-        shed_yield();
+        //shed_yield();
     }
 
     // send end or error message
@@ -558,7 +564,7 @@ static void *_data_thread(net_t *client) {
     else
         err = message_write(client, &CONST_MSG_END, SERVER_TIMEOUT);
 
-    assert(!err, (void*)err);
+    assert(!err, (void*)(intptr_t)err);
     return (void*)0;
 }
 
@@ -575,7 +581,7 @@ static void *_data_thread(net_t *client) {
 int server_run(globalstate_t *_state) {
     int err;
     net_t server, client;
-    ssize_t bytes;
+    //ssize_t bytes;
     message_t *msg;
 
 
@@ -612,7 +618,7 @@ int server_run(globalstate_t *_state) {
 //         if (bytes < 1) goto close_client;
 
         // wait for incoming message
-        msg = message_read(&client, SERVER_TIMEOUT)
+        msg = message_read(&client, SERVER_TIMEOUT);
 
         // handle message
         _server_message_handler(&client, msg);
@@ -621,6 +627,7 @@ int server_run(globalstate_t *_state) {
 
         // free msg buffer and close client
         close_client:
+        (void)&&close_client;
         free(msg);
         net_close(&client, SERVER_TIMEOUT);
 
@@ -647,14 +654,16 @@ static int _server_message_handler(const net_t *restrict client, const message_t
 
         // reset program
         case MESSAGE_RESET:
-            err = message_write(client, &CONST_MSG_RECEIVED, SERVER_TIMEOUT);
+            // err = message_write(client, &CONST_MSG_RECEIVED, SERVER_TIMEOUT);
+            err = message_write(client, &CONST_MSG_SUCCESS, SERVER_TIMEOUT);
             _run_server = false;
             return err;
 
 
         // restart whole system
         case MESSAGE_RESTART:
-            err = message_write(client, &CONST_MSG_RECEIVED, SERVER_TIMEOUT);
+            // err = message_write(client, &CONST_MSG_RECEIVED, SERVER_TIMEOUT);
+            err = message_write(client, &CONST_MSG_SUCCESS, SERVER_TIMEOUT);
             err |= system("systemctl reboot");
             return err;
 
@@ -698,7 +707,7 @@ char* message_type_str(message_type_t type) {
         case MESSAGE_MEASURE:     return "MESSAGE_MEASURE";
         case MESSAGE_UNSUPPORTED: return "MESSAGE_UNSUPPORTED";
         case MESSAGE_END:         return "MESSAGE_END";
-        default:                  return "INVALID MESSAGE"
+        default:                  return "INVALID MESSAGE";
     }
 }
 
@@ -709,7 +718,7 @@ char* message_type_str(message_type_t type) {
 
 
 
-static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params) {
+static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params) {
         int err;
 
         // start data thread
@@ -732,9 +741,10 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
         stepper_mode(MEASURE_STEP_MODE);
 
         // start measurements
-        err = _server_measure(client, msg, params);
+        err = _server_measure(msg, params);
 
     end_motor:
+        (void)&&end_motor;
         // quick pause
         micros_block_for(1e6);
         // step back to origin
@@ -764,16 +774,15 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
 
 
 
-static int _server_measure(const net_t *restrict client, const message_t *restrict msg, const hparams_t *restrict params) {
+static int _server_measure(const message_t *restrict msg, hparams_t *restrict params) {
     int err;
+    int steps;
     
     // full rotation is from 0.0 to 1.0
     //float angle, delta;
-    //int steps;
-    //int err;
 
     // set vars
-    // steps = msg->measure.steps;
+    steps = (int)msg->measure.steps;
     // angle = 0.0;
     // delta = 1.0 / steps;
 
@@ -793,18 +802,18 @@ static int _server_measure(const net_t *restrict client, const message_t *restri
         int32_t angle;
 
         // calculate angle
-        angle = (int32_t)roundf((float)STEPS_PER_REV * (float)i / (float)msg->measure.steps);
+        angle = (int32_t)roundf((float)STEPS_PER_REV * (float)i / (float)steps);
         // round to snap step size
         angle = (angle >> msg->measure.snappow) << msg->measure.snappow;
         // set param "pretty" angle
-        params.angle = 360.0f * angle / (float)STEPS_PER_REV;
+        params->angle = 360.0f * angle / (float)STEPS_PER_REV;
 
         // move to desired angle
         stepper_stepto(angle, STEP_DIR_CLOCKWISE);
 
         // take measurement
         err = hackrf_read(params);
-        assert(!err);
+        assert(!err, -1);
 
         // wait until measurement complete
         hackrf_wait_until_finished(params);
@@ -823,7 +832,8 @@ static int _server_measure(const net_t *restrict client, const message_t *restri
 
 static int _server_send_logs(const net_t *client) {
     FILE *file;
-    size_t size, rsize;
+    long size;
+    size_t rsize;
     int err;
     //int8_t *buff;
     message_t *msg;
@@ -847,7 +857,7 @@ static int _server_send_logs(const net_t *client) {
 
     // allocate message
     //buff = malloc(size+1);  // plus one extra to inject null terminator
-    msg = message_new(MESSAGE_DATA, size+1) // plus one extra to inject null terminator
+    msg = message_new(MESSAGE_DATA, size+1); // plus one extra to inject null terminator
     if (msg == NULL) {
         fclose(file);
         error(("failed to allocate space for message", -4));
@@ -863,7 +873,7 @@ static int _server_send_logs(const net_t *client) {
     fclose(file);
 
     // error check fread
-    if (rsize < size) {
+    if (rsize < (size_t)size) {
         free(msg);
         error(-5);
     }
