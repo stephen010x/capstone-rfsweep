@@ -50,6 +50,7 @@ enum {
     MODE_MEASURE,
     MODE_ROTATE,
     MODE_RECEIVE,
+    MODE_TEST,
 };
 
 
@@ -226,6 +227,7 @@ static const stringmap_t modestrings[] = {
     {.mode = MODE_MEASURE,  .string = "measure" },
     {.mode = MODE_ROTATE,   .string = "rotate"  },
     {.mode = MODE_RECEIVE,  .string = "receive" },
+    {.mode = MODE_TEST,     .string = "test"    },
 };
 
 
@@ -251,6 +253,11 @@ static const stringmap_t flagstrings[] = {
 
 
 
+static const char *line = 
+    "-------------------------------------------------------------\n";
+
+
+
 
 
 
@@ -264,7 +271,10 @@ static int eval_args(void);
 static arghandler_t argh_mode;
 static arghandler_t argh_flags;
 
-
+#ifdef __DEBUG__
+static int run_tests(void);
+static void *run_tests_thread(void*);
+#endif
 
 
 
@@ -530,11 +540,28 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
                     err = parse_args(argc-1, argv+1, argh_flags, NULL);
                     if (err) return -6;
                     break;
+
+
+                case MODE_TEST:
+                    #ifdef __DEBUG__
+                    debugf("Starting Tests...");
+                    err = run_tests();
+                    fprintf(stderr, line);
+                    if (err) {
+                        alertf(STR_ERROR, "Tests failed.");
+                        return 0;
+                    }
+                    debugf("Tests Complete.");
+                    break;
+                    #else
+                    alertf(STR_ERROR, "\"test\" mode debug build only.");
+                    return -8;
+                    #endif
                 
 
                 default:
                     alertf(STR_ERROR, "unrecognized mode \"%s\"", str);
-                    return -7;
+                    return -9;
             }
             break;
 
@@ -715,7 +742,7 @@ static void print_help(int mode) {
         case MODE_SERVER:   str = str_help_server;   break;
         case MODE_RESET:
         case MODE_RESTART:
-        case MODE_GETLOGS:  str = str_help_misc;          break;
+        case MODE_GETLOGS:  str = str_help_misc;     break;
         case MODE_MEASURE:  str = str_help_measure;  break;
         case MODE_TRANSMIT: str = str_help_transmit; break;
         case MODE_RECEIVE:  str = str_help_receive;  break;
@@ -777,6 +804,71 @@ static int eval_args(void) {
 }
 
 
+
+
+
+
+#ifdef __DEBUG__
+#include <pthread.h>
+#include <sched.h>
+
+
+static int run_tests(void) {
+    int err;
+    pthread_t thread;
+    void *retval;
+
+    fprintf(stderr, line);
+    msgf("Starting hackrf tests.");
+    hackrf_run_tests();
+
+    fprintf(stderr, line);
+    msgf("Starting time tests.");
+    micros_test();
+
+    fprintf(stderr, line);
+    msgf("Starting gpio tests.");
+    stepper_test();
+
+    fprintf(stderr, line);
+    msgf("Starting net tests.");
+    net_tests();
+
+
+    fprintf(stderr, line);
+    msgf("Starting server/client tests.");
+    global.ip = "127.0.0.1";
+
+    err = pthread_create(&thread, NULL, &run_tests_thread, NULL);
+    assert(("failed to create server thread.", !err), -1);
+
+    sched_yield();
+    micros_block_for(100000);
+
+    msgf("Client sending measure request.");
+    err = client_request_measure(&global);
+    if (!err) alertf(STR_ERROR, "client_request_measure failed.");
+
+    stop_server();
+    err = pthread_join(thread, &retval);
+    assert(("server thread failed to exit", !err), -1);
+    assert(("server thread returned error", retval == 0), (int)(intptr_t)retval);
+    passf("server thread successfully exited");
+    
+    return 0;
+}
+
+
+static void *run_tests_thread(void*) {
+    int err;
+
+    err = server_run(&global);
+    assert(("server_run failed.", !err), (void*)-1);
+
+    return 0;
+}
+
+#endif
 
 
 

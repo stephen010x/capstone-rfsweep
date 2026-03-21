@@ -200,7 +200,7 @@ int client_request_measure(globalstate_t *state) {
     debugf("Starting measurements...");
 
     // connect to server
-    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
+    err = net_connect(&net, state->ip, state->port, -1);
     assert(!err, err);
 
     // send request to server

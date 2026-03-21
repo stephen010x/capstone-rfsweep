@@ -50,7 +50,7 @@ const magic_num_t magic_num = MAGIC_NUMBER;
 
 const char *const LOOPBACK  =   "0.0.0.0";
 const char *const LOCALHOST = "127.0.0.1";
-
+const void *const _ONE = (void*)1;
 
 
 
@@ -114,6 +114,9 @@ int net_connect(net_t *net, const char *ip, uint16_t port, int timeout_ms) {
     fd = socket(AF_INET, SOCK_STREAM, 0);
     assert(("socket creation failed", fd != -1), -1);
 
+    // allow for ports to be reused quickly
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &_ONE, sizeof(_ONE));
+
     // offload rest of function so that we can handle closing the fd here if it fails
     // rather than try to close the file on every error
     err = _net_connect(fd, net, ip, port, timeout_ms);
@@ -172,12 +175,11 @@ static int _net_connect(int fd, net_t *net, const char *ip, uint16_t port, int t
 
 
     // wait for net to connect
-    err = net_await(net, NET_READ , timeout_ms);
+    err = net_await(net, NET_WRITE, timeout_ms);
     // TODO: double check return value of net_await
     // TODO: I should just have net_await set errno
     if (err) return err;
     //if (err) return errno;
-
 
     // check to see if net connected
     if (!net_is_open(net)) return -1;
@@ -215,6 +217,9 @@ int net_start(net_t *net, uint16_t port, int backlog) {
     // https://www.man7.org/linux/man-pages/man2/socket.2.html
     fd = socket(AF_INET, SOCK_STREAM, 0);
     assert(("socket creation failed", fd != -1), -1);
+
+    // allow for ports to be reused quickly
+    setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &_ONE, sizeof(_ONE));
 
     // offload rest of function so that we can handle closing the fd here if it fails
     // rather than try to close the file on every error
@@ -492,12 +497,14 @@ int net_close(net_t *net, int timeout_sec) {
     // https://www.man7.org/linux/man-pages/man3/setsockopt.3p.html
     // https://linux.die.net/man/3/setsockopt
     // https://www.man7.org/linux/man-pages/man7/socket.7.html
-    lg = (struct linger){
-        .l_onoff = !!timeout_sec,
-        .l_linger = timeout_sec,
-    };
-    err = setsockopt(net->fd, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg));
-    if (err) warnf("failed to set shutdown timeout");
+    if (timeout_sec >= 0) {
+        lg = (struct linger){
+            .l_onoff = !!timeout_sec,
+            .l_linger = timeout_sec,
+        };
+        err = setsockopt(net->fd, SOL_SOCKET, SO_LINGER, &lg, sizeof(lg));
+        if (err) warnf("failed to set shutdown timeout");
+    }
 
     // notify other of closed connection
     // https://www.man7.org/linux/man-pages/man2/shutdown.2.html
@@ -797,6 +804,7 @@ void net_tests(void) {
     int err;
     ssize_t size;
     net_t server, client, sconn;
+    char messagein[64];
     //char messagein[64];
     static const char message[] = "Hello world";
 
@@ -808,28 +816,36 @@ void net_tests(void) {
 
     // CLIENT: connect to server, no blocking
     err = net_connect(&client, LOCALHOST, 12346, 0);
-    vassert(!err);
+    jassert(!err, _exit_server);
 
     // SERVER: accept client, blocking
     err = net_accept(&server, &sconn, 1000);
-    vassert(!err);
+    jassert(!err, _exit_client);
 
     // CLIENT: write text to server, non-blocking
     err = net_write(&client, (void*)message, sizeof(message), 0);
-    vassert(!err);
+    jassert(!err, _exit_sconn);
 
     // SERVER: get size of message, and prepare buffer, blocking
     size = net_readsize(&sconn, 1000);
-    vassert(size > 1);
+    jassert(size > 1, _exit_sconn);
     debugf("message size is %ld", size);
     
-    char messagein[size];
+    //char messagein[size];
     
     // SERVER: read and text from client, blocking
     size = net_read(&sconn, (void*)messagein, size, 1000);
-    vassert(size > 1);
-    vassert(("messages are not equal", strcmp(messagein, message) == 0));
+    jassert(size > 1, _exit_sconn);
+    jassert(("messages are not equal", strcmp(messagein, message) == 0), _exit_sconn);
     debugf("Message recieved: \"%s\"", messagein);
+
+    // close nets
+    _exit_sconn:
+    net_close(&sconn, -1);
+    _exit_client:
+    net_close(&client, -1);
+    _exit_server:
+    net_close(&server, -1);
 
     debugf("Net tests completed successfully");
 }

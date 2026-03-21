@@ -95,9 +95,6 @@ WHITELIST := $(WHITELIST) preproc preproc_debug
 
 
 
-#test: $(BINDIR)/test
-
-
 
 # ============================================
 # ============================================
@@ -258,17 +255,21 @@ clean:
 	rm -rf $(BINDIR)
 
 
-run:
-	sudo ./$(BINTARG)
+#run:
+#	sudo ./$(BINTARG)
 #	sudo chrt -f 50 ./$(BINTARG)
 
 
 gdb:
-	gdb -x script.gdb ./$(BINTARG)
+	gdb -x script.gdb --args ./$(BINTARG) test
 
 
 analyze:
 	readelf -a $(BINTARG)
+
+
+test:
+	$(BINDIR)/$(TARGET) test
 
 
 
@@ -288,5 +289,5 @@ analyze:
 #.PHONY: all fast debug release static dynamic preprocess
 .PHONY: all fast debug release static dynamic preprocess
 .PHONY: static_fast static_debug static_release dynamic_fast dynamic_debug dynamic_release
-.PHONY: clean test shaders run gdb analyze
+.PHONY: clean test run shaders gdb analyze
 .PHONY: _build _fast _debug _release _dynamic _static _optimize

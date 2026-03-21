@@ -103,8 +103,8 @@ void gpioTerminate(void) {}
 
 
 
-static __construct void init_gpio(void);
-static __destruct void exit_gpio(void);
+//static __construct void init_gpio(void);
+//static __destruct void exit_gpio(void);
 static void *_step_thread(void *args);
 static void *_multistep_thread(void *args);
 static int _stepper_setdir(step_dir_t dir);
@@ -154,7 +154,8 @@ uint8_t stepper_get_multpow(void) {
 
 
 
-static __construct void init_gpio(void) {
+//static __construct void init_gpio(void) {
+void init_gpio(void) {
     int err; 
 
     #ifndef _RASPI
@@ -207,7 +208,8 @@ static __construct void init_gpio(void) {
 
 
 
-static __destruct void exit_gpio(void) {
+//static __destruct void exit_gpio(void) {
+void exit_gpio(void) {
     void *retval;
 
     debugf("canceling gpio threads");
@@ -501,20 +503,28 @@ int stepper_multistep(step_dir_t dir, int32_t steps) {
 
 DEBUG(
 void stepper_test(void) {
+        int err;
+        long long int lastus = micros();
+        long long int totalus = 0;
 
-    long long int lastus = micros();
-    long long int totalus = 0;
-    for(int i = 0; i < 400; i++) {
-        long long int newus;
+        // init gpio
+        init_gpio();
         
-        stepper_step(STEP_DIR_CLOCKWISE);
-        
-        newus = micros();
-        //debugf("%lld %lld", newus - lastus, micros());
-        totalus += newus - lastus;
-        lastus = newus;
-    }
-    debugf("step average delta %lld us", totalus/400);
+        for(int i = 0; i < 400; i++) {
+            long long int newus;
+            
+            err = stepper_step(STEP_DIR_CLOCKWISE);
+            jassert(!err, _exit_gpio);
+            
+            newus = micros();
+            //debugf("%lld %lld", newus - lastus, micros());
+            totalus += newus - lastus;
+            lastus = newus;
+        }
+        debugf("step average delta %lld us", totalus/400);
+
+    _exit_gpio:
+        exit_gpio();
 }
 )
 

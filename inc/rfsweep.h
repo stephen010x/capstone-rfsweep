@@ -38,7 +38,7 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 
 
 #define DEFAULT_IP     "10.42.0.1"
-#define DEFAULT_PORT   12345
+#define DEFAULT_PORT   12346
 #define DEFAULT_LOG    NULL
 #define DEFAULT_SAMPS  10
 #define DEFAULT_SNAP   16
@@ -490,9 +490,12 @@ char* message_type_str(message_type_t type);
 int binqueue_push(databin_t *bin);
 databin_t *binqueue_pop(void);
 int binqueue_get_items(void);
+int binqueue_init(void);
+void binqueue_free(void);
 
 //int server_run(uint16_t port, const char *logpath);
 int server_run(globalstate_t *state);
+void stop_server(void);
 
 
 
@@ -553,6 +556,17 @@ int client_request_getlogs(globalstate_t *state);
 int client_request_measure(globalstate_t *state);
 
 
+
+
+
+/////////////////
+// DEBUG STUFF
+#ifdef __DEBUG__
+int hackrf_run_tests(void);
+void micros_tests(void);
+void stepper_tests(void);
+void net_tests(void);
+#endif
 
 
 #endif

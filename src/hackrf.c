@@ -170,7 +170,8 @@ int hackrf_stop(hparams_t *params) {
 
 
 
-static __construct void init_libhackrf(void) {
+//static __construct void init_libhackrf(void) {
+void init_libhackrf(void) {
     // initilize the hackrf library
     int err = hackrf_init();
     vassert(("hackrf failed to initilize", !err));
@@ -179,7 +180,8 @@ static __construct void init_libhackrf(void) {
 }
 
 
-static __destruct void exit_libhackrf(void) {
+//static __destruct void exit_libhackrf(void) {
+void exit_libhackrf(void) {
     // safely exit hackrf
     int err = hackrf_exit();
     vassert(!err);
@@ -210,6 +212,7 @@ static int hackrf_open_board(hackrf_device_t **device, const char* serial) {
 
     // open first available hackrf device
     err = hackrf_open_by_serial(serial, device);
+    //err = hackrf_open(device);
     assert(("hackrf device could not be opened", err == HACKRF_SUCCESS), err);
 
 
@@ -552,6 +555,68 @@ static int rx_callback(hackrf_transfer_t *transfer) {
 
 
 
+
+
+
+#ifdef __DEBUG__
+int hackrf_run_tests(void) {
+    int err;
+    //hackrf_device_t *device;
+    hparams_t params;
+    fbins_t *fbins;
+
+    // init hackrf
+    init_libhackrf();
+
+    // init binqueue
+    err = binqueue_init();
+    assert(!err, err);
+
+    // init hparams
+    err = hparams_init(&params);
+    assert(("failed to init params", !err), err);
+
+    params.srate_hz = 10e6*2;
+    params.samps = 1000;
+    params.lna_gain = 30;
+    params.vga_gain = 20;
+    params.freq_hz = 2.4501e6; //5.2e6;
+    params.band_hz = hackrf_real_bandwidth(10e6);
+    //params.band_hz = 
+
+    debugf("srate_hz = %.0f Hz", params.srate_hz);
+
+    // begin hackrf read
+    err = hackrf_read(&params);
+    if (err) hparams_free(&params);
+    assert(("failed to read from hackrf", !err), err);
+
+    // wait until read finished
+    hackrf_wait_until_finished(&params);
+
+    fbins = binqueue_pop();
+
+    //print out sample of reads
+    debugf("printing out hackrf sample:");
+    for (int i = 0; i < 20; i++) {
+        printf("%d %d ", (int)fbins->bins[i].real, (int)fbins->bins[i].imag);
+    }
+    printf("\n");
+
+    // free hparams
+    hparams_free(&params);
+    // free fbins
+    free(fbins);
+
+    // free binqueue
+    binqueue_free();
+
+    // exit hackrf
+    exit_libhackrf();
+
+    return 0;
+}
+#endif
 
 
 

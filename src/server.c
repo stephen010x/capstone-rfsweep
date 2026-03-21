@@ -106,8 +106,9 @@ rfsweep send measure --
 
 
 
-static int binqueue_init(void);
-static void binqueue_free(void);
+// static int binqueue_init(void);
+// static void binqueue_free(void);
+
 //static databin_t *binqueue_pop(void);
 //__inline__ int binqueue_items(void);
 //static void binqueue_lock(void);
@@ -124,6 +125,16 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
 // static int _server_send_logs(const net_t *restrict client, const char *restrict logpath);
 static int _server_send_logs(const net_t *client);
 
+static void _init_server(void);
+static void _exit_server(void);
+
+
+//void time_init(void);
+void init_gpio(void);
+void init_libhackrf(void);
+
+void exit_gpio(void);
+void exit_libhackrf(void);
 
 
 
@@ -145,9 +156,9 @@ static volatile struct {
 };
 
 
-static bool _run_server;
-static bool _run_data_thread;
-static bool _err_data_thread;
+static volatile bool _run_server;
+static volatile bool _run_data_thread;
+static volatile bool _err_data_thread;
 
 static pthread_t tthread[1];
 static pthread_mutex_t _binqueue_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -177,6 +188,13 @@ static const __used int16_t _msg_poll        = MESSAGE_POLL;
 
 
 #define PSEUDOMSG (*(message_t*)NULL)
+
+
+
+
+void stop_server(void) {
+    _run_server = 0;
+}
 
 
 
@@ -236,22 +254,40 @@ message_t *message_new(message_type_t type, int32_t data_bytes) {
 message_t *message_read(const net_t *net, int timeout_ms) {
     message_t *msg;
     ssize_t bytes, bytes2;
+
+    DEBUG(
+    debugf("address %s:%d attempting to read message", net->ip, (int)net->port);
+    )
     
     // wait for incoming message
     bytes = net_readsize(net, timeout_ms);
-    assert(bytes < 1, NULL);
+    assert(bytes > 0, NULL);
     
     // allocate  message
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Walloc-size-larger-than="
     msg = malloc(bytes);
+    assert(msg != NULL, NULL);
     #pragma GCC diagnostic pop
 
     // read incoming message
     bytes2 = net_read(net, (void*)msg, bytes, timeout_ms);
-    assert(bytes < 1, (free(msg), NULL));
+    //debugf("%d", (int)msg->type);
+    assert(("net_read error. Client likely disconnected.", bytes2 > 0), NULL);
+    assert(bytes > 0, (free(msg), NULL));
     assert(("message size vs bytes read mismatch", bytes2 == bytes), (free(msg), NULL));
-    assert(("message size misreported. message corrupt", message_getsize(msg) == bytes), (free(msg), NULL));
+    //assert(("message size misreported. message corrupt", message_getsize(msg) == bytes), (free(msg), NULL));
+    if (message_getsize(msg) != bytes) {
+        alertf(STR_ERROR, "message size misreported "
+                          "(message_getsize->%ld) (bytes->%ld)",
+                          message_getsize(msg), bytes);
+        return NULL;
+    }
+
+    DEBUG(
+    debugf("address %s:%d received %s message (%d)", 
+        net->ip, (int)net->port, message_type_str(msg->type), (int)msg->type);
+    )
 
     return msg;
 }
@@ -263,6 +299,11 @@ message_t *message_read(const net_t *net, int timeout_ms) {
 
 int message_write(const net_t *restrict net, const message_t *restrict msg, int timeout_ms) {
     int err;
+
+    DEBUG(
+    debugf("sending %s message (%d) to address %s:%d", 
+        message_type_str(msg->type), (int)msg->type, net->ip, (int)net->port);
+    )
 
     err = net_write(net, (void*)msg, message_getsize(msg), timeout_ms);
     assert(!err, -1);
@@ -276,7 +317,8 @@ int message_write(const net_t *restrict net, const message_t *restrict msg, int 
 
 
 
-static __construct void _init_server(void) {
+//static __construct void _init_server(void) {
+static void _init_server(void) {
     int err;
     // mutex should be locked before anything else.
     // that way everyone who tries to modify binqueue
@@ -285,12 +327,22 @@ static __construct void _init_server(void) {
 
     err = binqueue_init();
     fassert(!err);
+
+    // run external constructs
+    //time_init();
+    init_gpio();
+    init_libhackrf();
 }
 
 
 
 
-static __destruct void _exit_server(void) {
+//static __destruct void _exit_server(void) {
+static void _exit_server(void) {
+    // run external deconstructs
+    exit_gpio();
+    exit_libhackrf();
+    
     binqueue_free();
 }
 
@@ -304,7 +356,8 @@ static __destruct void _exit_server(void) {
 // Nevermind.
 // Just call this from main thread rather than
 // the thread handling the queue
-static int binqueue_init(void) {
+//static int binqueue_init(void) {
+int binqueue_init(void) {
     void *mem;
 
     //pthread_mutex_unlock(&_binqueue_mutex);
@@ -330,7 +383,8 @@ static int binqueue_init(void) {
 
 
 // don't call this within binqueue_lock
-static void binqueue_free(void) {
+//static void binqueue_free(void) {
+void binqueue_free(void) {
     void *bin;
 
     //pthread_mutex_lock(&_binqueue_mutex);
@@ -586,6 +640,10 @@ int server_run(globalstate_t *_state) {
 
 
     state = _state;
+
+
+    // run server init
+    _init_server();
     
 
     // start listening for incoming connections
@@ -593,6 +651,7 @@ int server_run(globalstate_t *_state) {
     net_start(&server, state->port, 1);
 
     _run_server = true;
+    err = 0;
     
     while(_run_server) {
 
@@ -619,6 +678,11 @@ int server_run(globalstate_t *_state) {
 
         // wait for incoming message
         msg = message_read(&client, SERVER_TIMEOUT);
+        if (msg == NULL) {
+            _run_server = false;
+            err = -1;
+            jassert(msg != NULL, _exit_client);
+        }
 
         // handle message
         _server_message_handler(&client, msg);
@@ -629,6 +693,8 @@ int server_run(globalstate_t *_state) {
         close_client:
         (void)&&close_client;
         free(msg);
+
+        _exit_client:
         net_close(&client, SERVER_TIMEOUT);
 
     }
@@ -636,7 +702,10 @@ int server_run(globalstate_t *_state) {
     // close server listener
     net_close(&server, SERVER_TIMEOUT);
 
-    return 0;
+    // run server exit
+    _exit_server();
+
+    return err;
 }
 
 
@@ -707,6 +776,8 @@ char* message_type_str(message_type_t type) {
         case MESSAGE_MEASURE:     return "MESSAGE_MEASURE";
         case MESSAGE_UNSUPPORTED: return "MESSAGE_UNSUPPORTED";
         case MESSAGE_END:         return "MESSAGE_END";
+        case MESSAGE_POLL:        return "MESSAGE_POLL";
+        case MESSAGE_ERROR:       return "MESSAGE_ERROR";
         default:                  return "INVALID MESSAGE";
     }
 }
@@ -720,6 +791,9 @@ char* message_type_str(message_type_t type) {
 
 static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params) {
         int err;
+
+        debugf("server writing poll message");
+        message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
 
         // start data thread
         err = _data_thread_start(client);
@@ -892,9 +966,4 @@ static int _server_send_logs(const net_t *client) {
     
     return 0;
 }
-
-
-
-
-
 
