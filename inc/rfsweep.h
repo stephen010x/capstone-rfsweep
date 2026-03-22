@@ -246,6 +246,7 @@ enum {
     // TODO: implement this message
     //       Also implement a ctrl-c capture that will close the connection before killing
     MESSAGE_CANCEL,     // client tell server to stop
+    MESSAGE_PING,       // ping server
 
     MESSAGE_TYPE_LEN,   // this or anything past this is invalid
 };
@@ -427,6 +428,7 @@ void hackrf_wait_until_finished(hparams_t *params);
 ///////////////
 // time.c
 int64_t micros(void);
+int64_t micros_time(void);
 void micros_block_for(int64_t u);
 void micros_busy_for(int64_t u);
 void micros_test(void);
@@ -542,6 +544,7 @@ extern const char *str_measure;
 extern const char *str_defaults;
 extern const char *str_help_receive;
 extern const char *str_help_rotate;
+extern const char *str_help_defaults;
 
 
 
@@ -554,6 +557,7 @@ int client_request_reset(globalstate_t *state);
 int client_request_restart(globalstate_t *state);
 int client_request_getlogs(globalstate_t *state);
 int client_request_measure(globalstate_t *state);
+int client_request_ping(globalstate_t *state);
 
 
 

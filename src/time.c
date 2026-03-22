@@ -57,7 +57,32 @@ static __construct void time_init(void) {
 
 
 // process uptime in microseconds
+// int64_t __hot __flatten __optimize_fast micros(void) {
+//     int err;
+//     struct timespec time;
+//     (void)err;
+// 
+//     err = clock_gettime(CLOCK_MONOTONIC, &time);
+// 
+//     DEBUG(
+//     assert(("unable to get system time", !err), 0);
+//     )
+// 
+//     return _timespec_to_us(&time) - start_us;
+// }
+
+
+
+
 int64_t __hot __flatten __optimize_fast micros(void) {
+    return micros_time() - start_us;
+}
+
+
+
+
+// system boot(ish) time in microsecnds
+__weak_inline int64_t __hot __flatten __optimize_fast micros_time(void) {
     int err;
     struct timespec time;
     (void)err;
@@ -68,8 +93,10 @@ int64_t __hot __flatten __optimize_fast micros(void) {
     assert(("unable to get system time", !err), 0);
     )
 
-    return _timespec_to_us(&time) - start_us;
+    return _timespec_to_us(&time);
 }
+
+
 
 
 // sleep wait
@@ -149,6 +176,8 @@ void micros_test(void) {
         micros_busy_for(delays[i]);
         times[i+1+lenof(delays)] = micros();
     }
+    
+    debugf("micros() - micros() = %lld", micros() - micros());
 
     for (int i = 1; i <= (int)lenof(times)-1; i++) {
         long long delta = (long long)times[i] - (long long)times[i-1];
@@ -156,6 +185,7 @@ void micros_test(void) {
                 (i <= (int)lenof(delays)) ? "block" : "busy ",
                 (long long)delays[(i-1)%lenof(delays)], delta);
     }
+
 
 
 //    times[0] = 0;

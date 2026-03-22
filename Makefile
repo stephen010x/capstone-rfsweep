@@ -269,7 +269,7 @@ analyze:
 
 
 test:
-	$(BINDIR)/$(TARGET) test
+	$(BINDIR)/$(TARGET) test -v
 
 
 

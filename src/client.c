@@ -23,10 +23,12 @@
 static const int16_t _msg_reset   = MESSAGE_RESET;
 static const int16_t _msg_restart = MESSAGE_RESTART;
 static const int16_t _msg_getlogs = MESSAGE_GETLOGS;
+static const int16_t _msg_ping    = MESSAGE_PING;
 
 #define CONST_MSG_RESET    (*(const message_t*)&_msg_reset)
 #define CONST_MSG_RESTART  (*(const message_t*)&_msg_restart)
 #define CONST_MSG_GETLOGS  (*(const message_t*)&_msg_getlogs)
+#define CONST_MSG_PING     (*(const message_t*)&_msg_ping)
 
 
 
@@ -59,6 +61,7 @@ static const char *msgstr[MESSAGE_TYPE_LEN] = {
     [MESSAGE_TRANSMIT_DISABLE]  = "TRANSMIT_DISABLE",
     [MESSAGE_UNSUPPORTED]       = "UNSUPPORTED",
     [MESSAGE_END]               = "END",
+    [MESSAGE_PING]              = "PING",
     //[MESSAGE_STOP]              = "STOP",
 };
 
@@ -120,6 +123,12 @@ int client_request_reset(globalstate_t *state) {
 
 int client_request_restart(globalstate_t *state) {
     return _client_request(state, &CONST_MSG_RESTART);
+}
+
+
+
+int client_request_ping(globalstate_t *state) {
+    return _client_request(state, &CONST_MSG_PING);
 }
 
 

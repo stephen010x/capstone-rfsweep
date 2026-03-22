@@ -13,6 +13,7 @@
 #include <fcntl.h>      // for fcntl function
 #include <poll.h>       // for poll
 #include <string.h>
+#include <inttypes.h>
 // good heavens, why do each of these need their own header???
 
 
@@ -530,6 +531,8 @@ int net_close(net_t *net, int timeout_sec) {
 int net_write(size_num_t count; const net_t *restrict net, const int8_t buff[restrict count], size_num_t count, int timeout_ms) {
     int err;
 
+    debugf("0x%04" PRIx32 " 0x%04" PRIx32, (uint32_t)magic_num, (uint32_t)count);
+
     // write the magic number
     err = net_write_raw(net, (void*)&magic_num, sizeof(magic_num_t), timeout_ms);
     assert(!err, err);
@@ -556,6 +559,8 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
     ssize_t n;
     size_t total = 0;
     int err;
+
+    debugf("#### writing %d bytes from file (%d)",  (int)count, (int)net->fd);
     
     // writes data to socket file
     // blocks until it writes, I guess
@@ -564,7 +569,11 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
         // partial writes can occur, so we need to make sure it is fully written
         // https://www.man7.org/linux/man-pages/man2/write.2.html
         errno = 0;
+        debugf("timestamp %lld us", (long long)micros_time());
         n = write(net->fd, buff+total, count-total);
+
+        debugf("wrote %d +%d (of %d) [0x%08" PRIx32 " 0x%08" PRIx32 "]", 
+            (int)total, n, (int)count, *(uint32_t*)(buff+total), *(uint32_t*)(buff+total+4));
 
         // handle the error
         if (n < 1) {
@@ -593,7 +602,7 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
             }
         }
         
-        total += n;
+        else total += n;
     }
 
     return 0;
@@ -609,14 +618,24 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
 size_num_t net_readsize(const net_t *net, int timeout_ms) {
     ssize_t retsize;
     // both magic number and size will be read into here
-    int8_t buff[sizeof(magic_num_t) + sizeof(size_num_t)];
+    int8_t buff[sizeof(magic_num_t) + sizeof(size_num_t) + sizeof(uint32_t)*4];
     
     // read size without consuming the buffer
-    retsize = net_read_raw(net, buff, sizeof(magic_num_t) + sizeof(size_num_t), timeout_ms, MSG_PEEK);
+    retsize = net_read_raw(net, buff, sizeof(magic_num_t) + sizeof(size_num_t) + sizeof(uint32_t)*4, timeout_ms, MSG_PEEK);
     assert(retsize > 0, retsize);
 
     // assert magic number
     assert(("corruption detected. invalid magic number", *(magic_num_t*)(buff+0) == MAGIC_NUMBER), -1);
+
+    debugf("0x%08" PRIx32 " 0x%08" PRIx32, *(uint32_t*)(buff+0), *(uint32_t*)(buff+4));
+    
+    for (int i = 0; i < sizeof(buff)/sizeof(uint32_t); i++)
+        printf("0x%08" PRIx32 " ", ((uint32_t*)buff)[i]);
+    printf("\n");
+
+    // for (int i = 0; i < 24; i++)
+    //     printf("0x%02x ", (int)(uint8_t)buff[i]);
+    // printf("\n");
 
     // return size
     return *(size_num_t*)(buff+sizeof(magic_num_t));
@@ -675,6 +694,9 @@ ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restri
     int err;
     ssize_t n;
     size_t total;
+
+    debugf("#### %s %d bytes from file (%d)", 
+        (flags & MSG_PEEK) ? "peeking" : "reading",  (int)count, (int)net->fd);
     
     // reads data from socket file
     for (total = 0; total < count;) {
@@ -682,7 +704,12 @@ ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restri
         // incoming reads can be fragmented, so we have to loop
         // https://www.man7.org/linux/man-pages/man2/read.2.html
         errno = 0;
+        debugf("timestamp %lld us", (long long)micros_time());
         n = recv(net->fd, buff+total, count-total, flags);
+
+        //debugf("read %d +%d (of %d)", (int)total, n, (int)count);
+        debugf("read %d +%d (of %d) [0x%08" PRIx32 " 0x%08" PRIx32 "]", 
+            (int)total, n, (int)count, *(uint32_t*)(buff+total), *(uint32_t*)(buff+total+4));
 
         // handle the error
         if (n < 1) {
@@ -708,15 +735,15 @@ ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restri
                     continue;
             
                 default:
-                // unhandled errors result in a return
-                //_net_err(errno, false);
-                //assert(("error reading from socket file", 0), -1);
-                alertf(STR_ERROR, "%s (%s %d)", _net_err_str(errno), _net_err_name(errno), errno);
-                return -1;
+                    // unhandled errors result in a return
+                    //_net_err(errno, false);
+                    //assert(("error reading from socket file", 0), -1);
+                    alertf(STR_ERROR, "%s (%s %d)", _net_err_str(errno), _net_err_name(errno), errno);
+                    return -1;
             }
         }
-        
-        total += n;
+
+        else total += n;
     }
 
     return total;
@@ -829,7 +856,7 @@ void net_tests(void) {
     // SERVER: get size of message, and prepare buffer, blocking
     size = net_readsize(&sconn, 1000);
     jassert(size > 1, _exit_sconn);
-    debugf("message size is %ld", size);
+    debugf("message size is %ld", (long)size);
     
     //char messagein[size];
     

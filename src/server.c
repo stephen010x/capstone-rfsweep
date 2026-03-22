@@ -255,12 +255,15 @@ message_t *message_read(const net_t *net, int timeout_ms) {
     message_t *msg;
     ssize_t bytes, bytes2;
 
+    printf("\n");
+
     DEBUG(
     debugf("address %s:%d attempting to read message", net->ip, (int)net->port);
     )
     
     // wait for incoming message
     bytes = net_readsize(net, timeout_ms);
+    debugf("bytes %d", bytes);
     assert(bytes > 0, NULL);
     
     // allocate  message
@@ -280,7 +283,7 @@ message_t *message_read(const net_t *net, int timeout_ms) {
     if (message_getsize(msg) != bytes) {
         alertf(STR_ERROR, "message size misreported "
                           "(message_getsize->%ld) (bytes->%ld)",
-                          message_getsize(msg), bytes);
+                          (long)message_getsize(msg), (long)bytes);
         return NULL;
     }
 
@@ -299,6 +302,8 @@ message_t *message_read(const net_t *net, int timeout_ms) {
 
 int message_write(const net_t *restrict net, const message_t *restrict msg, int timeout_ms) {
     int err;
+
+    printf("\n");
 
     DEBUG(
     debugf("sending %s message (%d) to address %s:%d", 
@@ -737,6 +742,11 @@ static int _server_message_handler(const net_t *restrict client, const message_t
             return err;
 
 
+        case MESSAGE_PING:
+            err = message_write(client, &CONST_MSG_SUCCESS, SERVER_TIMEOUT);
+            return err;
+
+
         // return error logs
         case MESSAGE_GETLOGS:
             err = _server_send_logs(client);
@@ -778,6 +788,7 @@ char* message_type_str(message_type_t type) {
         case MESSAGE_END:         return "MESSAGE_END";
         case MESSAGE_POLL:        return "MESSAGE_POLL";
         case MESSAGE_ERROR:       return "MESSAGE_ERROR";
+        case MESSAGE_PING:        return "MESSAGE_PING";
         default:                  return "INVALID MESSAGE";
     }
 }

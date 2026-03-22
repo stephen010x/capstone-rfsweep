@@ -51,6 +51,7 @@ enum {
     MODE_ROTATE,
     MODE_RECEIVE,
     MODE_TEST,
+    MODE_PING,
 };
 
 
@@ -228,6 +229,7 @@ static const stringmap_t modestrings[] = {
     {.mode = MODE_ROTATE,   .string = "rotate"  },
     {.mode = MODE_RECEIVE,  .string = "receive" },
     {.mode = MODE_TEST,     .string = "test"    },
+    {.mode = MODE_PING,     .string = "ping"    },
 };
 
 
@@ -253,8 +255,10 @@ static const stringmap_t flagstrings[] = {
 
 
 
+#ifdef __DEBUG__
 static const char *line = 
     "-------------------------------------------------------------\n";
+#endif
 
 
 
@@ -515,6 +519,8 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
                 case MODE_RESTART:
                 case MODE_GETLOGS:
                 case MODE_MEASURE:
+                case MODE_TEST:
+                case MODE_PING:
                     err = parse_args(argc, argv, argh_flags, NULL);
                     if (err) return -3;
                     break;
@@ -542,21 +548,21 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
                     break;
 
 
-                case MODE_TEST:
-                    #ifdef __DEBUG__
-                    debugf("Starting Tests...");
-                    err = run_tests();
-                    fprintf(stderr, line);
-                    if (err) {
-                        alertf(STR_ERROR, "Tests failed.");
-                        return 0;
-                    }
-                    debugf("Tests Complete.");
-                    break;
-                    #else
-                    alertf(STR_ERROR, "\"test\" mode debug build only.");
-                    return -8;
-                    #endif
+                // case MODE_TEST:
+                //     #ifdef __DEBUG__
+                //     debugf("Starting Tests...");
+                //     err = run_tests();
+                //     fprintf(stderr, line);
+                //     if (err) {
+                //         alertf(STR_ERROR, "Tests failed.");
+                //         return 0;
+                //     }
+                //     debugf("Tests Complete.");
+                //     break;
+                //     #else
+                //     alertf(STR_ERROR, "\"test\" mode debug build only.");
+                //     return -8;
+                //     #endif
                 
 
                 default:
@@ -739,10 +745,12 @@ static void print_help(int mode) {
     const char *str;
     
     switch (mode) {
-        case MODE_SERVER:   str = str_help_server;   break;
         case MODE_RESET:
         case MODE_RESTART:
+        case MODE_PING:
         case MODE_GETLOGS:  str = str_help_misc;     break;
+        
+        case MODE_SERVER:   str = str_help_server;   break;
         case MODE_MEASURE:  str = str_help_measure;  break;
         case MODE_TRANSMIT: str = str_help_transmit; break;
         case MODE_RECEIVE:  str = str_help_receive;  break;
@@ -766,6 +774,9 @@ static int eval_args(void) {
 
     err = 0;
 
+    if (global.is_verbose)
+        fprintf(stderr, str_help_defaults);
+
     switch (global.mode) {
         case MODE_SERVER:
             err = server_run(&global);
@@ -786,6 +797,10 @@ static int eval_args(void) {
         case MODE_MEASURE:
             err = client_request_measure(&global);
             break;
+
+        case MODE_PING:
+            err = client_request_ping(&global);
+            break;
             
         case MODE_ROTATE:
             alertf(STR_ERROR, "rotate mode not yet supported");
@@ -798,6 +813,22 @@ static int eval_args(void) {
         case MODE_TRANSMIT:
             alertf(STR_ERROR, "transmit mode not yet supported");
             return -3;
+
+        case MODE_TEST:
+            #ifdef __DEBUG__
+            debugf("Starting Tests...");
+            err = run_tests();
+            fprintf(stderr, line);
+            if (err) {
+                alertf(STR_ERROR, "Tests failed.");
+                return 0;
+            }
+            debugf("Tests Complete.");
+            break;
+            #else
+            alertf(STR_ERROR, "\"test\" mode debug build only.");
+            return -8;
+            #endif
     }
 
     return err;
@@ -843,7 +874,8 @@ static int run_tests(void) {
     assert(("failed to create server thread.", !err), -1);
 
     sched_yield();
-    micros_block_for(100000);
+    // give server enugh time to start
+    micros_block_for(500000);
 
     msgf("Client sending measure request.");
     err = client_request_measure(&global);

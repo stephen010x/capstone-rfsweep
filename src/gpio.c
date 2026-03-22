@@ -269,7 +269,7 @@ static void *_step_thread(void *args) {
     for(;;) {
         while(!global.dostep) {
             //sched_yield();
-            micros_block_for(1);
+            micros_busy_for(1);
             pthread_testcancel();
         }
 
@@ -278,13 +278,13 @@ static void *_step_thread(void *args) {
         wassert(("failed write to GPIO_STEP", !err));
 
         //micros_block_for(5); // minimum of 1us
-        micros_block_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
+        micros_busy_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
         
         // turn off step, in prep for next turn-on
         err = gpioWrite(GPIO_STEP, 0);
         wassert(("failed write to GPIO_STEP", !err));
         
-        micros_block_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
+        micros_busy_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
 
         // reset dostep
         global.dostep = 0;
@@ -296,6 +296,7 @@ static void *_step_thread(void *args) {
 
     return NULL;
 }
+
 
 
 
@@ -312,7 +313,7 @@ static void *_multistep_thread(void *args) {
         // wait until there are steps to step
         while(global.multistep == 0) {
             //sched_yield();
-            micros_block_for(1);
+            micros_busy_for(1);
             pthread_testcancel();
         }
 
@@ -343,7 +344,7 @@ bool is_stepping(void) {
 void stepper_wait(void) {
     while ((global.multistep != 0) || global.dostep)
         //sched_yield();
-        micros_block_for(1);
+        micros_busy_for(1);
 }
 
 
@@ -460,7 +461,7 @@ int stepper_step(step_dir_t dir) {
     // write a 1 to a value that is already set to 1
     while (global.dostep)
         //sched_yield();
-        micros_block_for(1);
+        micros_busy_for(1);
 
     // activate stepper
     // the stepper thread will set this to zero when finished
@@ -488,7 +489,7 @@ int stepper_multistep(step_dir_t dir, int32_t steps) {
     // block if multistepper is currently running
     while (global.multistep != 0)
         //sched_yield();
-        micros_block_for(1);
+        micros_busy_for(1);
 
     // set direction
     err = _stepper_setdir(dir);
@@ -504,24 +505,38 @@ int stepper_multistep(step_dir_t dir, int32_t steps) {
 DEBUG(
 void stepper_test(void) {
         int err;
-        long long int lastus = micros();
-        long long int totalus = 0;
+        //long long int lastus;
+        //long long int totalus;
+        long long startus;
+        long long endus;
 
         // init gpio
         init_gpio();
-        
+
+        err = stepper_mode(STEP_MODE_1_16);
+        jassert(!err, _exit_gpio);
+
+        //lastus = micros();
+        //totalus = 0;
+
+        startus = micros();
         for(int i = 0; i < 400; i++) {
-            long long int newus;
+            //long long int newus;
             
             err = stepper_step(STEP_DIR_CLOCKWISE);
             jassert(!err, _exit_gpio);
             
-            newus = micros();
+            //newus = micros();
             //debugf("%lld %lld", newus - lastus, micros());
-            totalus += newus - lastus;
-            lastus = newus;
+            //totalus += newus - lastus;
+            //lastus = newus;
         }
-        debugf("step average delta %lld us", totalus/400);
+        endus = micros();
+        
+        // debugf("step average delta %lld us (target %lld us)",
+        //         totalu
+        debugf("step average delta %lld us (target %lld us)",
+                (endus-startus)/400, MIN_MICROS_PER_STEP>>(4-global.mode_mult));
 
     _exit_gpio:
         exit_gpio();

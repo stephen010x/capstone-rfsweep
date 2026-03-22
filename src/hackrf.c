@@ -541,6 +541,8 @@ static int rx_callback(hackrf_transfer_t *transfer) {
     };
 
     // copy buffer over to fbins
+    debugf("fbins size %d, buffer length %d at %d/%d", fbins_sizeof(fbins), 
+            transfer->buffer_length, (int)params->_isamp, (int)params->samps);
     memcpy(fbins->bins, transfer->buffer, transfer->buffer_length);
 
     // push into binqueue
@@ -577,7 +579,7 @@ int hackrf_run_tests(void) {
     assert(("failed to init params", !err), err);
 
     params.srate_hz = 10e6*2;
-    params.samps = 1000;
+    params.samps = 10;
     params.lna_gain = 30;
     params.vga_gain = 20;
     params.freq_hz = 2.4501e6; //5.2e6;
