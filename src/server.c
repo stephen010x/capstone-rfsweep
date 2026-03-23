@@ -182,7 +182,7 @@ static const __used int16_t _msg_poll        = MESSAGE_POLL;
 #define CONST_MSG_SUCCESS      (*(const message_t*)&_msg_success)
 #define CONST_MSG_UNSUPPORTED  (*(const message_t*)&_msg_unsupported)
 #define CONST_MSG_END          (*(const message_t*)&_msg_end)
-#define CONST_MSG_POLL         (*(const message_t*)&_msg_end)
+#define CONST_MSG_POLL         (*(const message_t*)&_msg_poll)
 
 
 
@@ -224,7 +224,12 @@ ssize_t message_type_getsize(message_type_t type, int32_t data_bytes) {
 
 
 ssize_t message_getsize(const message_t *msg) {
+    // to calm down the memory sanitizer
+    #ifdef __DEBUG__
+    return message_type_getsize(msg->type, (msg->type == MESSAGE_DATA) ? msg->data.size : 0);
+    #else
     return message_type_getsize(msg->type, msg->data.size);
+    #endif
 }
 
 
@@ -241,8 +246,12 @@ message_t *message_new(message_type_t type, int32_t data_bytes) {
 
     msg = malloc(size);
 
-    if (msg != NULL)
+    if (msg != NULL) {
         msg->type = type;
+
+        if (type == MESSAGE_DATA)
+            msg->data.size = data_bytes;
+    }
 
     return msg;
 }
@@ -255,44 +264,59 @@ message_t *message_read(const net_t *net, int timeout_ms) {
     message_t *msg;
     ssize_t bytes, bytes2;
 
-    printf("\n");
+    msg = NULL;
+
 
     DEBUG(
-    debugf("address %s:%d attempting to read message", net->ip, (int)net->port);
+    //printf("\n");
+    debugf("reading message from <%s:%d>", net->ip, (int)net->port);
     )
     
     // wait for incoming message
     bytes = net_readsize(net, timeout_ms);
-    debugf("bytes %d", bytes);
-    assert(bytes > 0, NULL);
+    //debugf("bytes %d", bytes);
+    jassert(bytes > 0, _exit_flush);
     
     // allocate  message
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Walloc-size-larger-than="
     msg = malloc(bytes);
-    assert(msg != NULL, NULL);
+    jassert(msg != NULL, _exit_flush);
     #pragma GCC diagnostic pop
 
     // read incoming message
     bytes2 = net_read(net, (void*)msg, bytes, timeout_ms);
     //debugf("%d", (int)msg->type);
-    assert(("net_read error. Client likely disconnected.", bytes2 > 0), NULL);
-    assert(bytes > 0, (free(msg), NULL));
-    assert(("message size vs bytes read mismatch", bytes2 == bytes), (free(msg), NULL));
+    jassert(("net_read error. Client likely disconnected.", bytes2 > 0), _exit_flush);
+    //assert(bytes > 0, (free(msg), NULL));
+    //assert(("message size vs bytes read mismatch", bytes2 == bytes), (free(msg), NULL));
+    jassert(bytes > 0, _exit_flush);
+    if (bytes2 != bytes) {
+        alertf(STR_ERROR, "message size (%d) != bytes read (%d)", (int)bytes2, (int)bytes);
+    }
+    //jassert(("message size vs bytes read mismatch", bytes2 == bytes), _exit_flush);
     //assert(("message size misreported. message corrupt", message_getsize(msg) == bytes), (free(msg), NULL));
     if (message_getsize(msg) != bytes) {
         alertf(STR_ERROR, "message size misreported "
                           "(message_getsize->%ld) (bytes->%ld)",
                           (long)message_getsize(msg), (long)bytes);
-        return NULL;
+        goto _exit_flush;
     }
 
     DEBUG(
-    debugf("address %s:%d received %s message (%d)", 
-        net->ip, (int)net->port, message_type_str(msg->type), (int)msg->type);
+    // debugf("address %s:%d received %s message (%d)", 
+    //     net->ip, (int)net->port, message_type_str(msg->type), (int)msg->type);
+    debugf("received %s(%d) (%d bytes) from <%s:%d>", 
+        message_type_str(msg->type), (int)msg->type, message_getsize(msg), net->ip, (int)net->port);
     )
 
     return msg;
+
+    _exit_flush:
+    free(msg);
+    // flush buffer, because I guess leftovers have been creating bugs
+    net_flush(net);
+    return NULL;
 }
 
 
@@ -303,11 +327,11 @@ message_t *message_read(const net_t *net, int timeout_ms) {
 int message_write(const net_t *restrict net, const message_t *restrict msg, int timeout_ms) {
     int err;
 
-    printf("\n");
 
     DEBUG(
-    debugf("sending %s message (%d) to address %s:%d", 
-        message_type_str(msg->type), (int)msg->type, net->ip, (int)net->port);
+    //printf("\n");
+    debugf("sending %s(%d) (%d bytes) to <%s:%d>", 
+        message_type_str(msg->type), (int)msg->type, message_getsize(msg), net->ip, (int)net->port);
     )
 
     err = net_write(net, (void*)msg, message_getsize(msg), timeout_ms);
@@ -394,6 +418,10 @@ void binqueue_free(void) {
 
     //pthread_mutex_lock(&_binqueue_mutex);
 
+    DEBUG(
+    debugf("freeing binqueue");
+    )
+
     if (_binqueue.index != 0)
         warnf("freeing queue with %d entries left", _binqueue.index);
 
@@ -434,6 +462,9 @@ int binqueue_push(databin_t *bin) {
     void *mem;
     int size;
 
+    // if (!binqueue_enabled)
+    //     error("binqueue not enabled", -1);
+
     pthread_mutex_lock(&_binqueue_mutex);
 
     size = _binqueue.size;
@@ -455,7 +486,7 @@ int binqueue_push(databin_t *bin) {
             size++;
 
         // reallocate bins to new size
-        mem = realloc(_binqueue.bins, _binqueue.size);
+        mem = realloc(_binqueue.bins, size * sizeof(void*));
         // error check
         if (mem == NULL) pthread_mutex_unlock(&_binqueue_mutex);
         assert(mem != NULL, -1);
@@ -464,6 +495,8 @@ int binqueue_push(databin_t *bin) {
         _binqueue.size = size;
         _binqueue.bins = mem;
     }
+
+    //debugf("binqueue (%p) size (%d) index (%d)",_binqueue.bins, (int)_binqueue.size, (int)_binqueue.index);
 
     _binqueue.bins[_binqueue.index] = bin;
     _binqueue.index++;
@@ -589,6 +622,8 @@ static void *_data_thread(const net_t *client) {
         // loop as long as there are items in the queue
         while(binqueue_get_items()) {
 
+            //debugf("%d items in binqueue", (int)binqueue_get_items());
+
             // pop item from queue
             fbins = binqueue_pop();
             assert(fbins != NULL, (void*)-1);
@@ -596,8 +631,11 @@ static void *_data_thread(const net_t *client) {
             // create new message
             msg = message_new(MESSAGE_DATA, fbins_sizeof(fbins));
 
-            // populate message
+            // populate message and set size
             memcpy(msg->data.data, fbins, fbins_sizeof(fbins));
+            //msg->data.size = fbins_sizeof(fbins);
+
+            //debugf("fbins size %d", (int)fbins_sizeof(fbins));
 
             // send item from queue
             err = message_write(client, msg, SERVER_TIMEOUT);
@@ -612,6 +650,7 @@ static void *_data_thread(const net_t *client) {
 
         // otherwise send poll and delay for 200 ms
         err = message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
+        assert(!err, (void*)err);
         micros_block_for(200000);
         //otherwise yield
         //shed_yield();
@@ -722,6 +761,9 @@ int server_run(globalstate_t *_state) {
 static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg) {
     int err;
     hparams_t params;
+
+
+    msgf("received \"%s\" message (%d)", message_type_str(msg->type), msg->type);
     
 
     switch (msg->type) {
@@ -886,6 +928,8 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
     for (int i = 0; i < steps; i++) {
         int32_t angle;
 
+        msgf("collecting data [%d/%d]", i+1, steps);
+
         // calculate angle
         angle = (int32_t)roundf((float)STEPS_PER_REV * (float)i / (float)steps);
         // round to snap step size
@@ -953,18 +997,20 @@ static int _server_send_logs(const net_t *client) {
 
     // read file into string
     rsize = fread(msg->data.data, 1, size, file);
+    //debugf("filesize %d", (int)rsize);
     
     // close file.
     fclose(file);
 
     // error check fread
-    if (rsize < (size_t)size) {
+    if (rsize != (size_t)size) {
         free(msg);
         error(-5);
     }
 
-    // add null terminator
-    msg->data.data[size] = '\n';   
+    // add null terminator and data size
+    msg->data.data[size] = '\n';
+    //msg->data.size = size+1;
 
     // send message
     err = message_write(client, msg, SERVER_TIMEOUT);

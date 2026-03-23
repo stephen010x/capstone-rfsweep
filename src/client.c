@@ -36,7 +36,7 @@ static const int16_t _msg_ping    = MESSAGE_PING;
 
 
 static int _client_request(const globalstate_t *restrict state, const message_t *restrict msg);
-static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg);
+static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg, int i);
 static int _client_msg_handler(const message_t *msg);
 static int _write_strto_file(const char *restrict path, const char *restrict c, const char *restrict format, va_list vlist);
 static int dump_strto_file(const char *restrict path, const char *restrict format, ...);
@@ -116,18 +116,21 @@ static int _client_request(const globalstate_t *restrict state, const message_t 
 
 
 int client_request_reset(globalstate_t *state) {
+    msgf("Sending RESET request to server");
     return _client_request(state, &CONST_MSG_RESET);
 }
 
 
 
 int client_request_restart(globalstate_t *state) {
+    msgf("Sending RESTART request to server");
     return _client_request(state, &CONST_MSG_RESTART);
 }
 
 
 
 int client_request_ping(globalstate_t *state) {
+    msgf("Sending PING to server");
     return _client_request(state, &CONST_MSG_PING);
 }
 
@@ -143,6 +146,8 @@ int client_request_getlogs(globalstate_t *state) {
     int err;
     net_t net;
     message_t *msg;
+
+    msgf("Sending GETLOGS request to server");
 
     // connect to server
     err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
@@ -206,18 +211,35 @@ int client_request_measure(globalstate_t *state) {
     net_t net;
     message_t *msg;
 
-    debugf("Starting measurements...");
+    msgf("Sending MEASURE request to server");
 
     // connect to server
     err = net_connect(&net, state->ip, state->port, -1);
     assert(!err, err);
 
+    // create and populate message
+    msg = message_new(MESSAGE_MEASURE, 0);
+    msg->measure = (typeof(msg->measure)){
+        .lna_gain   = state->lna_gain,
+        .vga_gain   = state->vga_gain,
+        .srate_hz   = state->srate_hz,
+        .freq_hz    = state->freq_hz,
+        .band_hz    = state->band_hz,
+        .samps      = state->samps,
+        .steps      = state->steps,
+        .amp_enable = state->amp_enable,
+        .snappow    = state->snappow, 
+    };
+
     // send request to server
-    err = message_write(&net, &CONST_MSG_GETLOGS, CLIENT_TIMEOUT);
+    err = message_write(&net, msg, CLIENT_TIMEOUT);
     jassert(!err, _exit_net);
 
+    // free message to be reused for the return message
+    free(msg);
+
     // loop until end message received or error
-    for (;;) {
+    for (int i = 0;;) {
         // read response from server
         msg = message_read(&net, CLIENT_TIMEOUT);
         err = (msg != NULL) ? 0 : -1;
@@ -236,7 +258,7 @@ int client_request_measure(globalstate_t *state) {
 
             case MESSAGE_POLL:
                 // comment this out later
-                debugf("Server POLLING...");
+                //debugf("Server POLLING...");
                 break;
 
         
@@ -249,7 +271,9 @@ int client_request_measure(globalstate_t *state) {
                         printf(outformatstr);
                     }
                 }
-                err = _handle_measuredata(state, msg);
+                err = _handle_measuredata(state, msg, i);
+                msgf("collecting data [%d/%d]", i, state->steps);
+                i++;
                 break;
 
             case MESSAGE_END:
@@ -284,13 +308,14 @@ int client_request_measure(globalstate_t *state) {
 
 
 
-static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg) {
+static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg, int j) {
     int err;
     fbins_t *fbins;
 
     fbins = (void*)msg->data.data;
 
     // make sure that sizes check out
+    //debugf("msg data size (%d), fbins sizeof (%d)", (int)msg->data.size, (int)fbins_sizeof(fbins));
     assert(((size_t)msg->data.size == fbins_sizeof(fbins)), -1);
 
     // if outputting binary
@@ -303,13 +328,14 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     } else if (state->fpath == NULL) {
 
         // print out params
-        printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-               fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
-               fbins->band_hz, (double)fbins->srate_hz, fbins->bcount);
+        if (j == 0)
+            printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+                   fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
+                   fbins->band_hz, (double)fbins->srate_hz, fbins->bcount);
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++)
-            printf(" %" PRIu8 " %" PRIu8,
+            printf(" %" PRId8 " %" PRId8,
                    fbins->bins[fbins->bcount-1].real,
                    fbins->bins[fbins->bcount-1].imag);
             
@@ -320,10 +346,12 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     } else {
 
         // print out params
-        err = append_strto_file(state->fpath, "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-               fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
-               fbins->band_hz, fbins->srate_hz, fbins->bcount);
-        assert(!err, -2);
+        if (j == 0) {
+            err = append_strto_file(state->fpath, "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+                   fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
+                   fbins->band_hz, fbins->srate_hz, fbins->bcount);
+            assert(!err, -2);
+        }
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++) {

@@ -54,9 +54,10 @@ FAST_CFLAGS := -D__DEBUG__ -D__debug__
 FAST_LFLAGS := 
 FAST_BFLAGS := -g -O0 
 
+# -fsanitize=thread
 DEBUG_CFLAGS := -D__DEBUG__ -D__debug__
 DEBUG_LFLAGS := 
-DEBUG_BFLAGS := -g -Og
+DEBUG_BFLAGS := -g -Og -fsanitize=address,undefined -fno-omit-frame-pointer -latomic -static-libasan
 
 RELEASE_CFLAGS :=
 RELEASE_LFLAGS := -s

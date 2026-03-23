@@ -14,6 +14,8 @@
 #include <poll.h>       // for poll
 #include <string.h>
 #include <inttypes.h>
+#include <asm/termbits.h>
+#include <sys/ioctl.h>
 // good heavens, why do each of these need their own header???
 
 
@@ -108,7 +110,9 @@ static const char *_net_err_name(int err);
 int net_connect(net_t *net, const char *ip, uint16_t port, int timeout_ms) {
     int err, fd;
 
+    DEBUG(
     debugf("TCP connecting to <%s:%u>", ip, port);
+    )
 
     // create new tcp socket
     // https://www.man7.org/linux/man-pages/man2/socket.2.html
@@ -128,6 +132,8 @@ int net_connect(net_t *net, const char *ip, uint16_t port, int timeout_ms) {
         close(fd);
         return err;
     }
+
+    passf("TCP connected to <%s:%u>", ip, port);
 
     return 0;
 }
@@ -185,6 +191,9 @@ static int _net_connect(int fd, net_t *net, const char *ip, uint16_t port, int t
     // check to see if net connected
     if (!net_is_open(net)) return -1;
 
+    // flush buffer
+    net_flush(net);
+
     // restore file status to blocking
     //fcntl(fd, F_SETFL, fflag);
 
@@ -206,7 +215,7 @@ static int _net_connect(int fd, net_t *net, const char *ip, uint16_t port, int t
 int net_start(net_t *net, uint16_t port, int backlog) {
     int err, fd;
 
-    debugf("TCP server starting on <%s:%u>", LOOPBACK, port);
+    msgf("TCP server starting on <%s:%u>", LOOPBACK, port);
 
     DEBUG(
     assert(("backlog must be >= 0", backlog >= 0), -4);
@@ -328,7 +337,7 @@ int net_accept(const net_t *restrict netin, net_t *restrict netout, int timeout_
     *netout = *netin;
     netout->fd = newfd;
 
-    debugf("TCP connection accepted <%s:%u>", netin->ip, netin->port);
+    passf("TCP connection accepted <%s:%u>", netin->ip, netin->port);
 
     return 0;
 }
@@ -370,7 +379,7 @@ int net_await(const net_t *net, net_mode_t mode, int timeout_ms) {
     //DEBUG(errno = 0;)
 
     if (timeout_ms == 0) return 0;
-    
+
     // poll socket file for IO ready.
     // https://www.man7.org/linux/man-pages/man2/poll.2.html
     pfd = (struct pollfd){
@@ -420,7 +429,7 @@ int net_await(const net_t *net, net_mode_t mode, int timeout_ms) {
         // since all of these would return zero, 
         // I am not going to handle them.
     }
-
+    
     // // poll just waits for changes, not catches errors, so this is needed
     // // get connection error
     elen = sizeof(err2);
@@ -493,6 +502,12 @@ int net_close(net_t *net, int timeout_sec) {
     int err;
     struct linger lg;
 
+
+    msgf("Closing TCP connection <%s:%u>", net->ip, net->port);    
+
+    // flush buffer
+    net_flush(net);
+
     // make it so that shutdown will not return until
     // transmissions are complete
     // https://www.man7.org/linux/man-pages/man3/setsockopt.3p.html
@@ -531,7 +546,7 @@ int net_close(net_t *net, int timeout_sec) {
 int net_write(size_num_t count; const net_t *restrict net, const int8_t buff[restrict count], size_num_t count, int timeout_ms) {
     int err;
 
-    debugf("0x%04" PRIx32 " 0x%04" PRIx32, (uint32_t)magic_num, (uint32_t)count);
+    //debugf("0x%04" PRIx32 " 0x%04" PRIx32, (uint32_t)magic_num, (uint32_t)count);
 
     // write the magic number
     err = net_write_raw(net, (void*)&magic_num, sizeof(magic_num_t), timeout_ms);
@@ -560,7 +575,7 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
     size_t total = 0;
     int err;
 
-    debugf("#### writing %d bytes from file (%d)",  (int)count, (int)net->fd);
+    //debugf("#### writing %d bytes from file (%d)",  (int)count, (int)net->fd);
     
     // writes data to socket file
     // blocks until it writes, I guess
@@ -569,11 +584,15 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
         // partial writes can occur, so we need to make sure it is fully written
         // https://www.man7.org/linux/man-pages/man2/write.2.html
         errno = 0;
-        debugf("timestamp %lld us", (long long)micros_time());
+        //debugf("timestamp %lld us", (long long)micros_time());
+        //debugf("%d, %d, %d", (int)total, (int)count, (int)(count-total));
         n = write(net->fd, buff+total, count-total);
+        //n = write(net->fd, buff+total, 2);
 
-        debugf("wrote %d +%d (of %d) [0x%08" PRIx32 " 0x%08" PRIx32 "]", 
-            (int)total, n, (int)count, *(uint32_t*)(buff+total), *(uint32_t*)(buff+total+4));
+        // debugf("wrote %d +%d (of %d) [0x%08" PRIx32 " 0x%08" PRIx32 "]", 
+        //     (int)total, n, (int)count, *(uint32_t*)(buff+total), *(uint32_t*)(buff+total+4));
+
+        //debugf("%s (%s %d)", _net_err_str(errno), _net_err_name(errno), errno);
 
         // handle the error
         if (n < 1) {
@@ -618,20 +637,21 @@ int net_write_raw(size_t count; const net_t *restrict net, const int8_t buff[res
 size_num_t net_readsize(const net_t *net, int timeout_ms) {
     ssize_t retsize;
     // both magic number and size will be read into here
-    int8_t buff[sizeof(magic_num_t) + sizeof(size_num_t) + sizeof(uint32_t)*4];
+    int8_t buff[sizeof(magic_num_t) + sizeof(size_num_t)];
     
     // read size without consuming the buffer
-    retsize = net_read_raw(net, buff, sizeof(magic_num_t) + sizeof(size_num_t) + sizeof(uint32_t)*4, timeout_ms, MSG_PEEK);
+    retsize = net_read_raw(net, buff, sizeof(magic_num_t) + sizeof(size_num_t), timeout_ms, MSG_PEEK);
     assert(retsize > 0, retsize);
 
     // assert magic number
+    //debugf("magic number: %08llx", (long long)*(magic_num_t*)(buff+0));
     assert(("corruption detected. invalid magic number", *(magic_num_t*)(buff+0) == MAGIC_NUMBER), -1);
 
-    debugf("0x%08" PRIx32 " 0x%08" PRIx32, *(uint32_t*)(buff+0), *(uint32_t*)(buff+4));
+    //debugf("0x%08" PRIx32 " 0x%08" PRIx32, *(uint32_t*)(buff+0), *(uint32_t*)(buff+4));
     
-    for (int i = 0; i < sizeof(buff)/sizeof(uint32_t); i++)
-        printf("0x%08" PRIx32 " ", ((uint32_t*)buff)[i]);
-    printf("\n");
+    // for (int i = 0; i < (int)(sizeof(buff)/sizeof(uint32_t)); i++)
+    //     printf("0x%08" PRIx32 " ", ((uint32_t*)buff)[i]);
+    // printf("\n");
 
     // for (int i = 0; i < 24; i++)
     //     printf("0x%02x ", (int)(uint8_t)buff[i]);
@@ -694,22 +714,30 @@ ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restri
     int err;
     ssize_t n;
     size_t total;
+    
 
-    debugf("#### %s %d bytes from file (%d)", 
-        (flags & MSG_PEEK) ? "peeking" : "reading",  (int)count, (int)net->fd);
+    // debugf("#### %s %d bytes from file (%d) with flags (%d)",
+    //     (flags & MSG_PEEK) ? "peeking" : "reading",  (int)count, (int)net->fd, flags);
     
     // reads data from socket file
     for (total = 0; total < count;) {
 
+        // wait for data to be read
+        // apparently it is possible for recv errors to consume data
+        // so we shall simply wait for it to prevent EAGAIN errors
+        // err = net_await(net, NET_READ, timeout_ms);
+        // assert(!err, -1);
+
         // incoming reads can be fragmented, so we have to loop
         // https://www.man7.org/linux/man-pages/man2/read.2.html
         errno = 0;
-        debugf("timestamp %lld us", (long long)micros_time());
+        //debugf("timestamp %lld us", (long long)micros_time());
         n = recv(net->fd, buff+total, count-total, flags);
 
         //debugf("read %d +%d (of %d)", (int)total, n, (int)count);
-        debugf("read %d +%d (of %d) [0x%08" PRIx32 " 0x%08" PRIx32 "]", 
-            (int)total, n, (int)count, *(uint32_t*)(buff+total), *(uint32_t*)(buff+total+4));
+        // if (!(flags & MSG_PEEK))
+        //     debugf("read %d +%d (of %d) [0x%08" PRIx32 " 0x%08" PRIx32 "]", 
+        //         (int)total, n, (int)count, *(uint32_t*)(buff+total), *(uint32_t*)(buff+total+4));
 
         // handle the error
         if (n < 1) {
@@ -731,7 +759,7 @@ ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restri
                 case EWOULDBLOCK:
                 #endif
                     err = net_await(net, NET_READ, timeout_ms);
-                    assert(!err, err);
+                    assert(!err, -2);
                     continue;
             
                 default:
@@ -739,14 +767,120 @@ ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restri
                     //_net_err(errno, false);
                     //assert(("error reading from socket file", 0), -1);
                     alertf(STR_ERROR, "%s (%s %d)", _net_err_str(errno), _net_err_name(errno), errno);
-                    return -1;
+                    return -3;
             }
         }
 
-        else total += n;
+        // DO NOT INCREMENT IF WE ARE IN PEEK MODE
+        // otherwise peek reads will get corrupted with looping information
+        else if (!(flags & MSG_PEEK))
+            total += n;
+
+        // else we are in PEEK mode, so we break when we've reached our desired length
+        else if (n >= (int)count)
+            return n;
+
+        // PEEK mode before desired length reached
+        // else {
+        //     debugf("peek waiting...");
+        //     // wait until buffer is desired length
+        //     while ((err = net_buff_len(net)) < (ssize_t)count) {
+        //         if (err) {
+        //             alertf(STR_ERROR, "%s (%s %d)", _net_err_str(err), _net_err_name(err), err);
+        //             return -4;
+        //         }
+        //         micros_block_for(1);
+        //     }
+        // }
     }
 
     return total;
+}
+
+
+
+
+// I believe data may be left in the buffer when the program closes, or something along those lines
+// so we are going to start flushing it
+void net_flush(const net_t *net) {
+    //int err;
+    ssize_t n;
+    size_t total;
+    uint8_t buff[32];
+
+    total = 0;
+
+    // reads data from socket file
+    // loop until buffer is empty or closed
+    for (;;) {
+
+        // if we are out of buffer, then reset back to beginning of buffer
+        if (total >= sizeof(buff))
+            total = 0;
+
+        // read data
+        errno = 0;
+        n = recv(net->fd, buff+total, sizeof(buff)-total, MSG_DONTWAIT);
+
+        // handle the error
+        if (n < 1) {
+            // end of file reached, that means that peer has closed connection
+            // and that all bytes are read
+            if (n == 0)
+                return;
+                    
+            switch (errno) {
+            
+                // interrupted before data written, so try again immediately
+                case EINTR:
+                    continue;
+                    
+                // generally indicates when the buffer is empty, but not closeds
+                // so we just exit here
+                case EAGAIN:
+                #if EAGAIN != EWOULDBLOCK
+                case EWOULDBLOCK:
+                #endif
+                    if (total > 0)
+                        alertf(STR_WARN, "flushed %lld bytes", (long long)total);
+                    return;
+            
+                default:
+                    // unhandled errors result in a return
+                    //_net_err(errno, false);
+                    //assert(("error reading from socket file", 0), -1);
+                    alertf(STR_ERROR, "%s (%s %d)", _net_err_str(errno), _net_err_name(errno), errno);
+                    return;
+            }
+        }
+
+        else {
+
+            // DEBUG(
+            // alertf(STR_WARN, "bytes flushed...");
+            // for (int i = total; (size_t)i < total+n; i++)
+            //     fprintf(stderr, "%02x ", (int)buff[i]);
+            // fprintf(stderr, "\n");
+            // )
+
+            total += n;
+        }
+    }
+
+    return;
+}
+
+
+
+// returns the current number of bytes in read-buffer
+ssize_t net_buff_len(const net_t *net) {
+    int err;
+    int argp;
+
+    err = ioctl(net->fd, FIONREAD, &argp);
+    if (err) return errno;
+
+    return argp;
 }
 
 

@@ -40,8 +40,9 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 #define DEFAULT_IP     "10.42.0.1"
 #define DEFAULT_PORT   12346
 #define DEFAULT_LOG    NULL
-#define DEFAULT_SAMPS  10
-#define DEFAULT_SNAP   16
+//#define DEFAULT_SAMPS  10
+#define DEFAULT_SAMPS  1
+#define DEFAULT_SNAP   4
 #define DEFAULT_STEPS  360
 
 #define DEFAULT_FREQ   2.4e6
@@ -477,6 +478,8 @@ size_num_t net_readsize(const net_t *net, int timeout_ms);
 ssize_t net_read(size_num_t count; const net_t *restrict net, int8_t buff[restrict count], size_num_t count, int timeout_ms);
 ssize_t net_read_raw(size_t count; const net_t *restrict net, int8_t buff[restrict count], size_t count, int timeout_ms, int flags);
 void net_tests(void);
+void net_flush(const net_t *net);
+ssize_t net_buff_len(const net_t *net);
 
 
 

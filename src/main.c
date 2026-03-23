@@ -340,21 +340,27 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
             goto _overflow;
 
         // detect if "--flag=" flag
-        n = sscanf(argv[i], "--%s=", str);
+        //n = sscanf(argv[i], "--%s=", str);
+        n = sscanf(argv[i], "--%[^=\t\r\n ]=%[\040-\377]", str, val);
         //if (n == EOF) goto _overflow;
-        if (n == 1) {
+        if (n == 2) {
         
-            // ensure flag follows "--flag=val" format
-            n = sscanf(argv[i], "--%s=%s", str, val);
-            //if (n == EOF) goto _overflow;
-            if (n == 2) {
-                type = FLAGTYPE_DOUBLE;
-                valptr = val;
-                goto _match;
-            }
+            // // ensure flag follows "--flag=val" format
+            // n = sscanf(argv[i], "--%s=%s", str, val);
+            // //if (n == EOF) goto _overflow;
+            // debugf("n=%d, %s, %s", n, str, val);
+            // if (n == 2) {
+            //     type = FLAGTYPE_DOUBLE;
+            //     valptr = val;
+            //     goto _match;
+            // }
+
+            type = FLAGTYPE_DOUBLE;
+            valptr = val;
+            goto _match;
             
             // else
-            goto _error;
+            //goto _error;
         }
 
         // detect if "--flag" flag
@@ -385,6 +391,7 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
 
 
         _error:
+        (void)&&_error;
         alertf(STR_ERROR, "unable to parse argument \"%s\"", argv[i]);
         return -2;
         

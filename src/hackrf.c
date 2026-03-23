@@ -333,6 +333,9 @@ static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
 static int begin_receiver(hackrf_device_t *device, hparams_t *params) {
     int err;
 
+    if (!hackrf_is_finished(params))
+        warnf("running receiver when previous transmission is not complete");
+
     // enable antenna
     err = hackrf_set_antenna_enable(device, 1);
     assert(("hackrf_set_antenna_enable(..., 1)", !err), err);
@@ -505,6 +508,11 @@ void hackrf_wait_until_finished(hparams_t *params) {
 
 
 
+DEBUG(
+// https://github.com/llvm/llvm-project/blob/main/compiler-rt/include/sanitizer/lsan_interface.h
+extern void __lsan_enable(void);
+extern void __lsan_disable(void);
+)
 
 
 // this nightmare is what I get for writing the hackrf code before the server code
@@ -527,7 +535,9 @@ static int rx_callback(hackrf_transfer_t *transfer) {
     // we are just going to directly push this into the binqueue
     // as defined in server.c
     // technically anyone can pop it, so it is *fine*
+    DEBUG(__lsan_disable();) // to ignore memory leaks
     fbins = fbins_new(transfer->buffer_length>>1);
+    DEBUG(__lsan_enable();) // to ignore memory leaks
     assert(fbins != NULL, 1);
 
     // record fbin properties
@@ -541,14 +551,15 @@ static int rx_callback(hackrf_transfer_t *transfer) {
     };
 
     // copy buffer over to fbins
-    debugf("fbins size %d, buffer length %d at %d/%d", fbins_sizeof(fbins), 
-            transfer->buffer_length, (int)params->_isamp, (int)params->samps);
+    // debugf("fbins size %d, buffer length %d at %d/%d", fbins_sizeof(fbins), 
+    //         transfer->buffer_length, (int)params->_isamp, (int)params->samps);
     memcpy(fbins->bins, transfer->buffer, transfer->buffer_length);
 
     // push into binqueue
     err = binqueue_push(fbins);
     assert(!err, 1);
-    
+
+    //debugf("i=%d; samps=%d", params->_isamp, params->samps);
 
     // return zero will continue transfer
     // return nonzero will stop transfer
