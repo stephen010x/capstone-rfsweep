@@ -22,6 +22,8 @@
 // starting queue alloc size
 #define QUEUE_START  16
 
+// #define MEASURE_STEP_MODE  STEP_MODE_1_16
+// #define STEPS_PER_REV      (200*16)
 #define MEASURE_STEP_MODE  STEP_MODE_1_16
 #define STEPS_PER_REV      (200*16)
 
@@ -29,7 +31,8 @@
 
 
 
-#define SERVER_TIMEOUT 10000    /* ten seconds */
+//#define SERVER_TIMEOUT 10000    /* ten seconds */
+#define SERVER_TIMEOUT 600000   /*10 minutes*/
 
 
 
@@ -869,13 +872,14 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
 
         // start measurements
         err = _server_measure(msg, params);
+        wassert(("_server_measure failed", !err));
 
     end_motor:
         (void)&&end_motor;
         // quick pause
         micros_block_for(1e6);
         // step back to origin
-        stepper_stepto(0, STEP_DIR_CLOCKWISE);
+        stepper_stepto(0);
         // take out of microstepping mode
         stepper_mode(STEP_MODE_1_1);
         // wait for motor to settle before turnoff
@@ -888,7 +892,7 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
 
         // end data thread
     end_thread:
-        err |= _data_thread_end(!err);
+        err |= _data_thread_end(err);
         assert(!err, err);
         
         return err;
@@ -938,7 +942,7 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
         params->angle = 360.0f * angle / (float)STEPS_PER_REV;
 
         // move to desired angle
-        stepper_stepto(angle, STEP_DIR_CLOCKWISE);
+        stepper_stepto(angle);
 
         // take measurement
         err = hackrf_read(params);
@@ -947,9 +951,7 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
         // wait until measurement complete
         hackrf_wait_until_finished(params);
     }
-
     
-
     return 0;
 }
 

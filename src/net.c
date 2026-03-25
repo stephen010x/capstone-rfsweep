@@ -405,6 +405,7 @@ int net_await(const net_t *net, net_mode_t mode, int timeout_ms) {
     if (err < 1) {
         // timeout occured
         if (err == 0) {
+            alertf(STR_ERROR, "timeout occurred");
             return ETIMEDOUT;
         }
         

@@ -98,6 +98,9 @@ void gpioTerminate(void) {}
 #endif
 
 
+static bool _gpio_enabled = false;
+
+
 
 
 
@@ -200,9 +203,11 @@ void init_gpio(void) {
     vassert(("failed to create step thread", !err));
 
     // create multistep thread
-    debugf("creating gpio tthread 1");
-    err = pthread_create(&tthread[1], NULL, &_multistep_thread, NULL);
-    vassert(("failed to create step thread", !err));
+    // debugf("creating gpio tthread 1");
+    // err = pthread_create(&tthread[1], NULL, &_multistep_thread, NULL);
+    // vassert(("failed to create step thread", !err));
+
+    _gpio_enabled = true;
 }
 
 
@@ -211,6 +216,8 @@ void init_gpio(void) {
 //static __destruct void exit_gpio(void) {
 void exit_gpio(void) {
     void *retval;
+
+    _gpio_enabled = false;
 
     debugf("canceling gpio threads");
 
@@ -225,15 +232,15 @@ void exit_gpio(void) {
         warnf("tried to cancel gpio tthread 0 not running");
     }
     
-    if (tthread[1] != 0) {
-        pthread_cancel(tthread[1]);
-        pthread_join(tthread[1], &retval);
-        wassert(("gpio tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
-        if (retval == PTHREAD_CANCELED)
-            debugf("gpio tthread 1 successfully canceled");
-    } else {
-        warnf("tried to cancel gpio tthread 1 not running");
-    }
+    // if (tthread[1] != 0) {
+    //     pthread_cancel(tthread[1]);
+    //     pthread_join(tthread[1], &retval);
+    //     wassert(("gpio tthread 1 failed to cancel", retval == PTHREAD_CANCELED));
+    //     if (retval == PTHREAD_CANCELED)
+    //         debugf("gpio tthread 1 successfully canceled");
+    // } else {
+    //     warnf("tried to cancel gpio tthread 1 not running");
+    // }
 
     // take out of microstepping mode
     //stepper_mode(STEP_MODE_1_1);
@@ -267,9 +274,14 @@ static void *_step_thread(void *args) {
     pthread_setcanceltype(PTHREAD_CANCEL_DEFERRED, NULL);
     
     for(;;) {
-        while(!global.dostep) {
+        for(uint64_t i = 0; !global.dostep; i++) {
             //sched_yield();
-            micros_busy_for(1);
+            // when active then busy, when idle then block
+            if (i < 1000)
+                micros_busy_for(1);
+            else
+                micros_block_for(100);
+                
             pthread_testcancel();
         }
 
@@ -301,7 +313,7 @@ static void *_step_thread(void *args) {
 
 
 
-static void *_multistep_thread(void *args) {
+static __unused void *_multistep_thread(void *args) {
     (void)args;
     int err;
 
@@ -311,9 +323,13 @@ static void *_multistep_thread(void *args) {
     
     for(;;) {
         // wait until there are steps to step
-        while(global.multistep == 0) {
-            //sched_yield();
-            micros_busy_for(1);
+        for(uint64_t i = 0; global.multistep == 0; i++) {
+            sched_yield();
+            // if (i < 1000)
+            //     micros_busy_for(1);
+            // else
+            //     micros_block_for(100);
+                
             pthread_testcancel();
         }
 
@@ -342,7 +358,7 @@ bool is_stepping(void) {
 
 // waits until no longer stepping or multistepping
 void stepper_wait(void) {
-    while ((global.multistep != 0) || global.dostep)
+    while (_gpio_enabled && ((global.multistep != 0) || global.dostep))
         //sched_yield();
         micros_busy_for(1);
 }
@@ -459,9 +475,14 @@ int stepper_step(step_dir_t dir) {
     // if current step is active, then block until over
     // the reason is because steps will be lost if we try to 
     // write a 1 to a value that is already set to 1
-    while (global.dostep)
+    while (global.dostep) {
+        // if gpio not enabled, then return
+        if (!_gpio_enabled)
+            return -1;
+    
         //sched_yield();
         micros_busy_for(1);
+    }
 
     // activate stepper
     // the stepper thread will set this to zero when finished
@@ -502,7 +523,7 @@ int stepper_multistep(step_dir_t dir, int32_t steps) {
 
 
 
-DEBUG(
+#ifdef __DEBUG__
 void stepper_test(void) {
         int err;
         //long long int lastus;
@@ -538,10 +559,33 @@ void stepper_test(void) {
         debugf("step average delta %lld us (target %lld us)",
                 (endus-startus)/400, MIN_MICROS_PER_STEP>>(4-global.mode_mult));
 
+        err = stepper_mode(STEP_MODE_1_16);
+        jassert(!err, _exit_gpio);
+
+        debugf("stepping to 0 degrees");
+        stepper_stepto(0*16);
+        micros_block_for(1e6);
+        
+        debugf("stepping to 90 degrees");
+        stepper_stepto(50*16);
+        micros_block_for(1e6);
+        
+        debugf("stepping to 180 degrees");
+        stepper_stepto(100*16);
+        micros_block_for(1e6);
+
+        debugf("stepping to 360 degrees");
+        stepper_stepto(200*16);
+        micros_block_for(1e6);
+
+        debugf("stepping to 0 degrees");
+        stepper_stepto(0*16);
+        micros_block_for(1e6);
+
     _exit_gpio:
         exit_gpio();
 }
-)
+#endif
 
 
 //                  signed  unsigned
@@ -550,7 +594,17 @@ void stepper_test(void) {
 int32_t stepper_getsteps(void) {
     int32_t retval;
     pthread_mutex_lock(&global.step_mutex);
-    retval = (int32_t)global.step<<4 | (int32_t)global.fstep;
+    retval = (int32_t)(global.step<<4) | (int32_t)global.fstep;
+    pthread_mutex_unlock(&global.step_mutex);
+    return retval;
+}
+
+
+// returns steps in terms of microsteps
+int32_t stepper_getmsteps(void) {
+    int32_t retval;
+    pthread_mutex_lock(&global.step_mutex);
+    retval = (int32_t)(global.step<<4) + (int32_t)global.fstep;
     pthread_mutex_unlock(&global.step_mutex);
     return retval;
 }
@@ -569,9 +623,24 @@ void stepper_setorigin(void) {
 
 // full revolution is from 0-200 or 0-3200 depending on mode
 // blocks until it reaches that angle
-int stepper_stepto(int32_t angle, step_dir_t dir) {
+int stepper_steptomod(int32_t angle, step_dir_t dir) {
     int err;
-    while (mod(angle - global.step, 200) != 0) {
+    while (mod(angle - (stepper_getmsteps()>>global.mode_mult), 200) != 0) {
+        err = stepper_step(dir);
+        assert(!err, err);
+    }
+    stepper_wait();
+    return 0;
+}
+
+
+
+
+int stepper_stepto(int32_t angle) {
+    int err;
+    step_dir_t dir = (angle > (stepper_getmsteps()>>global.mode_mult)) ? 
+                        STEP_DIR_CLOCKWISE : STEP_DIR_COUNTERCLOCK;
+    while (angle != (stepper_getmsteps()>>global.mode_mult)) {
         err = stepper_step(dir);
         assert(!err, err);
     }

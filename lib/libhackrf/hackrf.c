@@ -137,7 +137,9 @@ typedef enum {
 } hackrf_hw_sync_mode;
 
 #define TRANSFER_COUNT        4
-#define TRANSFER_BUFFER_SIZE  262144
+//#define TRANSFER_BUFFER_SIZE  262144
+//#define TRANSFER_BUFFER_SIZE  262144
+#define TRANSFER_BUFFER_SIZE  65536
 #define DEVICE_BUFFER_SIZE    32768
 #define USB_MAX_SERIAL_LENGTH 32
 

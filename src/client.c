@@ -265,14 +265,16 @@ int client_request_measure(globalstate_t *state) {
             case MESSAGE_DATA:
                 if (!state->out_binary) {
                     // print format information
-                    if (state->fpath) {
-                        dump_strto_file(state->fpath, outformatstr);
-                    } else {
-                        printf(outformatstr);
+                    if (i == 0) {
+                        if (state->fpath) {
+                            dump_strto_file(state->fpath, outformatstr);
+                        } else {
+                            printf(outformatstr);
+                        }
                     }
                 }
+                msgf("collecting data [%d/%d]", i+1, state->steps);
                 err = _handle_measuredata(state, msg, i);
-                msgf("collecting data [%d/%d]", i, state->steps);
                 i++;
                 break;
 
@@ -311,6 +313,7 @@ int client_request_measure(globalstate_t *state) {
 static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg, int j) {
     int err;
     fbins_t *fbins;
+    (void)j;
 
     fbins = (void*)msg->data.data;
 
@@ -328,10 +331,9 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     } else if (state->fpath == NULL) {
 
         // print out params
-        if (j == 0)
-            printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-                   fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
-                   fbins->band_hz, (double)fbins->srate_hz, fbins->bcount);
+        printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+               fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
+               fbins->band_hz, (double)fbins->srate_hz, fbins->bcount);
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++)
@@ -346,12 +348,10 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     } else {
 
         // print out params
-        if (j == 0) {
-            err = append_strto_file(state->fpath, "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-                   fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
-                   fbins->band_hz, fbins->srate_hz, fbins->bcount);
-            assert(!err, -2);
-        }
+        err = append_strto_file(state->fpath, "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+               fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
+               fbins->band_hz, fbins->srate_hz, fbins->bcount);
+        assert(!err, -2);
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++) {

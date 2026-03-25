@@ -451,11 +451,12 @@ int stepper_multistep(step_dir_t dir, int32_t steps);
 //int32_t stepper_get_offset(void);
 void stepper_test(void);
 int32_t stepper_getsteps(void);
+int32_t stepper_getmsteps(void);
 void stepper_setorigin(void);
 uint8_t stepper_get_multpow(void);
 //int16_t stepper_get_steps_per_rev(void);
-int stepper_stepto(int32_t angle, step_dir_t dir);
-
+int stepper_stepto(int32_t angle);
+int stepper_steptomod(int32_t angle, step_dir_t dir);
 
 
 
