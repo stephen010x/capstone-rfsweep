@@ -39,6 +39,7 @@ static int _client_request(const globalstate_t *restrict state, const message_t 
 static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg, int i);
 static int _client_msg_handler(const message_t *msg);
 static int _write_strto_file(const char *restrict path, const char *restrict c, const char *restrict format, va_list vlist);
+static int _write_binto_file(const char *restrict path, const char *restrict c, const void *buff, size_t len)
 static int dump_strto_file(const char *restrict path, const char *restrict format, ...);
 static int append_strto_file(const char *restrict path, const char *restrict format, ...);
 
@@ -314,6 +315,7 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     int err;
     fbins_t *fbins;
     (void)j;
+    
 
     fbins = (void*)msg->data.data;
 
@@ -323,8 +325,38 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
 
     // if outputting binary
     if (state->out_binary) {
-        alertf(STR_ERROR, "binary output not supported yet");
-        return -1;
+        //alertf(STR_ERROR, "binary output not supported yet");
+        //return -1;
+
+        uint8_t data[4];
+
+        *(float64_t*)data = (float64_t)fbins->timestamp_us;
+        err = append_binto_file(state->fpath, data, 4);
+        if (err) error(-1);
+
+        *(float64_t*)data = (float64_t)fbins->angle;
+        err = append_binto_file(state->fpath, data, 4);
+        if (err) error(-2);
+
+        *(float64_t*)data = (float64_t)fbins->freq_hz;
+        err = append_binto_file(state->fpath, data, 4);
+        if (err) error(-3);
+
+        *(float64_t*)data = (float64_t)fbins->band_hz;
+        err = append_binto_file(state->fpath, data, 4);
+        if (err) error(-4);
+
+        *(float64_t*)data = (float64_t)fbins->srate_hz;
+        err = append_binto_file(state->fpath, data, 4);
+        if (err) error(-5);
+
+        *(int64_t*)data = (int64_t)fbins->bcount;
+        err = append_binto_file(state->fpath, data, 4);
+        if (err) error(-6);
+
+        err = append_binto_file(state->fpath, fbins->bins, 
+                        fbins->bcount * sizeof(fbin_t));
+        if (err) error(-6);
 
 
     // if ascii output and no output file
@@ -338,8 +370,7 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
         // print out bins
         for (int i = 0; i < fbins->bcount; i++)
             printf(" %" PRId8 " %" PRId8,
-                   fbins->bins[fbins->bcount-1].real,
-                   fbins->bins[fbins->bcount-1].imag);
+                   fbins->bins[i].real, fbins->bins[i].imag);
             
         printf("\n");
 
@@ -348,16 +379,16 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     } else {
 
         // print out params
-        err = append_strto_file(state->fpath, "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-               fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
-               fbins->band_hz, fbins->srate_hz, fbins->bcount);
+        err = append_strto_file(state->fpath, 
+                "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+                fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
+                fbins->band_hz, fbins->srate_hz, fbins->bcount);
         assert(!err, -2);
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++) {
             err = append_strto_file(state->fpath, " %" PRIu8 " %" PRIu8,
-                   fbins->bins[fbins->bcount-1].real,
-                   fbins->bins[fbins->bcount-1].imag);
+                   fbins->bins[i].real, fbins->bins[i].imag);
             assert(!err, -3);
         }
             
@@ -391,11 +422,14 @@ static int _client_msg_handler(const message_t *msg) {
         default:
             if (msg->type < MESSAGE_TYPE_LEN) {
                 DEBUG(fassert(msgstr[msg->type] != NULL);)
-                //alertf(STR_WARN, "received unexpected \"%s\" message from server", msgstr[msg->type]);
-                alertf(STR_ERROR, "received unexpected \"%s\" message from server", msgstr[msg->type]);
+                //alertf(STR_WARN, "received unexpected \"%s\" message from server", 
+                //          vmsgstr[msg->type]);
+                alertf(STR_ERROR, "received unexpected \"%s\" message from server", 
+                            msgstr[msg->type]);
                 return -2;
             } else {
-                alertf(STR_ERROR, "received unknown message \"%d\" from server", msg->type);
+                alertf(STR_ERROR, "received unknown message \"%d\" from server", 
+                            msg->type);
                 return -3;
             }
     }
@@ -429,6 +463,28 @@ static int _write_strto_file(const char *restrict path, const char *restrict c, 
 
 
 
+static int _write_binto_file(const char *restrict path, const char *restrict c, const void *buff, size_t len) {
+    //int err;
+    size_t n;
+    FILE *file;
+
+    // open file
+    file = fopen(path, c);
+    assert(file != NULL, -1);
+
+    // write to file
+    n = fwrite(buff, 1, len, file);
+    jassert(n == len, _exit_file);
+
+    _exit_file:
+    // close file
+    fclose(file);
+    return -1;
+}
+
+
+
+
 static int dump_strto_file(const char *restrict path, const char *restrict format, ...) {
     int err;
     va_list vlist;
@@ -446,4 +502,16 @@ static int append_strto_file(const char *restrict path, const char *restrict for
     err = _write_strto_file(path, "a", format, vlist);
     va_end(vlist);
     return err;
+}
+
+
+
+static int dump_binto_file(const char *restrict path, const void *buff, size_t len) {
+    return _write_binto_file(path, "w", buff, len);
+}
+
+
+
+static int append_binto_file(const char *restrict path, const void *buff, size_t len) {
+    return _write_binto_file(path, "a", buff, len);
 }

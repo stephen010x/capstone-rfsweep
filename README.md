@@ -21,7 +21,7 @@ COMMANDS:
         getlogs     Return remote server error logs.
         transmit    Enable/disable remote server transmitter.
         measure     Run remote server measurements.
-        rotate      Set angle of motor.
+        angle       Move motor to indicated angle
         receive     Run measurements without rotation.
 
 OPTIONS
@@ -57,6 +57,15 @@ OPTIONS
 
         --rserial=<port>
             Receiver HackRF serial string.
+
+        --angle=<degrees>
+            Set motor angle in terms of degrees
+
+        --step=<degrees>
+            Set motor angle in terms of steps
+
+        --stepmode=<1/2/4/8/16>
+            Set motor microstep resolution.
 
 HACKRF OPTIONS
 

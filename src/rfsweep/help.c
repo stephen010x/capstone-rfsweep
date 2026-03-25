@@ -27,7 +27,7 @@ const char *str_help =
     "        getlogs     Return remote server error logs."              "\n"
     "        transmit    Enable/disable remote server transmitter."     "\n"
     "        measure     Run remote server measurements."               "\n"
-    "        rotate      Set angle of motor."                           "\n"
+    "        angle       Move motor to indicated angle."                "\n"
     "        receive     Run measurements without rotation."            "\n"
     ""                                                                  "\n"
     "OPTIONS"                                                           "\n"
@@ -213,10 +213,29 @@ const char *str_help_measure =
 
 
 
+const char str_help_angle =
+    "USAGE:"                                                            "\n"
+    "        rfsweep angle [options]"                                   "\n"
+    ""                                                                  "\n"
+    "DESCRIPTION"                                                       "\n"
+    "        Move motor to indicated angle."                            "\n"
+    ""                                                                  "\n"
+    "OPTIONS"                                                           "\n"
+    "        -h"                                                        "\n"
+    "            Print help message."                                   "\n"
+    ""                                                                  "\n"
+    "        --angle=<degrees>"                                         "\n"
+    "            Set motor angle in terms of degrees"                   "\n"
+    ""                                                                  "\n"
+    "        --step=<degrees>"                                          "\n"
+    "            Set motor angle in terms of steps"                     "\n"
+    ""                                                                  "\n"
+    "        --stepmode=<1/2/4/8/16>"                                   "\n"
+    "            Set motor microstep resolution."                       "\n";
+    
 
-// TODO: finish these
-const char *str_help_rotate  = "Help string for \"receive\" not written yet\n";
-const char *str_help_receive = "Help string for \"receive\" not written yet\n";
+
+//const char *str_help_receive = "Help string for \"receive\" not written yet\n";
 
 
 
