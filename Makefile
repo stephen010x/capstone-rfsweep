@@ -222,15 +222,15 @@ endif
 $(BINTARG): $(OBJS)
 	@mkdir -p $(dir $@)
 	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
-#	$(CC) $(BFLAGS) -o $@ -o $(basename $@) $^ -L$(LIBDIR) $(LFLAGS)
+	cp src/process.py src/run.bat bin/
 
-$(LIBBINTARG).a: $(OBJS)
-	@mkdir -p $(dir $@)
-	$(AR) $(ARFLAGS) $@ $^
-
-$(LIBBINTARG).so: $(OBJS)
-	@mkdir -p $(dir $@)
-	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
+# $(LIBBINTARG).a: $(OBJS)
+# 	@mkdir -p $(dir $@)
+# 	$(AR) $(ARFLAGS) $@ $^
+# 
+# $(LIBBINTARG).so: $(OBJS)
+# 	@mkdir -p $(dir $@)
+# 	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
 
 # Lets just implement header compilation and consolidation later
 #$(INCTARG): $(HEADERS)

@@ -557,7 +557,8 @@ void stepper_test(void) {
         // debugf("step average delta %lld us (target %lld us)",
         //         totalu
         debugf("step average delta %lld us (target %lld us)",
-                (endus-startus)/400, MIN_MICROS_PER_STEP>>(4-global.mode_mult));
+                (long long)(endus-startus)/400, 
+                (long long)MIN_MICROS_PER_STEP>>(4-global.mode_mult));
 
         err = stepper_mode(STEP_MODE_1_16);
         jassert(!err, _exit_gpio);

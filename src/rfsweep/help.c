@@ -27,7 +27,7 @@ const char *str_help =
     "        getlogs     Return remote server error logs."              "\n"
     "        transmit    Enable/disable remote server transmitter."     "\n"
     "        measure     Run remote server measurements."               "\n"
-    "        angle       Move motor to indicated angle."                "\n"
+    "        rotate      Move motor to indicated angle."                "\n"
     "        receive     Run measurements without rotation."            "\n"
     ""                                                                  "\n"
     "OPTIONS"                                                           "\n"
@@ -213,9 +213,9 @@ const char *str_help_measure =
 
 
 
-const char str_help_angle =
+const char *str_help_rotate =
     "USAGE:"                                                            "\n"
-    "        rfsweep angle [options]"                                   "\n"
+    "        rfsweep rotate [options]"                                  "\n"
     ""                                                                  "\n"
     "DESCRIPTION"                                                       "\n"
     "        Move motor to indicated angle."                            "\n"

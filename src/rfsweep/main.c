@@ -368,6 +368,7 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
         //if (n == EOF) goto _overflow;
         if (n == 1) {
             type = FLAGTYPE_DOUBLE;
+            valptr = "";
             goto _match;
         }
         
@@ -627,9 +628,11 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
             
                 case FLAG_BINARY:
                 case FLAG_AMPLIFY:
-                    if (val[0] != '\0')
-                        alertf(STR_ERROR, "flag assignment not expected \"--%s=%s\"", str, val);
-                    return -2;
+                    if (val[0] != '\0') {
+                        alertf(STR_ERROR, "flag assignment not expected \"--%s=%s\"", 
+                            str, val);
+                        return -2;
+                    }
             }
 
 
@@ -760,7 +763,7 @@ static void print_help(int mode) {
         case MODE_SERVER:   str = str_help_server;   break;
         case MODE_MEASURE:  str = str_help_measure;  break;
         case MODE_TRANSMIT: str = str_help_transmit; break;
-        case MODE_RECEIVE:  str = str_help_receive;  break;
+        case MODE_RECEIVE:  str = str_help_measure;  break;
         case MODE_ROTATE:   str = str_help_rotate;   break;
         default:            str = str_help;
     }

@@ -39,9 +39,11 @@ static int _client_request(const globalstate_t *restrict state, const message_t 
 static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg, int i);
 static int _client_msg_handler(const message_t *msg);
 static int _write_strto_file(const char *restrict path, const char *restrict c, const char *restrict format, va_list vlist);
-static int _write_binto_file(const char *restrict path, const char *restrict c, const void *buff, size_t len)
+static int _write_binto_file(const char *restrict path, const char *restrict c, const void *buff, size_t len);
 static int dump_strto_file(const char *restrict path, const char *restrict format, ...);
 static int append_strto_file(const char *restrict path, const char *restrict format, ...);
+static int __unused dump_binto_file(const char *restrict path, const void *buff, size_t len);
+static int append_binto_file(const char *restrict path, const void *buff, size_t len);
 
 
 
@@ -328,30 +330,34 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
         //alertf(STR_ERROR, "binary output not supported yet");
         //return -1;
 
-        uint8_t data[4];
+        //uint8_t data[sizeof(float64_t)];
+        uint64_t data;
 
-        *(float64_t*)data = (float64_t)fbins->timestamp_us;
-        err = append_binto_file(state->fpath, data, 4);
+        // DEBUG(__lsan_disable();) // to ignore memory leaks
+        // DEBUG(__lsan_enable();) // to ignore memory leaks
+
+        *(float64_t*)&data = (float64_t)fbins->timestamp_us;
+        err = append_binto_file(state->fpath, &data, sizeof(float64_t));
         if (err) error(-1);
 
-        *(float64_t*)data = (float64_t)fbins->angle;
-        err = append_binto_file(state->fpath, data, 4);
+        *(float64_t*)&data = (float64_t)fbins->angle;
+        err = append_binto_file(state->fpath, &data, sizeof(float64_t));
         if (err) error(-2);
 
-        *(float64_t*)data = (float64_t)fbins->freq_hz;
-        err = append_binto_file(state->fpath, data, 4);
+        *(float64_t*)&data = (float64_t)fbins->freq_hz;
+        err = append_binto_file(state->fpath, &data, sizeof(float64_t));
         if (err) error(-3);
 
-        *(float64_t*)data = (float64_t)fbins->band_hz;
-        err = append_binto_file(state->fpath, data, 4);
+        *(float64_t*)&data = (float64_t)fbins->band_hz;
+        err = append_binto_file(state->fpath, &data, sizeof(float64_t));
         if (err) error(-4);
 
-        *(float64_t*)data = (float64_t)fbins->srate_hz;
-        err = append_binto_file(state->fpath, data, 4);
+        *(float64_t*)&data = (float64_t)fbins->srate_hz;
+        err = append_binto_file(state->fpath, &data, sizeof(float64_t));
         if (err) error(-5);
 
-        *(int64_t*)data = (int64_t)fbins->bcount;
-        err = append_binto_file(state->fpath, data, 4);
+        *(int64_t*)&data = (int64_t)fbins->bcount*2;
+        err = append_binto_file(state->fpath, &data, sizeof(float64_t));
         if (err) error(-6);
 
         err = append_binto_file(state->fpath, fbins->bins, 
@@ -365,7 +371,7 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
         // print out params
         printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
                fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
-               fbins->band_hz, (double)fbins->srate_hz, fbins->bcount);
+               fbins->band_hz, (double)fbins->srate_hz, fbins->bcount*2);
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++)
@@ -382,7 +388,7 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
         err = append_strto_file(state->fpath, 
                 "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
                 fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
-                fbins->band_hz, fbins->srate_hz, fbins->bcount);
+                fbins->band_hz, fbins->srate_hz, fbins->bcount*2);
         assert(!err, -2);
 
         // print out bins
@@ -464,22 +470,29 @@ static int _write_strto_file(const char *restrict path, const char *restrict c, 
 
 
 static int _write_binto_file(const char *restrict path, const char *restrict c, const void *buff, size_t len) {
-    //int err;
+    int err;
     size_t n;
     FILE *file;
 
+    err = 0;
+
     // open file
     file = fopen(path, c);
+    if (file == NULL) alertf(STR_ERROR, "failed to open file %s\n.", path);
     assert(file != NULL, -1);
 
     // write to file
     n = fwrite(buff, 1, len, file);
+    if (n != len) {
+        alertf(STR_ERROR, "failed to write to file file %s\n.", path);
+        err = -2;
+    }
     jassert(n == len, _exit_file);
 
     _exit_file:
     // close file
     fclose(file);
-    return -1;
+    return err;
 }
 
 

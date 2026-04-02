@@ -310,7 +310,8 @@ message_t *message_read(const net_t *net, int timeout_ms) {
     // debugf("address %s:%d received %s message (%d)", 
     //     net->ip, (int)net->port, message_type_str(msg->type), (int)msg->type);
     debugf("received %s(%d) (%d bytes) from <%s:%d>", 
-        message_type_str(msg->type), (int)msg->type, message_getsize(msg), net->ip, (int)net->port);
+        message_type_str(msg->type), (int)msg->type, 
+        (int)message_getsize(msg), net->ip, (int)net->port);
     )
 
     return msg;
@@ -334,7 +335,8 @@ int message_write(const net_t *restrict net, const message_t *restrict msg, int 
     DEBUG(
     //printf("\n");
     debugf("sending %s(%d) (%d bytes) to <%s:%d>", 
-        message_type_str(msg->type), (int)msg->type, message_getsize(msg), net->ip, (int)net->port);
+        message_type_str(msg->type), (int)msg->type, 
+        (int)message_getsize(msg), net->ip, (int)net->port);
     )
 
     err = net_write(net, (void*)msg, message_getsize(msg), timeout_ms);
@@ -653,7 +655,7 @@ static void *_data_thread(const net_t *client) {
 
         // otherwise send poll and delay for 200 ms
         err = message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
-        assert(!err, (void*)err);
+        assert(!err, (void*)(intptr_t)err);
         micros_block_for(200000);
         //otherwise yield
         //shed_yield();

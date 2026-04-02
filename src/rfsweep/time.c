@@ -176,7 +176,7 @@ void micros_test(void) {
         times[i+1+lenof(delays)] = micros();
     }
     
-    debugf("micros() - micros() = %lld", micros() - micros());
+    debugf("micros() - micros() = %lld", (long long)(micros() - micros()));
 
     for (int i = 1; i <= (int)lenof(times)-1; i++) {
         long long delta = (long long)times[i] - (long long)times[i-1];
