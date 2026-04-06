@@ -72,6 +72,7 @@ enum {
     FLAG_SNAP,
     FLAG_ANGLE,
     FLAG_STEPS,
+    FLAG_STEPMODE,
 
     // hackrf flags
     FLAG_FREQ,
@@ -80,6 +81,7 @@ enum {
     FLAG_SRATE,
     FLAG_LNA_GAIN,
     FLAG_VGA_GAIN,
+    FLAG_TX_AMP,
 
     // misc
     FLAG_DEFAULTS,
@@ -206,6 +208,8 @@ globalstate_t global = {
     .srate_hz = DEFAULT_SRATE,
     .lna_gain = DEFAULT_LNA,
     .vga_gain = DEFAULT_VGA,
+    .tx_amp   = DEFAULT_TX_AMP,
+    .stepmode = DEFAULT_STEPMODE,
 };
 
 
@@ -250,6 +254,11 @@ static const stringmap_t flagstrings[] = {
     {.mode = FLAG_SRATE,    .string = "srate"   },
     {.mode = FLAG_LNA_GAIN, .string = "lna-gain"},
     {.mode = FLAG_VGA_GAIN, .string = "vga-gain"},
+    {.mode = FLAG_DEFAULTS, .string = "defaults"},
+    {.mode = FLAG_ANGLE,    .string = "angle"   },
+    {.mode = FLAG_STEPS,    .string = "steps"   },
+    {.mode = FLAG_STEPMODE, .string = "stepmode"},
+    {.mode = FLAG_TX_AMP,   .string = "tx-amp"  },
     {.mode = FLAG_DEFAULTS, .string = "defaults"},
 };
 
@@ -506,15 +515,22 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
                 return argc;
                 
             } else {
-                alertf(STR_ERROR, "only -h flag supported without specifying mode");
+                alertf(STR_ERROR, "-%s flag unsupported without specifying mode", str);
                 return -1;
             }
             break;
 
             
         case FLAGTYPE_DOUBLE:
-            alertf(STR_ERROR, "only -h flag supported without specifying mode");
-            return -2;
+            // if --defaults flag, then print defaults
+            if (parse_longflag(str) == FLAG_DEFAULTS) {
+                printf("%s", str_help_defaults);
+            } else {
+                alertf(STR_ERROR, 
+                        "--%s flag unsupported without specifying mode", str);
+                return -2;
+            }
+            break;
 
             
         case FLAGTYPE_PLAIN:
@@ -522,6 +538,7 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
             
             switch (parse_mode(str)) {
 
+                // enabled modes (normal flag parsing)
                 case MODE_SERVER:
                 case MODE_RESET:
                 case MODE_RESTART:
@@ -529,17 +546,21 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
                 case MODE_MEASURE:
                 case MODE_TEST:
                 case MODE_PING:
+                case MODE_ROTATE:
+                case MODE_RECEIVE:
                     err = parse_args(argc, argv, argh_flags, NULL);
                     if (err) return -3;
                     break;
 
 
-                case MODE_ROTATE:
-                case MODE_RECEIVE:
-                    alertf(STR_ERROR, "\"rfsweep %s\" not yet supported", str);
-                    return -4;
+                // disabled modes
+                // case MODE_ROTATE:
+                // case MODE_RECEIVE:
+                //     alertf(STR_ERROR, "\"rfsweep %s\" not yet supported", str);
+                //     return -4;
                 
-                    
+
+                // transmit mode
                 case MODE_TRANSMIT:
                     if (strcmp(argv[0], "enable") == 0) {
                         global.transmit_enable = true;
@@ -601,6 +622,7 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
 static int argh_flags(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
     int err;
     uint64_t sflags;
+    double realband;
     //char *end;
     //float64_t val;
 
@@ -613,7 +635,9 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                 return argc;
                 
             } else if (sflags & ((uint64_t)1<<FLAG_v)) {
-                global.is_verbose = true;
+                alertf(STR_ERROR, "verbose mode -v currently not supported");
+                return -1;
+                //global.is_verbose = true;
                 
             } else {
                 alertf(STR_ERROR, "unrecognized flags \"-%s\"", str);
@@ -625,9 +649,11 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
         case FLAGTYPE_DOUBLE:
 
             switch (parse_longflag(str)) {
-            
+
+                // check flags without assignment values
                 case FLAG_BINARY:
                 case FLAG_AMPLIFY:
+                case FLAG_DEFAULTS:
                     if (val[0] != '\0') {
                         alertf(STR_ERROR, "flag assignment not expected \"--%s=%s\"", 
                             str, val);
@@ -679,11 +705,13 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     break;
 
                 case FLAG_ANGLE:
+                    global.is_angle = true; // for rotate mode
                     global.angle = strtof32(val);
                     if (errno) return -6;
                     break;
 
                 case FLAG_STEPS:
+                    global.is_angle = false; // for rotate mode
                     global.steps = strtoi16(val);
                     if (errno) return -7;
                     break;
@@ -704,6 +732,14 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
 
                 case FLAG_SRATE:
                     global.srate_hz = strtof64(val);
+                    realband = 
+                        (double)hackrf_real_bandwidth((uint32_t)global.srate_hz);
+                    if (realband != global.srate_hz) {
+                        alertf(STR_WARN, 
+                            "rounding bandwidth to nearest supported frequency %f",
+                            realband);
+                        global.srate_hz = realband;
+                    }
                     if (errno) return -10;
                     break;
 
@@ -716,6 +752,21 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     global.vga_gain = strtou32(val);
                     if (errno) return -12;
                     break;
+
+                case FLAG_STEPMODE:
+                    global.stepmode = strtou8(val);
+                    if (errno) return -13;
+                    break;
+
+                case FLAG_DEFAULTS:
+                    printf("%s", str_help_defaults);
+                    break;
+
+                case FLAG_TX_AMP:
+                    global.tx_amp = strtoi8(val);
+                    if (errno) return -14;
+                    break;
+                    
 
                 default:
                     alertf(STR_ERROR, "unrecognized flag \"--%s\"", str);
@@ -813,16 +864,22 @@ static int eval_args(void) {
             break;
             
         case MODE_ROTATE:
-            alertf(STR_ERROR, "rotate mode not yet supported");
-            return -1;
+            //alertf(STR_ERROR, "rotate mode not yet supported");
+            //return -1;
+            err = client_request_rotate(&global);
+            break;
             
         case MODE_RECEIVE:
-            alertf(STR_ERROR, "receive mode not yet supported");
-            return -2;
+            //alertf(STR_ERROR, "receive mode not yet supported");
+            //return -2;
+            err = client_request_receive(&global);
+            break;
             
         case MODE_TRANSMIT:
-            alertf(STR_ERROR, "transmit mode not yet supported");
-            return -3;
+            //alertf(STR_ERROR, "transmit mode not yet supported");
+            //return -3;
+            err = client_request_transmit(&global);
+            break;
 
         case MODE_TEST:
             #ifdef __DEBUG__

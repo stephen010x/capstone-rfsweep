@@ -50,6 +50,8 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 #define DEFAULT_SRATE  10e6
 #define DEFAULT_LNA    16
 #define DEFAULT_VGA    20
+#define DEFAULT_TX_AMP 127
+#define DEFAULT_STEPMODE 1
 
 #define DEFAULT_RSERIAL  NULL
 #define DEFAULT_TSERIAL  NULL
@@ -169,7 +171,13 @@ typedef struct {
     const char* serial; // serial number of board to open. If NULL then it just
                         // picks the first board it sees (I think)
 
+    uint32_t tx_vga_gain;   
+    int8_t   tx_amp;
+
+
+
     float32_t angle;    // for use by server.c
+
 
 
     // backend only
@@ -179,6 +187,7 @@ typedef struct {
     // sbin_t **_sbins;
     //fbins_array_t *_fbinsa;
     //volatile int _ibin;
+    bool is_transmit;
     volatile int _isamp;
     //fbins_t *_fbins;
     hackrf_device_t *_device;
@@ -241,7 +250,12 @@ enum {
     MESSAGE_MEASURE,    // run measurements
     MESSAGE_TRANSMIT_ENABLE,
     MESSAGE_TRANSMIT_DISABLE,
+    //MESSAGE_TRANSMIT,
     MESSAGE_UNSUPPORTED,// message is not supported by server (likely a response only message)
+
+    MESSAGE_ROTATE,
+    MESSAGE_RECEIVE,
+    
     MESSAGE_END,        // signal to client that measurements are done
 
     // TODO: implement this message
@@ -286,13 +300,26 @@ typedef struct __packed {
             // transmitter
             // TODO: add transmitter params here
             
-        } measure;
+        } measure, receive;
+
+
+        struct {
+            union {
+                float32_t angle;
+                int32_t   steps;
+            };
+            bool    is_angle;
+            uint8_t stepmode;
+        } rotate;
 
 
         struct {
             uint64_t freq_hz;
-            uint32_t band_hz;
+            //uint32_t band_hz;
+            uint32_t vga_gain;  // steps of 1 dB, 0-67 dB
+            //bool     enable;
             uint8_t  amp_enable;
+            int8_t   tx_amp;
         } transmit_enable;
 
         
@@ -323,6 +350,7 @@ extern const char *str_help_server;
 extern const char *str_help_misc;
 extern const char *str_help_transmit;
 extern const char *str_help_measure;
+extern const char *str_help_rotate;
 
 
 
@@ -356,6 +384,8 @@ typedef struct {
         int16_t   steps;
         float32_t angle;
         bool      is_verbose;
+        uint8_t   stepmode;
+        bool      is_angle;
 
         // hackrf
         uint64_t  freq_hz;
@@ -364,8 +394,19 @@ typedef struct {
         float64_t srate_hz;
         uint32_t  lna_gain;
         uint32_t  vga_gain;
+        uint32_t  tx_amp;
     };
 } globalstate_t;
+
+
+
+
+typedef struct {
+    int tid;
+    int err;
+    _Atomic int is_active;
+    int32_t angle;
+} stephandler_t;
 
 
 
@@ -399,15 +440,18 @@ fbins_t *fbins_new(int32_t bcount);
 size_t fbins_sizeof(fbins_t *fbins);
 
 void hparams_defaults(hparams_t *params);
-int hparams_init(hparams_t *params);
+int hparams_init(hparams_t *params, const char *serial);
 void hparams_free(hparams_t *params);
 
 uint32_t hackrf_real_bandwidth(uint32_t band_hz);
 // allocates new fbins_t
 int hackrf_read(hparams_t *params);
+int hackrf_write(hparams_t *params);
 int hackrf_stop(hparams_t *params);
 int hackrf_is_finished(hparams_t *params);
 void hackrf_wait_until_finished(hparams_t *params);
+
+void hackrf_transmit_enable(hparams_t *params);
 
 
 
@@ -457,6 +501,9 @@ uint8_t stepper_get_multpow(void);
 //int16_t stepper_get_steps_per_rev(void);
 int stepper_stepto(int32_t angle);
 int stepper_steptomod(int32_t angle, step_dir_t dir);
+int32_t angle_to_step(float32_t angle);
+stephandler_t *stepper_stepto_noblock(int32_t angle);
+bool stepper_is_stepping_to(stephandler_t *handle);
 
 
 
@@ -541,11 +588,11 @@ int8_t     strtoi8_custom(const char *str);
 ///////////////
 // help.c
 extern const char *str_help;
-extern const char *str_server;
-extern const char *str_misc;
-extern const char *str_transmit;
-extern const char *str_measure;
-extern const char *str_defaults;
+extern const char *str_help_server;
+extern const char *str_help_misc;
+extern const char *str_help_transmit;
+extern const char *str_help_measure;
+extern const char *str_help_defaults;
 extern const char *str_help_receive;
 extern const char *str_help_rotate;
 extern const char *str_help_defaults;
@@ -557,11 +604,14 @@ extern const char *str_help_defaults;
 
 ///////////////
 // client.c
-int client_request_reset(globalstate_t *state);
-int client_request_restart(globalstate_t *state);
-int client_request_getlogs(globalstate_t *state);
-int client_request_measure(globalstate_t *state);
-int client_request_ping(globalstate_t *state);
+int client_request_reset(    const globalstate_t *state );
+int client_request_restart(  const globalstate_t *state );
+int client_request_getlogs(  const globalstate_t *state );
+int client_request_measure(  const globalstate_t *state );
+int client_request_ping(     const globalstate_t *state );
+int client_request_rotate(   const globalstate_t *state );
+int client_request_receive(  const globalstate_t *state );
+int client_request_transmit( const globalstate_t *state );
 
 
 

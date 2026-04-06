@@ -23,6 +23,10 @@
 // https://github.com/DevRaf-Per/hackrf/wiki/libHackRF-API
 
 
+// Reccomended minimum by hackrf docs
+#define TRANSMIT_SRATE 8e6
+
+
 //#define SAFE_LIBHACKRF_VERSION "0.9.1"
 #define SAFE_LIBHACKRF_VERSION "unknown"
 
@@ -49,10 +53,13 @@ typedef hackrf_transfer hackrf_transfer_t;
 static int hackrf_open_board(hackrf_device_t **device, const char* serial);
 // consider making this a void return
 static int hackrf_free_board(hackrf_device_t *device);
-static int setup_receiver_params(hackrf_device_t *device, hparams_t *params);
+static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_transmit);
 static int begin_receiver(hackrf_device_t *device, hparams_t *params);
+static int begin_transmitter(hackrf_device_t *device, hparams_t *params);
 static int stop_receiver(hackrf_device_t *device);
+static int stop_transmitter(hackrf_device_t *device);
 static int rx_callback(hackrf_transfer_t *transfer);
+static int tx_callback(hackrf_transfer_t *transfer);
 
 
 //typedef struct global_state_t {} state;
@@ -96,6 +103,8 @@ void hparams_defaults(hparams_t *params) {
         .samps = 1,
         //.bins = 2048,
         .amp_enable = false,
+        .tx_vga_gain = 20,
+        .tx_amp = 127,
     };
 }
 
@@ -103,10 +112,11 @@ void hparams_defaults(hparams_t *params) {
 
 // will open the first board it sees.
 // just use hparams_default and explicit board open for more control, I guess.
-int hparams_init(hparams_t *params) {
+int hparams_init(hparams_t *params, const char *serial) {
     int err;
     hparams_defaults(params);
-    err = hackrf_open_board(&params->_device, params->serial);
+    params->serial = serial;
+    err = hackrf_open_board(&params->_device, serial);
     assert(("failed to open board", !err), err);
     return 0;
 }
@@ -141,7 +151,7 @@ int hackrf_read(hparams_t *params) {
     // err = open_board(&device);
     // if (err) return err;
 
-    err = setup_receiver_params(params->_device, params);
+    err = setup_params(params->_device, params, false);
     assert(("problem setting up receiver params", !err), err);
 
     err = begin_receiver(params->_device, params);
@@ -160,8 +170,36 @@ int hackrf_read(hparams_t *params) {
 
 
 
+
+
+int hackrf_write(hparams_t *params) {
+    int err;
+
+    err = setup_params(params->_device, params, true);
+    assert(("problem setting up transmitter params", !err), err);
+
+    err = begin_transmitter(params->_device, params);
+    assert(("problem starting transmitter", !err), err);
+
+    return 0;
+}
+
+
+
+
+
+
+
+
+
 int hackrf_stop(hparams_t *params) {
-    int err = stop_receiver(params->_device);
+    int err;
+
+    if (params->is_transmit)
+        err = stop_transmitter(params->_device);
+    else
+        err = stop_receiver(params->_device);
+        
     assert(!err, err);
     return 0;
 }
@@ -271,7 +309,7 @@ static int hackrf_free_board(hackrf_device_t *device) {
 
 
 
-static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
+static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_transmit) {
     int err;
     DEBUG(uint32_t real_band_hz;)
     
@@ -290,8 +328,11 @@ static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
     // will be forced to one of these: 1.75, 2.5, 3.5, 5, 5.5, 6, 7, 8, 
     //      9, 10, 12, 14, 15, 20, 24, 28MHz
     DEBUG(
-    real_band_hz = hackrf_compute_baseband_filter_bw(params->band_hz);
-    assert(("param bandwidth not an accepted bandwidth", real_band_hz == params->band_hz), -1);
+    if (!is_transmit) {
+        real_band_hz = hackrf_compute_baseband_filter_bw(params->band_hz);
+        assert(("param bandwidth not an accepted bandwidth", 
+                real_band_hz == params->band_hz), -1);
+    }
     )
     
 
@@ -301,14 +342,24 @@ static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
     assert(("hackrf_set_freq(...)", !err), err);
 
     // set sample rate
-    err = hackrf_set_sample_rate(device, params->srate_hz);
-    assert(("hackrf_set_sample_rate(...)", !err), err);
+    if (is_transmit) {
+        err = hackrf_set_sample_rate(device, TRANSMIT_SRATE);
+        assert(("hackrf_set_sample_rate(...)", !err), err);
+    } else {
+        err = hackrf_set_sample_rate(device, params->srate_hz);
+        assert(("hackrf_set_sample_rate(...)", !err), err);
+    }
 
     // set vga and lna gain
-    err = hackrf_set_lna_gain(device, params->lna_gain);
-    assert(("hackrf_set_lna_gain(...)", !err), err);
-    err = hackrf_set_vga_gain(device, params->vga_gain);
-    assert(("hackrf_set_vga_gain(...)", !err), err);
+    if (is_transmit) {
+        err = hackrf_set_txvga_gain(device, params->tx_vga_gain);
+        assert(("hackrf_set_txvga_gain(...)", !err), err);
+    } else {
+        err = hackrf_set_lna_gain(device, params->lna_gain);
+        assert(("hackrf_set_lna_gain(...)", !err), err);
+        err = hackrf_set_vga_gain(device, params->vga_gain);
+        assert(("hackrf_set_vga_gain(...)", !err), err);
+    }
     
 
     // debug(
@@ -322,8 +373,10 @@ static int setup_receiver_params(hackrf_device_t *device, hparams_t *params) {
 
     // set baseband sampling bandwidth
     // resets after sample rate is set, so call this after sample rate
-    err = hackrf_set_baseband_filter_bandwidth(device, params->band_hz);
-    assert(!err, err);
+    if (!is_transmit) {
+        err = hackrf_set_baseband_filter_bandwidth(device, params->band_hz);
+        assert(!err, err);
+    }
 
     return 0;
 }
@@ -334,7 +387,7 @@ static int begin_receiver(hackrf_device_t *device, hparams_t *params) {
     int err;
 
     if (!hackrf_is_finished(params))
-        warnf("running receiver when previous transmission is not complete");
+        warnf("running transmitter when previous transmission is not complete");
 
     // enable antenna
     err = hackrf_set_antenna_enable(device, 1);
@@ -361,7 +414,8 @@ static int begin_receiver(hackrf_device_t *device, hparams_t *params) {
     // setup loop params
     //params->_ibin = 0;
     params->_isamp = 0;
-    
+
+    params->is_transmit = false;
 
     err = hackrf_start_rx(device, (hackrf_sample_block_cb_fn)rx_callback, params);
     assert(("hackrf failed to start receiver loop", !err), err);
@@ -370,11 +424,55 @@ static int begin_receiver(hackrf_device_t *device, hparams_t *params) {
 }
 
 
+
+
+
+
+static int begin_transmitter(hackrf_device_t *device, hparams_t *params) {
+    int err;
+
+    if (!hackrf_is_finished(params))
+        warnf("running receiver when previous transmission is not complete");
+
+    // enable antenna
+    err = hackrf_set_antenna_enable(device, 1);
+    assert(("hackrf_set_antenna_enable(..., 1)", !err), err);
+
+    params->is_transmit = true;
+
+    err = hackrf_start_tx(device, (hackrf_sample_block_cb_fn)tx_callback, params);
+    assert(("hackrf failed to start receiver loop", !err), err);
+
+    return 0;
+}
+
+
+
+
+
+
 static int stop_receiver(hackrf_device_t *device) {
     int err;
     
     err = hackrf_stop_rx(device);
-    assert(("hackrf failed to start receiver loop", !err), err);
+    assert(("hackrf failed to stop receiver loop", !err), err);
+
+    // disable antenna
+    err = hackrf_set_antenna_enable(device, 0);
+    assert(("hackrf_set_antenna_enable(..., 0)", !err), err);
+
+    return 0;
+}
+
+
+
+
+
+static int stop_transmitter(hackrf_device_t *device) {
+    int err;
+    
+    err = hackrf_stop_tx(device);
+    assert(("hackrf failed to stop transmitter loop", !err), err);
 
     // disable antenna
     err = hackrf_set_antenna_enable(device, 0);
@@ -570,6 +668,27 @@ static int rx_callback(hackrf_transfer_t *transfer) {
 
 
 
+// we will need to set a small sample rate
+// to prevent underflow
+static int tx_callback(hackrf_transfer_t *transfer) {
+
+    hparams_t *params = transfer->tx_ctx;
+
+    // since this is shifted to the center frequency, all we need to do is 
+    // transmit a dc signal
+    transfer->valid_length = transfer->buffer_length;
+
+    for (int i = 0; i < transfer->buffer_length; i++) {
+        ((int8_t*)transfer->buffer)[i] = params->tx_amp;
+    }
+
+    return 0;
+}
+
+
+
+
+
 
 #ifdef __DEBUG__
 int hackrf_run_tests(void) {
@@ -586,7 +705,7 @@ int hackrf_run_tests(void) {
     assert(!err, err);
 
     // init hparams
-    err = hparams_init(&params);
+    err = hparams_init(&params, NULL);
     assert(("failed to init params", !err), err);
 
     params.srate_hz = 10e6*2;

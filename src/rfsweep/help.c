@@ -133,11 +133,15 @@ const char *str_help_transmit =
     ""                                                                  "\n"
     "HACKRF OPTIONS"                                                    "\n"
     "        --freq=<freq_hz>"                                          "\n"
-    "            Set frequency (hz). will round the frequency to the"   "\n"
-    "            nearest supported frequency."                          "\n"
+    "            Set center frequency (hz)."                            "\n"
     ""                                                                  "\n"
-    "        --band=<band_hz>"                                          "\n"
-    "            Set bandwidth (hz)."                                   "\n"
+    "        --vga-gain=<gain_db>"                                      "\n"
+    "            Variable gain amplifier. Software ampllification of"   "\n"
+    "            the signal."                                           "\n"
+    "            Steps of 1 dB. Ranges from 0 to 47 dB"                 "\n"
+    ""                                                                  "\n"
+    "        --tx-amp=<amplitude>"                                      "\n"
+    "            Amplitude of transmission relative to gain"            "\n"
     ""                                                                  "\n"
     "        --amplify"                                                 "\n"
     "            Enable amplifier."                                     "\n";
@@ -191,10 +195,13 @@ const char *str_help_measure =
     "            Set sample rate (Hz)."                                 "\n"
     ""                                                                  "\n"
     "        --lna-gain=<gain_db>"                                      "\n"
-    "            Set lna-gain. Steps of 8 dB. Ranges from 0 to 40 dB"   "\n"
+    "            Low noise amplifier. Hardware amplification of small"  "\n"
+    "            signals. Steps of 8 dB. Ranges from 0 to 40 dB"        "\n"
     ""                                                                  "\n"
     "        --vga-gain=<gain_db>"                                      "\n"
-    "            Set lna-gain. Steps of 8 dB. Ranges from 0 to 40 dB"   "\n"
+    "            Variable gain amplifier. Software ampllification of"   "\n"
+    "            the signal to adjust 8-bit saturation"                 "\n"
+    "            Steps of 2 dB. Ranges from 0 to 62 dB"                 "\n"
     ""                                                                  "\n"
     "        --samps=<samples>"                                         "\n"
     "            Number of chunk samples to take. (chunks are usually"  "\n"
@@ -227,7 +234,7 @@ const char *str_help_rotate =
     "        --angle=<degrees>"                                         "\n"
     "            Set motor angle in terms of degrees"                   "\n"
     ""                                                                  "\n"
-    "        --step=<degrees>"                                          "\n"
+    "        --steps=<degrees>"                                         "\n"
     "            Set motor angle in terms of steps"                     "\n"
     ""                                                                  "\n"
     "        --stepmode=<1/2/4/8/16>"                                   "\n"
@@ -241,7 +248,7 @@ const char *str_help_rotate =
 
 
 
-
+// TODO: update this
 const char *str_help_defaults =
     "DEFAULTS"                                            "\n"
     "        --ip="         STRINGIFY(DEFAULT_IP)         "\n"
@@ -255,4 +262,6 @@ const char *str_help_defaults =
     "        --band="       STRINGIFY(DEFAULT_BAND)       "\n"
     "        --srate="      STRINGIFY(DEFAULT_SRATE)      "\n"
     "        --lna-gain="   STRINGIFY(DEFAULT_LNA)        "\n"
-    "        --vga-gain="   STRINGIFY(DEFAULT_VGA)        "\n";
+    "        --vga-gain="   STRINGIFY(DEFAULT_VGA)        "\n"
+    "        --tx-amp="     STRINGIFY(DEFAULT_TX_AMP)     "\n"
+    "        --stepmode="   STRINGIFY(DEFAULT_STEPMODE)   "\n";

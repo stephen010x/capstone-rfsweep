@@ -61,6 +61,8 @@
 #endif
 #define MIN_MICROS_PER_STEP ((int64_t)1e6/MAX_STEPS_PER_SEC)
 
+#define STEPS_PER_REV 200
+
 
 
 #define MASK_MS1 0b001
@@ -113,6 +115,7 @@ static void *_multistep_thread(void *args);
 static int _stepper_setdir(step_dir_t dir);
 static void _step_inc(void);
 static void _step_dec(void);
+static void *_stepper_stepto_thread(stephandler_t *handle);
 //static void _signandler_2(int sig);
 
 
@@ -124,13 +127,13 @@ static void _step_dec(void);
 //static volatile uint8_t g_fstep;    // fractional steps 0-15 (out of 16)
 //static volatile step_mode_t g_mode;
 static struct {
-    volatile _Atomic int32_t step;      // full steps 0-199 (overflows)
-    volatile _Atomic int8_t fstep;      // fractional steps 0-15 (out of 16)
-    volatile step_mode_t mode;
-    volatile _Atomic uint8_t mode_mult; // changed this to 2pow exponent
-    volatile _Atomic step_dir_t dir;
-    volatile _Atomic uint32_t multistep;
-    volatile _Atomic uint8_t dostep;
+    volatile _Atomic int32_t     step;       // full steps 0-199 (overflows)
+    volatile _Atomic int8_t      fstep;      // fractional steps 0-15 (out of 16)
+    volatile         step_mode_t mode;
+    volatile _Atomic uint8_t     mode_mult;  // changed this to 2pow exponent
+    volatile _Atomic step_dir_t  dir;
+    volatile _Atomic uint32_t    multistep;
+    volatile _Atomic uint8_t     dostep;
 
     pthread_mutex_t step_mutex;
 } global = {
@@ -138,7 +141,7 @@ static struct {
 };
 
 
-static pthread_t tthread[2];
+static pthread_t tthread[3];
 
 
 
@@ -647,4 +650,70 @@ int stepper_stepto(int32_t angle) {
     }
     stepper_wait();
     return 0;
+}
+
+
+
+
+
+// snaps to nearest step (round)
+int32_t angle_to_step(float32_t angle) {
+    // steps per revolution
+    float spr = STEPS_PER_REV << (4 - global.mode_mult);
+    return (int32_t)(angle * spr / 360.0 + 0.5);
+}
+
+
+float32_t step_to_angle(int32_t step) {
+    // steps per revolution
+    float spr = STEPS_PER_REV << (4 - global.mode_mult);
+    return step * 360.0 / spr;
+}
+
+
+
+
+//static int stepto_thread;
+
+// the handle this returns is zero when active
+// but nonzero if finished (will be the thread id)
+// the handler this returns must be freed
+stephandler_t *stepper_stepto_noblock(int32_t angle) {
+    // first item is 
+    int err;
+    pthread_t tid;
+    stephandler_t *handle = malloc(sizeof(stephandler_t));
+
+    handle->is_active = true;
+    handle->angle = angle;
+    
+    err = pthread_create(&tid, NULL, (void*)&_stepper_stepto_thread, handle);
+    assert(!err, NULL);
+
+    handle->tid = tid;
+    
+    return handle;
+}
+
+
+static void *_stepper_stepto_thread(stephandler_t *handle) {
+    int err;
+    err = stepper_stepto((int32_t)handle->angle);
+    handle->is_active = false;
+    return (void*)(intptr_t)err;
+}
+
+
+bool stepper_is_stepping_to(stephandler_t *handle) {
+    void *err;
+
+    if (handle->is_active) {
+        return true;
+
+    } else {
+        pthread_join(handle->tid, &err);
+        handle->err = (int)(intptr_t)err;
+        return false;
+    }
+    
 }

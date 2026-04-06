@@ -123,13 +123,16 @@ static void *_data_thread(const net_t *client);
 
 // static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath);
 static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg);
-static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params);
-static int _server_measure(const message_t *restrict msg, hparams_t *restrict params);
+static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params, bool shall_rotate);
+static int _server_measure(const message_t *restrict msg, hparams_t *restrict params, bool shall_rotate);
 // static int _server_send_logs(const net_t *restrict client, const char *restrict logpath);
 static int _server_send_logs(const net_t *client);
 
 static void _init_server(void);
 static void _exit_server(void);
+
+static int _server_transmit(const net_t *restrict client, const message_t *restrict msg, bool transmit_enable);
+static int _server_rotate(const net_t *restrict client, const message_t *restrict msg);
 
 
 //void time_init(void);
@@ -213,7 +216,14 @@ ssize_t message_type_getsize(message_type_t type, int32_t data_bytes) {
             return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.data) + (size_t)data_bytes;
         
         case MESSAGE_MEASURE:
+        case MESSAGE_RECEIVE:
             return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.measure);
+
+        case MESSAGE_ROTATE:
+            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.rotate);
+        
+        case MESSAGE_TRANSMIT_ENABLE:
+            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.transmit_enable);
 
         // all other message types are just the type
         // with no following data
@@ -229,7 +239,8 @@ ssize_t message_type_getsize(message_type_t type, int32_t data_bytes) {
 ssize_t message_getsize(const message_t *msg) {
     // to calm down the memory sanitizer
     #ifdef __DEBUG__
-    return message_type_getsize(msg->type, (msg->type == MESSAGE_DATA) ? msg->data.size : 0);
+    return message_type_getsize(msg->type, 
+        (msg->type == MESSAGE_DATA) ? msg->data.size : 0);
     #else
     return message_type_getsize(msg->type, msg->data.size);
     #endif
@@ -573,8 +584,17 @@ static int _data_thread_start(const net_t *client) {
     //assert(("failed to init binqueue", !err), -1);
 
     //_run_data_thread = true;
+
+    _run_data_thread = true;
+    _err_data_thread = false;
     
     err = pthread_create(&tthread[0], NULL, (void*)&_data_thread, (void*)client);
+    if (err) {
+        _run_data_thread = false;
+        _err_data_thread = true;
+        tthread[0] = 0;
+    }
+    
     assert(("failed to create data thread", !err), -1);
     
     return 0;
@@ -591,17 +611,20 @@ static int _data_thread_end(bool end_with_error) {
 
     debugf("waiting for data thread to exit");
 
-    _run_data_thread = false;
-    _err_data_thread = end_with_error;
-
     // cancel threads
     if (tthread[0] != 0) {
+        _run_data_thread = false;
+        _err_data_thread = end_with_error;
+    
         err = pthread_join(tthread[0], &retval);
         assert(("data thread failed to exit", !err), -1);
         assert(("data thread returned error", retval == 0), (int)(intptr_t)retval);
         debugf("data thread successfully exited");
+
+        DEBUG(tthread[0] = 0;)
+        
     } else {
-        warnf("tried to cancel data thread, which is not running");
+        warnf("tried to stop data thread, which was never started");
     }
 
     //binqueue_free();
@@ -619,8 +642,8 @@ static void *_data_thread(const net_t *client) {
     fbins_t *fbins;
     message_t *msg;
 
-    _run_data_thread = true;
-    _err_data_thread = false;
+    // _run_data_thread = true;
+    // _err_data_thread = false;
 
     while (_run_data_thread) {
 
@@ -668,6 +691,7 @@ static void *_data_thread(const net_t *client) {
         err = message_write(client, &CONST_MSG_END, SERVER_TIMEOUT);
 
     assert(!err, (void*)(intptr_t)err);
+
     return (void*)0;
 }
 
@@ -802,10 +826,33 @@ static int _server_message_handler(const net_t *restrict client, const message_t
 
 
         case MESSAGE_MEASURE:
-            err = _server_measure_start(client, msg, &params);
+            err = _server_measure_start(client, msg, &params, true);
             //if (err) err |= message_write(client, &CONST_MSG_ERROR, SERVER_TIMEOUT);
             //else     err |= message_write(client, &CONST_MSG_END,   SERVER_TIMEOUT);
             return err;
+
+        case MESSAGE_RECEIVE:
+            //err = _server_receive_start(client, msg, &params);
+            err = _server_measure_start(client, msg, &params, false);
+            return err;
+        
+        case MESSAGE_ROTATE:
+            err = _server_rotate(client, msg);
+            return err;
+        
+        case MESSAGE_TRANSMIT_ENABLE:
+            err = _server_transmit(client, msg, true);
+            if (err) message_write(client, &CONST_MSG_ERROR,   SERVER_TIMEOUT);
+            else     message_write(client, &CONST_MSG_SUCCESS, SERVER_TIMEOUT);
+            return err;
+            
+        
+        case MESSAGE_TRANSMIT_DISABLE:
+            err = _server_transmit(client, msg, false);
+            if (err) message_write(client, &CONST_MSG_ERROR,   SERVER_TIMEOUT);
+            else     message_write(client, &CONST_MSG_SUCCESS, SERVER_TIMEOUT);
+            return err;
+            
 
 
         // client only or invalid messages
@@ -836,6 +883,10 @@ char* message_type_str(message_type_t type) {
         case MESSAGE_POLL:        return "MESSAGE_POLL";
         case MESSAGE_ERROR:       return "MESSAGE_ERROR";
         case MESSAGE_PING:        return "MESSAGE_PING";
+        case MESSAGE_RECEIVE:     return "MESSAGE_RECEIVE";
+        case MESSAGE_ROTATE:      return "MESSAGE_ROTATE";
+        case MESSAGE_TRANSMIT_ENABLE: return "MESSAGE_TRANSMIT_ENABLE";
+        case MESSAGE_TRANSMIT_DISABLE: return "MESSAGE_TRANSMIT_DISABLE";
         default:                  return "INVALID MESSAGE";
     }
 }
@@ -847,47 +898,54 @@ char* message_type_str(message_type_t type) {
 
 
 
-static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params) {
+static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params, bool shall_rotate) {
         int err;
 
         debugf("server writing poll message");
         message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
+
 
         // start data thread
         err = _data_thread_start(client);
         assert(!err, err);
 
         // init hackrf
-        err = hparams_init(params);
+        err = hparams_init(params, DEFAULT_RSERIAL);
         if (err) goto end_thread;
 
-        // TODO: add transmit code here
-
-        // enable motor
-        stepper_enable(true);
-        // wait for stepper motor to align after turnon
-        micros_block_for(1e6);
-        // set origin
-        stepper_setorigin();
-        // set step mode
-        stepper_mode(MEASURE_STEP_MODE);
+        // TODO what I really should have done is 
+        //      make it so that a step count of zero would 
+        //      not perform any rotations
+        if (shall_rotate) {
+            // enable motor
+            stepper_enable(true);
+            // wait for stepper motor to align after turnon
+            micros_block_for(1e6);
+            // set origin
+            //stepper_setorigin();
+            // set step mode
+            stepper_mode(MEASURE_STEP_MODE);
+        }
 
         // start measurements
-        err = _server_measure(msg, params);
+        err = _server_measure(msg, params, shall_rotate);
         wassert(("_server_measure failed", !err));
 
     end_motor:
         (void)&&end_motor;
-        // quick pause
-        micros_block_for(1e6);
-        // step back to origin
-        stepper_stepto(0);
-        // take out of microstepping mode
-        stepper_mode(STEP_MODE_1_1);
-        // wait for motor to settle before turnoff
-        micros_block_for(1e6);
-        // disable motor
-        stepper_enable(false);
+        
+        if (shall_rotate) {
+            // quick pause
+            micros_block_for(1e6);
+            // step back to origin
+            stepper_stepto(0);
+            // take out of microstepping mode
+            stepper_mode(STEP_MODE_1_1);
+            // wait for motor to settle before turnoff
+            micros_block_for(1e6);
+            // disable motor
+            stepper_enable(false);
+        }
 
         // close hackrf
         hparams_free(params);
@@ -907,7 +965,7 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
 
 
 
-static int _server_measure(const message_t *restrict msg, hparams_t *restrict params) {
+static int _server_measure(const message_t *restrict msg, hparams_t *restrict params, bool shall_rotate) {
     int err;
     int steps;
     
@@ -944,7 +1002,8 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
         params->angle = 360.0f * angle / (float)STEPS_PER_REV;
 
         // move to desired angle
-        stepper_stepto(angle);
+        if (shall_rotate)
+            stepper_stepto(angle);
 
         // take measurement
         err = hackrf_read(params);
@@ -1027,4 +1086,103 @@ static int _server_send_logs(const net_t *client) {
     
     return 0;
 }
+
+
+
+
+
+static int _server_rotate(const net_t *restrict client, const message_t *restrict msg) { 
+    int err;
+    stephandler_t *handle;
+
+    (void)client;
+
+
+    //if (msg->rotate.is_angle) {
+    
+    err = stepper_enable(true);
+    if (err) goto _exit_rotate;
+    
+    err = stepper_mode(msg->rotate.stepmode);
+    if (err) goto _exit_rotate;
+    
+    micros_block_for(10e3); // 10ms
+    
+
+    // begin nonblocking rotation
+    if (msg->rotate.is_angle)
+        handle = stepper_stepto_noblock(angle_to_step(msg->rotate.angle));
+    else
+        handle = stepper_stepto_noblock(msg->rotate.steps);
+
+    if (handle == NULL || handle->err) {
+        err = -1;
+        free(handle);
+        goto _exit_rotate;
+    }
+
+    // poll until finished
+    while(stepper_is_stepping_to(handle)) {
+        err = message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
+        assert(!err, err);
+        micros_block_for(200000);
+    }
+
+    free(handle);
+
+    stepper_enable(false);
+    micros_block_for(10e3); // 10ms
+    //}
+    
+    _exit_rotate:
+
+    if (err) message_write(client, &CONST_MSG_ERROR,   SERVER_TIMEOUT);
+    else     message_write(client, &CONST_MSG_SUCCESS, SERVER_TIMEOUT);
+
+    return err;
+}
+
+
+
+
+
+
+
+static int _server_transmit(const net_t *restrict client, const message_t *restrict msg, bool transmit_enable) {
+    int err;
+    static hparams_t params = {0};
+
+    (void)client;
+
+
+    // if not transmit_enable, then disable and return early
+    if (!transmit_enable) {
+        err = hackrf_stop(&params);
+        assert(!err, -1);
+        hparams_free(&params);
+        return 0;
+    }
+
+    // init hackrf
+    err = hparams_init(&params, DEFAULT_TSERIAL);
+    if (err) return -1;
+
+    // setup transmission params
+    params = (hparams_t){
+        .freq_hz     = msg->transmit_enable.freq_hz,
+        .tx_vga_gain = msg->transmit_enable.vga_gain,
+        .tx_amp      = msg->transmit_enable.tx_amp,
+        .amp_enable  = msg->transmit_enable.amp_enable,
+    };
+
+    // begin transmission
+    err = hackrf_write(&params);
+    if (err) {
+        hparams_free(&params);
+        return -1;
+    }
+
+    return 0;
+}
+
 

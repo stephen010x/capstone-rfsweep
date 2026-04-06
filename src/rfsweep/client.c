@@ -44,7 +44,7 @@ static int dump_strto_file(const char *restrict path, const char *restrict forma
 static int append_strto_file(const char *restrict path, const char *restrict format, ...);
 static int __unused dump_binto_file(const char *restrict path, const void *buff, size_t len);
 static int append_binto_file(const char *restrict path, const void *buff, size_t len);
-
+static int _client_request_data(const globalstate_t *state, int msgtype);
 
 
 
@@ -65,6 +65,8 @@ static const char *msgstr[MESSAGE_TYPE_LEN] = {
     [MESSAGE_UNSUPPORTED]       = "UNSUPPORTED",
     [MESSAGE_END]               = "END",
     [MESSAGE_PING]              = "PING",
+    [MESSAGE_RECEIVE]           = "RECEIVE",
+    [MESSAGE_ROTATE]            = "ROTATE",
     //[MESSAGE_STOP]              = "STOP",
 };
 
@@ -118,21 +120,21 @@ static int _client_request(const globalstate_t *restrict state, const message_t 
 
 
 
-int client_request_reset(globalstate_t *state) {
+int client_request_reset(const globalstate_t *state) {
     msgf("Sending RESET request to server");
     return _client_request(state, &CONST_MSG_RESET);
 }
 
 
 
-int client_request_restart(globalstate_t *state) {
+int client_request_restart(const globalstate_t *state) {
     msgf("Sending RESTART request to server");
     return _client_request(state, &CONST_MSG_RESTART);
 }
 
 
 
-int client_request_ping(globalstate_t *state) {
+int client_request_ping(const globalstate_t *state) {
     msgf("Sending PING to server");
     return _client_request(state, &CONST_MSG_PING);
 }
@@ -145,7 +147,7 @@ int client_request_ping(globalstate_t *state) {
 
 
 
-int client_request_getlogs(globalstate_t *state) {
+int client_request_getlogs(const globalstate_t *state) {
     int err;
     net_t net;
     message_t *msg;
@@ -209,19 +211,17 @@ int client_request_getlogs(globalstate_t *state) {
 
 
 
-int client_request_measure(globalstate_t *state) {
+static int _client_request_data(const globalstate_t *state, int msgtype) {
     int err;
     net_t net;
     message_t *msg;
-
-    msgf("Sending MEASURE request to server");
 
     // connect to server
     err = net_connect(&net, state->ip, state->port, -1);
     assert(!err, err);
 
     // create and populate message
-    msg = message_new(MESSAGE_MEASURE, 0);
+    msg = message_new(msgtype, 0);
     msg->measure = (typeof(msg->measure)){
         .lna_gain   = state->lna_gain,
         .vga_gain   = state->vga_gain,
@@ -311,6 +311,14 @@ int client_request_measure(globalstate_t *state) {
 
 
 
+int client_request_measure(const globalstate_t *state) {
+    msgf("Sending MEASURE request to server");
+    return _client_request_data(state, MESSAGE_MEASURE);
+}
+
+
+
+
 
 
 static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg, int j) {
@@ -332,9 +340,13 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
 
         //uint8_t data[sizeof(float64_t)];
         uint64_t data;
+        //float64_t data;
 
         // DEBUG(__lsan_disable();) // to ignore memory leaks
         // DEBUG(__lsan_enable();) // to ignore memory leaks
+
+        #pragma GCC diagnostic push
+        #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 
         *(float64_t*)&data = (float64_t)fbins->timestamp_us;
         err = append_binto_file(state->fpath, &data, sizeof(float64_t));
@@ -363,6 +375,8 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
         err = append_binto_file(state->fpath, fbins->bins, 
                         fbins->bcount * sizeof(fbin_t));
         if (err) error(-6);
+
+        #pragma GCC diagnostic pop
 
 
     // if ascii output and no output file
@@ -527,4 +541,159 @@ static int dump_binto_file(const char *restrict path, const void *buff, size_t l
 
 static int append_binto_file(const char *restrict path, const void *buff, size_t len) {
     return _write_binto_file(path, "a", buff, len);
+}
+
+
+
+
+
+
+
+
+
+static int _client_request_success(const globalstate_t *state, message_t *msg) {
+    int err;
+    net_t net;
+    //message_t *rmsg;
+
+    // connect to server
+    err = net_connect(&net, state->ip, state->port, -1);
+    assert(!err, err);
+
+    // send request to server
+    err = message_write(&net, msg, CLIENT_TIMEOUT);
+    jassert(!err, _exit_net);
+
+    // free message to be reused for the return message
+    //free(msg);
+
+    // loop until end message received or error
+    for (;;) {
+        // read response from server
+        msg = message_read(&net, CLIENT_TIMEOUT);
+        err = (msg != NULL) ? 0 : -1;
+        jassert(!err, _exit_net);
+
+        // handle response from server
+        // err = _client_msg_handler(&msg);
+        // jassert(!err, _exit_msg);
+        switch (msg->type) {
+
+
+            case MESSAGE_POLL:
+                // comment this out later
+                //debugf("Server POLLING...");
+                break;
+
+
+            case MESSAGE_SUCCESS:
+                debugf("Rotation complete.");
+                err = 0;
+                free(msg);
+                goto _exit_net;
+
+
+            default:
+                err = _client_msg_handler(msg);
+                jassert(!err, _exit_msg);
+        }
+
+        _exit_msg:
+        // free message
+        free(msg);
+
+        // if error, then exit loop
+        if (err) break;
+    }
+    
+    _exit_net:
+    // free net
+    err |= net_close(&net, CLIENT_TIMEOUT);
+    
+    return err;
+}
+
+
+
+
+int client_request_rotate(const globalstate_t *state) {
+    int err;
+    message_t *msg;
+
+    msgf("Sending ROTATE request to server");
+
+    // create and populate message
+    msg = message_new(MESSAGE_ROTATE, 0);
+    if (state->is_angle) {
+        msg->rotate = (typeof(msg->rotate)){
+            .is_angle = state->is_angle,
+            .angle    = state->angle,
+        };
+    } else {
+        msg->rotate = (typeof(msg->rotate)){
+            .is_angle = state->is_angle,
+            .steps    = state->steps,
+        };
+    }
+
+    switch (state->stepmode) {
+        case 1:  msg->rotate.stepmode = STEP_MODE_1_1;  break;
+        case 2:  msg->rotate.stepmode = STEP_MODE_1_2;  break;
+        case 4:  msg->rotate.stepmode = STEP_MODE_1_4;  break;
+        case 8:  msg->rotate.stepmode = STEP_MODE_1_8;  break;
+        case 16: msg->rotate.stepmode = STEP_MODE_1_16; break;
+        
+        default:
+            free(msg);
+            alertf(STR_ERROR, "invalid stepmode \"%d\".", state->stepmode);
+            return -1;
+    }
+
+    err = _client_request_success(state, msg);
+
+    free(msg);
+
+    return err;
+}
+
+
+
+
+
+
+
+int client_request_receive(const globalstate_t *state) {
+    msgf("Sending RECEIVE request to server");
+    return _client_request_data(state, MESSAGE_RECEIVE);
+}
+
+
+
+
+
+
+int client_request_transmit(const globalstate_t *state) {
+    int err;
+    message_t *msg;
+
+    msgf("Sending TRANSMIT request to server");
+
+    // create and populate message
+    if (state->transmit_enable) {
+        msg = message_new(MESSAGE_TRANSMIT_ENABLE, 0);
+        msg->transmit_enable = (typeof(msg->transmit_enable)){
+                .freq_hz    = state->freq_hz,
+                .amp_enable = state->amp_enable,
+                .vga_gain   = state->vga_gain,
+                .tx_amp     = state->tx_amp,
+        };
+    } else {
+        msg = message_new(MESSAGE_TRANSMIT_DISABLE, 0);
+    }
+
+    err = _client_request_success(state, msg);
+
+    free(msg);
+
+    return err;
 }
