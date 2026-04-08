@@ -7,9 +7,10 @@ import copy
 import math
 import matplotlib.pyplot as pyplot
 import random
+import sys
 
 is_binary = True
-filename = 'data.bin'
+filename = sys.argv[1] if (len(sys.argv) == 2) else 'data.bin'
 binsize = 2048
 overlap = 0.5
 

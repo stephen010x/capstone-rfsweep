@@ -25,7 +25,7 @@
 // #define MEASURE_STEP_MODE  STEP_MODE_1_16
 // #define STEPS_PER_REV      (200*16)
 #define MEASURE_STEP_MODE  STEP_MODE_1_4
-#define STEPS_PER_REV      (200*4)
+#define STEPS_PER_REV      (200*4*57/11)
 
 //#define STEPS_PER_REV (200*16)
 
@@ -1148,6 +1148,8 @@ static int _server_rotate(const net_t *restrict client, const message_t *restric
 
     (void)client;
 
+    int modemult = 
+            (4 - ((msg->rotate.stepmode == 0b111) ? 0b100 : msg->rotate.stepmode));
 
     //if (msg->rotate.is_angle) {
     
@@ -1168,9 +1170,9 @@ static int _server_rotate(const net_t *restrict client, const message_t *restric
         handle = stepper_stepto_noblock(angle_to_step(msg->rotate.angle));
     } else {
         msgf("rotating from step %d to step %d index in microstep %d",
-                (int)stepper_getmsteps()>>(4-msg->rotate.stepmode),
+                (int)stepper_getmsteps()>>(4-modemult),
                 (int)msg->rotate.steps, 
-                (int)1<<msg->rotate.stepmode);
+                (int)1<<modemult);
         handle = stepper_stepto_noblock(msg->rotate.steps);
     }
 
@@ -1242,12 +1244,13 @@ static int _server_transmit(const net_t *restrict client, const message_t *restr
     if (err) return -1;
 
     // setup transmission params
-    params = (hparams_t){
-        .freq_hz     = msg->transmit_enable.freq_hz,
-        .tx_vga_gain = msg->transmit_enable.vga_gain,
-        .tx_amp      = msg->transmit_enable.tx_amp,
-        .amp_enable  = msg->transmit_enable.amp_enable,
-    };
+    params.freq_hz     = msg->transmit_enable.freq_hz;
+    params.tx_vga_gain = msg->transmit_enable.vga_gain;
+    params.tx_amp      = msg->transmit_enable.tx_amp;
+    params.amp_enable  = msg->transmit_enable.amp_enable;
+    
+
+    debugf("params.device %p", params._device);
 
     // begin transmission
     err = hackrf_write(&params);

@@ -61,7 +61,7 @@
 #endif
 #define MIN_MICROS_PER_STEP ((int64_t)1e6/MAX_STEPS_PER_SEC)
 
-#define STEPS_PER_REV (200*5)
+#define STEPS_PER_REV (200*57/11)
 
 
 

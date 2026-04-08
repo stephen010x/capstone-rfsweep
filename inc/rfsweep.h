@@ -277,9 +277,9 @@ typedef int8_t message_type_t;
 typedef struct __packed {
     int16_t type;
     
-    union {
+    union __packed {
     
-        struct {
+        struct __packed {
             // receiver
             //uint32_t _p0;       // padding
             uint32_t lna_gain;  // steps of 8 dB, 0-40 dB
@@ -303,17 +303,17 @@ typedef struct __packed {
         } measure, receive;
 
 
-        struct {
+        struct __packed {
             union {
                 float32_t angle;
                 int32_t   steps;
             };
-            bool    is_angle;
+            uint8_t is_angle;
             uint8_t stepmode;
         } rotate;
 
 
-        struct {
+        struct __packed {
             uint64_t freq_hz;
             //uint32_t band_hz;
             uint32_t vga_gain;  // steps of 1 dB, 0-67 dB
@@ -323,7 +323,7 @@ typedef struct __packed {
         } transmit_enable;
 
         
-        struct {
+        struct __packed {
             int32_t size;
             union {
                 int8_t data[0];
@@ -381,7 +381,7 @@ typedef struct {
         int32_t   samps;
         uint8_t   snappow;
         bool      transmit_enable;
-        int16_t   steps;
+        int32_t   steps;
         float32_t angle;
         bool      is_verbose;
         uint8_t   stepmode;

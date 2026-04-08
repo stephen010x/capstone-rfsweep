@@ -712,7 +712,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
 
                 case FLAG_STEPS:
                     global.is_angle = false; // for rotate mode
-                    global.steps = strtoi16(val);
+                    global.steps = strtoi32(val);
                     if (errno) return -7;
                     break;
 
