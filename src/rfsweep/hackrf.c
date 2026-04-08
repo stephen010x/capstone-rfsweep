@@ -73,6 +73,8 @@ static int tx_callback(hackrf_transfer_t *transfer);
 fbins_t *fbins_new(int32_t bcount) {
     fbins_t *mem;
 
+    //debugf("allocating new fbin of size %d.", bcount);
+
     mem = malloc(sizeof(fbins_t) + bcount * sizeof(fbin_t));
     assert(mem != NULL, NULL);
 
@@ -633,9 +635,9 @@ static int rx_callback(hackrf_transfer_t *transfer) {
     // we are just going to directly push this into the binqueue
     // as defined in server.c
     // technically anyone can pop it, so it is *fine*
-    DEBUG(__lsan_disable();) // to ignore memory leaks
+    //DEBUG(__lsan_disable();) // to ignore memory leaks
     fbins = fbins_new(transfer->buffer_length>>1);
-    DEBUG(__lsan_enable();) // to ignore memory leaks
+    //DEBUG(__lsan_enable();) // to ignore memory leaks
     assert(fbins != NULL, 1);
 
     // record fbin properties

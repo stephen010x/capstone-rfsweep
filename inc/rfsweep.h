@@ -53,8 +53,8 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 #define DEFAULT_TX_AMP 127
 #define DEFAULT_STEPMODE 1
 
-#define DEFAULT_RSERIAL  NULL
-#define DEFAULT_TSERIAL  NULL
+#define DEFAULT_RSERIAL  "0000000000000000d07864dc314d3287"
+#define DEFAULT_TSERIAL  "0000000000000000930c64dc285b0ec3"
 
 
 
@@ -403,7 +403,7 @@ typedef struct {
 
 typedef struct {
     int tid;
-    int err;
+    //int err;
     _Atomic int is_active;
     int32_t angle;
 } stephandler_t;
@@ -502,8 +502,11 @@ uint8_t stepper_get_multpow(void);
 int stepper_stepto(int32_t angle);
 int stepper_steptomod(int32_t angle, step_dir_t dir);
 int32_t angle_to_step(float32_t angle);
+float32_t step_to_angle(int32_t step);
 stephandler_t *stepper_stepto_noblock(int32_t angle);
 bool stepper_is_stepping_to(stephandler_t *handle);
+int stepper_stepto_free(stephandler_t *handle);
+
 
 
 

@@ -57,11 +57,11 @@
 #ifndef MAX_STEPS_PER_SEC
 // this is the max steps per second for the base step
 // size. It is multipled by the microstep resolution
-#define MAX_STEPS_PER_SEC 100
+#define MAX_STEPS_PER_SEC (100*5)
 #endif
 #define MIN_MICROS_PER_STEP ((int64_t)1e6/MAX_STEPS_PER_SEC)
 
-#define STEPS_PER_REV 200
+#define STEPS_PER_REV (200*5)
 
 
 
@@ -134,6 +134,7 @@ static struct {
     volatile _Atomic step_dir_t  dir;
     volatile _Atomic uint32_t    multistep;
     volatile _Atomic uint8_t     dostep;
+    volatile _Atomic bool        stepto_run; // set to zero to cancel stepto
 
     pthread_mutex_t step_mutex;
 } global = {
@@ -172,8 +173,10 @@ void init_gpio(void) {
     err = gpioInitialise();
     vassert(("failed to initilize gpio library", err != PI_INIT_FAILED));
 
+    DEBUG(
     debugf("MAX_STEPS_PER_SEC   = %lld", (long long)MAX_STEPS_PER_SEC);
     debugf("MIN_MICROS_PER_STEP = %lld", (long long)MIN_MICROS_PER_STEP);
+    )
 
     // create ctrl-c signal handler
     //signal(2, &_signandler_2);
@@ -201,7 +204,7 @@ void init_gpio(void) {
 
 
     // create step thread
-    debugf("creating gpio tthread 0");
+    DEBUG(debugf("creating gpio tthread 0");)
     err = pthread_create(&tthread[0], NULL, &_step_thread, NULL);
     vassert(("failed to create step thread", !err));
 
@@ -222,15 +225,17 @@ void exit_gpio(void) {
 
     _gpio_enabled = false;
 
-    debugf("canceling gpio threads");
+    DEBUG(debugf("canceling gpio threads");)
 
     // cancel threads
     if (tthread[0] != 0) {
         pthread_cancel(tthread[0]);
         pthread_join(tthread[0], &retval);
         wassert(("gpio tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
+        DEBUG(
         if (retval == PTHREAD_CANCELED)
             debugf("gpio tthread 0 successfully canceled");
+        )
     } else {
         warnf("tried to cancel gpio tthread 0 not running");
     }
@@ -398,7 +403,7 @@ int stepper_mode(step_mode_t mode) {
     // calculate mode multiplier
     global.mode_mult = (4 - ((mode == 0b111) ? 0b100 : mode));
     
-    debugf("mode set to %d with mult %d", mode, 1<<global.mode_mult);
+    msgf("mode set to %d with mult %d", mode, 1<<global.mode_mult);
 
     return 0;
 }
@@ -413,7 +418,7 @@ static int _stepper_setdir(step_dir_t dir) {
     );
 
     if (global.dir != dir) {
-        debugf("changing direction to %d", dir);
+        msgf("changing direction to %d", dir);
         err = gpioWrite(GPIO_DIR, dir);
         assert(("failed write to GPIO_DIR", !err), err);
         global.dir = dir;
@@ -642,9 +647,10 @@ int stepper_steptomod(int32_t angle, step_dir_t dir) {
 
 int stepper_stepto(int32_t angle) {
     int err;
+    global.stepto_run = true;
     step_dir_t dir = (angle > (stepper_getmsteps()>>global.mode_mult)) ? 
                         STEP_DIR_CLOCKWISE : STEP_DIR_COUNTERCLOCK;
-    while (angle != (stepper_getmsteps()>>global.mode_mult)) {
+    while (global.stepto_run && angle != (stepper_getmsteps()>>global.mode_mult)) {
         err = stepper_step(dir);
         assert(!err, err);
     }
@@ -686,6 +692,7 @@ stephandler_t *stepper_stepto_noblock(int32_t angle) {
 
     handle->is_active = true;
     handle->angle = angle;
+    //handle->err = 0;
     
     err = pthread_create(&tid, NULL, (void*)&_stepper_stepto_thread, handle);
     assert(!err, NULL);
@@ -705,15 +712,32 @@ static void *_stepper_stepto_thread(stephandler_t *handle) {
 
 
 bool stepper_is_stepping_to(stephandler_t *handle) {
-    void *err;
+    //void *err;
 
     if (handle->is_active) {
+        // handle->err = 0;
         return true;
 
     } else {
-        pthread_join(handle->tid, &err);
-        handle->err = (int)(intptr_t)err;
+        // pthread_join(handle->tid, &err);
+        // handle->err = (int)(intptr_t)err;
         return false;
     }
     
+}
+
+
+
+
+// will cancel stepto if running
+int stepper_stepto_free(stephandler_t *handle) {
+    void *err;
+    
+    global.stepto_run = false;
+    pthread_join(handle->tid, &err);
+    
+    DEBUG(*handle = (stephandler_t){0};)
+    free(handle);
+
+    return (int)(intptr_t)err;
 }

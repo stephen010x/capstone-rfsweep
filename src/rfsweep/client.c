@@ -248,6 +248,9 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
         err = (msg != NULL) ? 0 : -1;
         jassert(!err, _exit_net);
 
+        // message throttle
+        //micros_block_for(100000);
+
         // handle response from server
         // err = _client_msg_handler(&msg);
         // jassert(!err, _exit_msg);
@@ -282,7 +285,7 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
                 break;
 
             case MESSAGE_END:
-                debugf("Measurements complete.");
+                msgf("Measurements complete.");
                 err = 0;
                 free(msg);
                 goto _exit_net;
@@ -322,7 +325,7 @@ int client_request_measure(const globalstate_t *state) {
 
 
 static int _handle_measuredata(const globalstate_t *restrict state, const message_t *restrict msg, int j) {
-    int err;
+    int err, n;
     fbins_t *fbins;
     (void)j;
     
@@ -406,11 +409,32 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
         assert(!err, -2);
 
         // print out bins
+        #define _BUFFSIZE ((intptr_t)(8*(fbins->bcount)))
+        char *const buff = malloc(_BUFFSIZE+1);
+        char *buffoff = buff;
+        
         for (int i = 0; i < fbins->bcount; i++) {
-            err = append_strto_file(state->fpath, " %" PRIu8 " %" PRIu8,
-                   fbins->bins[i].real, fbins->bins[i].imag);
-            assert(!err, -3);
+            //err = append_strto_file(state->fpath, " %" PRIu8 " %" PRIu8,
+            // err = append_strto_file(state->fpath, " %hhd %hhd",
+            //        (uint8_t)fbins->bins[i].real, (uint8_t)fbins->bins[i].imag);
+            // assert(!err, -3);
+
+            if (_BUFFSIZE - (intptr_t)(buffoff - buff) < 0) {
+                alertf(STR_FATAL, "character buffer overflow");
+                fatal(1);
+            }
+            
+            n = snprintf(buffoff, _BUFFSIZE - (intptr_t)(buffoff - buff), " %hhd %hhd",
+                        fbins->bins[i].real, fbins->bins[i].imag);
+
+
+            buffoff += n;
         }
+        buff[_BUFFSIZE] = '\0';
+        err = append_strto_file(state->fpath, buff);
+        free(buff);
+        assert(!err, -3);
+
             
         err = append_strto_file(state->fpath, "\n");
         assert(!err, -4);
@@ -467,17 +491,19 @@ static int _write_strto_file(const char *restrict path, const char *restrict c, 
 
     // open file
     file = fopen(path, c);
+    if (file == NULL) alertf(STR_ERROR, "failed to open file");
     assert(file != NULL, -1);
 
     // write to file
     //err = fputs(str, file);
     err = vfprintf(file, format, vlist);
+    if (err < 0) alertf(STR_ERROR, "failed to write to file")
     jassert(err >= 0, _exit_file);
 
     _exit_file:
     // close file
     fclose(file);
-    return err;
+    return !(err >= 0);
 }
 
 
@@ -587,7 +613,7 @@ static int _client_request_success(const globalstate_t *state, message_t *msg) {
 
 
             case MESSAGE_SUCCESS:
-                debugf("Rotation complete.");
+                msgf("Rotation complete.");
                 err = 0;
                 free(msg);
                 goto _exit_net;

@@ -24,8 +24,8 @@
 
 // #define MEASURE_STEP_MODE  STEP_MODE_1_16
 // #define STEPS_PER_REV      (200*16)
-#define MEASURE_STEP_MODE  STEP_MODE_1_16
-#define STEPS_PER_REV      (200*16)
+#define MEASURE_STEP_MODE  STEP_MODE_1_4
+#define STEPS_PER_REV      (200*4)
 
 //#define STEPS_PER_REV (200*16)
 
@@ -118,8 +118,9 @@ rfsweep send measure --
 //static void binqueue_unlock(void);
 
 static int _data_thread_start(const net_t *client);
-static int _data_thread_end(bool end_with_error);
+static int _data_thread_end(bool force, bool end_with_error);
 static void *_data_thread(const net_t *client);
+static bool _data_thread_is_running(void);
 
 // static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg, const char *restrict logpath);
 static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg);
@@ -364,14 +365,14 @@ int message_write(const net_t *restrict net, const message_t *restrict msg, int 
 
 //static __construct void _init_server(void) {
 static void _init_server(void) {
-    int err;
+    //int err;
     // mutex should be locked before anything else.
     // that way everyone who tries to modify binqueue
     // is blocked until it is initilized
     //pthread_mutex_lock(&_binqueue_mutex);
 
-    err = binqueue_init();
-    fassert(!err);
+    // err = binqueue_init();
+    // fassert(!err);
 
     // run external constructs
     //time_init();
@@ -388,7 +389,7 @@ static void _exit_server(void) {
     exit_gpio();
     exit_libhackrf();
     
-    binqueue_free();
+    //binqueue_free();
 }
 
 
@@ -406,6 +407,8 @@ int binqueue_init(void) {
     void *mem;
 
     //pthread_mutex_unlock(&_binqueue_mutex);
+
+    DEBUG(debugf("creating binqueue");)
     
     mem = malloc(QUEUE_START * sizeof(void*));
     assert(mem != NULL, -1);
@@ -429,6 +432,8 @@ int binqueue_init(void) {
 
 // don't call this within binqueue_lock
 //static void binqueue_free(void) {
+// NOTE: IMPORTANT If debug mode is enabled, freeing memory will not 
+//       release it to the OS, causing memory to fill up after enough calls
 void binqueue_free(void) {
     void *bin;
 
@@ -442,7 +447,8 @@ void binqueue_free(void) {
         warnf("freeing queue with %d entries left", _binqueue.index);
 
     // pop and free any remaining bins in queue
-    for (int i = 0; i < _binqueue.index; i++) {
+    for (int i = 0; _binqueue.index > 0; i++) {
+        //debugf("popping item %d (%d left) from binqueue", i, _binqueue.index);
         bin = binqueue_pop();
         free(bin);
     }
@@ -578,7 +584,10 @@ __weak_inline int binqueue_get_items(void) {
 static int _data_thread_start(const net_t *client) {
     int err;
 
-    debugf("creating data thread");
+    DEBUG(debugf("creating data thread");)
+
+    err = binqueue_init();
+    fassert(!err);
 
     //err = binqueue_init();
     //assert(("failed to init binqueue", !err), -1);
@@ -605,21 +614,39 @@ static int _data_thread_start(const net_t *client) {
 // will block until thread closes naturally, 
 // or is already closed
 // returns value returned by closed thread
-static int _data_thread_end(bool end_with_error) {
+// if force is false, then it will wait until data thread ends normally
+static int _data_thread_end(bool force, bool end_with_error) {
     void *retval;
     int err;
+    //fbins_t *fbins;
 
-    debugf("waiting for data thread to exit");
+    DEBUG(debugf("waiting for data thread to exit");)
 
-    // cancel threads
+
     if (tthread[0] != 0) {
+        if (!force) {
+            while (binqueue_get_items())
+                micros_block_for(1000);
+        }
+
         _run_data_thread = false;
+            
         _err_data_thread = end_with_error;
     
         err = pthread_join(tthread[0], &retval);
+
+        // flush binqueue
+        // DEBUG(debugf("flushing binqueue");)
+        // while(binqueue_get_items()) {
+        //     fbins = binqueue_pop();
+        //     free(fbins);
+        // }
+
+        binqueue_free();
+        
         assert(("data thread failed to exit", !err), -1);
         assert(("data thread returned error", retval == 0), (int)(intptr_t)retval);
-        debugf("data thread successfully exited");
+        DEBUG(debugf("data thread successfully exited");)
 
         DEBUG(tthread[0] = 0;)
         
@@ -654,7 +681,8 @@ static void *_data_thread(const net_t *client) {
 
             // pop item from queue
             fbins = binqueue_pop();
-            assert(fbins != NULL, (void*)-1);
+            if (fbins == NULL) err = -1;
+            jassert(fbins != NULL, _exit_loop);
 
             // create new message
             msg = message_new(MESSAGE_DATA, fbins_sizeof(fbins));
@@ -673,16 +701,18 @@ static void *_data_thread(const net_t *client) {
             free(fbins);
 
             // handle error
-            assert(!err, (void*)(intptr_t)err);
+            jassert(!err, _exit_thread);
         }
 
         // otherwise send poll and delay for 200 ms
         err = message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
-        assert(!err, (void*)(intptr_t)err);
+        jassert(!err, _exit_thread);
         micros_block_for(200000);
         //otherwise yield
         //shed_yield();
     }
+
+    _exit_loop:
 
     // send end or error message
     if (_err_data_thread)
@@ -690,10 +720,26 @@ static void *_data_thread(const net_t *client) {
     else
         err = message_write(client, &CONST_MSG_END, SERVER_TIMEOUT);
 
-    assert(!err, (void*)(intptr_t)err);
+    //assert(!err, (void*)(intptr_t)err);
+    if (err) alertf(STR_ERROR, "failed to send message to client");
+
+    _exit_thread:
+    
+    _run_data_thread = 0; // for others to check if this is still active
 
     return (void*)0;
 }
+
+
+
+
+static bool _data_thread_is_running(void) {
+    return _run_data_thread;
+}
+
+
+
+
 
 
 
@@ -901,7 +947,7 @@ char* message_type_str(message_type_t type) {
 static int _server_measure_start(const net_t *restrict client, const message_t *restrict msg, hparams_t *restrict params, bool shall_rotate) {
         int err;
 
-        debugf("server writing poll message");
+        DEBUG(debugf("server writing poll message");)
         message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
 
 
@@ -910,7 +956,7 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
         assert(!err, err);
 
         // init hackrf
-        err = hparams_init(params, DEFAULT_RSERIAL);
+        err = hparams_init(params, state->rserial);
         if (err) goto end_thread;
 
         // TODO what I really should have done is 
@@ -952,7 +998,8 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
 
         // end data thread
     end_thread:
-        err |= _data_thread_end(err);
+        msgf("Waiting for client to receive all messages...");
+        err |= _data_thread_end(err, err);
         assert(!err, err);
         
         return err;
@@ -986,11 +1033,15 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
     params->amp_enable = msg->measure.amp_enable;
     params->samps      = msg->measure.samps;
     //params->serial     = _server_sdr_serial;
-    params->serial     = state->rserial;
+    //params->serial     = state->rserial;
 
     // start data collection loop
     for (int i = 0; i < steps; i++) {
         int32_t angle;
+
+        // check to see if data loop is still running
+        // if not, then abort
+        assert(_data_thread_is_running(), -1);
 
         msgf("collecting data [%d/%d]", i+1, steps);
 
@@ -1110,31 +1161,54 @@ static int _server_rotate(const net_t *restrict client, const message_t *restric
     
 
     // begin nonblocking rotation
-    if (msg->rotate.is_angle)
+    if (msg->rotate.is_angle) {
+        msgf("rotating from %.1f\xC2\xB0 to %.1f\xC2\xB0 degrees", 
+                (double)step_to_angle(stepper_getmsteps()>>4), 
+                (double)msg->rotate.angle);
         handle = stepper_stepto_noblock(angle_to_step(msg->rotate.angle));
-    else
+    } else {
+        msgf("rotating from step %d to step %d index in microstep %d",
+                (int)stepper_getmsteps()>>(4-msg->rotate.stepmode),
+                (int)msg->rotate.steps, 
+                (int)1<<msg->rotate.stepmode);
         handle = stepper_stepto_noblock(msg->rotate.steps);
+    }
 
-    if (handle == NULL || handle->err) {
+    if (handle == NULL) {
         err = -1;
-        free(handle);
+        alertf(STR_ERROR, "failed to create rotate handle");
         goto _exit_rotate;
     }
 
     // poll until finished
     while(stepper_is_stepping_to(handle)) {
         err = message_write(client, &CONST_MSG_POLL, SERVER_TIMEOUT);
-        assert(!err, err);
+        //assert(!err, err);
+        if (err) {
+            alertf(STR_ERROR, "failed to poll");
+            goto _exit_handle;
+        }
         micros_block_for(200000);
     }
 
-    free(handle);
 
+    _exit_handle:
+    
+    //free(handle);
+    err = stepper_stepto_free(handle);
+    
+    if (err) {
+        alertf(STR_ERROR, "rotate handle returned error");
+        goto _exit_rotate;
+    }
+
+
+    _exit_rotate:
+    
     stepper_enable(false);
     micros_block_for(10e3); // 10ms
     //}
     
-    _exit_rotate:
 
     if (err) message_write(client, &CONST_MSG_ERROR,   SERVER_TIMEOUT);
     else     message_write(client, &CONST_MSG_SUCCESS, SERVER_TIMEOUT);
@@ -1164,7 +1238,7 @@ static int _server_transmit(const net_t *restrict client, const message_t *restr
     }
 
     // init hackrf
-    err = hparams_init(&params, DEFAULT_TSERIAL);
+    err = hparams_init(&params, state->tserial);
     if (err) return -1;
 
     // setup transmission params

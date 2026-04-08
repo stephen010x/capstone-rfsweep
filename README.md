@@ -1,4 +1,9 @@
 
+For gdb
+```sh
+export ASAN_OPTIONS=detect_leaks=0
+```
+
 ### How to Use:
 
 ```

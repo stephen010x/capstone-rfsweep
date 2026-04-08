@@ -218,10 +218,15 @@ endif
 
 
 
+#$(BINTARG): FORCE
+# $(BINTARG): $(OBJS)
+# 	@mkdir -p $(dir $@)
+# 	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
+# 	cp src/process.py src/run.bat bin/
 
-$(BINTARG): $(OBJS)
+$(BINTARG): $(OBJS) FORCE Makefile
 	@mkdir -p $(dir $@)
-	$(CC) $(BFLAGS) -o $@ $^ -L$(LIBDIR) $(LFLAGS)
+	$(CC) $(BFLAGS) -o $@ $(OBJS) -L$(LIBDIR) $(LFLAGS)
 	cp src/process.py src/run.bat bin/
 
 # $(LIBBINTARG).a: $(OBJS)
@@ -238,11 +243,11 @@ $(BINTARG): $(OBJS)
 #	$(CC) -I$(INCDIR) $(BFLAGS) $(CFLAGS) -E -P -fpreprocessed include/bitwin.h -o bin/bitwin.pp.h
 #	# remember to create a compiled version of the header
 
-$(TMPDIR)/$(GOAL)/%.o: %.c $(TMPDIR)/$(GOAL)/%.d
+$(TMPDIR)/$(GOAL)/%.o: %.c $(TMPDIR)/$(GOAL)/%.d Makefile
 	@mkdir -p $(dir $@)
 	$(CC) -I$(INCDIR)  $(BFLAGS) $(CFLAGS) -c $< -o $@
 
-$(TMPDIR)/$(GOAL)/%.d: %.c
+$(TMPDIR)/$(GOAL)/%.d: %.c Makefile
 	@mkdir -p $(dir $@)
 	@$(CC) -I$(INCDIR) $(BFLAGS) $(CFLAGS) -MM -MT $(patsubst %.d,%.o,$@) -MF $@ $<
 
@@ -270,8 +275,15 @@ analyze:
 
 
 test:
-	$(BINDIR)/$(TARGET) test -v
+	$(BINDIR)/$(TARGET) test --defaults
 
+
+server:
+	sudo $(BINDIR)/$(TARGET) server
+
+
+
+FORCE:
 
 
 
@@ -290,5 +302,5 @@ test:
 #.PHONY: all fast debug release static dynamic preprocess
 .PHONY: all fast debug release static dynamic preprocess
 .PHONY: static_fast static_debug static_release dynamic_fast dynamic_debug dynamic_release
-.PHONY: clean test run shaders gdb analyze
+.PHONY: clean test run shaders gdb analyze server FORCE
 .PHONY: _build _fast _debug _release _dynamic _static _optimize
