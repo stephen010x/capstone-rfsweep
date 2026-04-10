@@ -42,7 +42,7 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 #define DEFAULT_LOG    NULL
 //#define DEFAULT_SAMPS  10
 #define DEFAULT_SAMPS  1
-#define DEFAULT_SNAP   4
+#define DEFAULT_SNAP   4    // now ignored
 #define DEFAULT_STEPS  360
 
 #define DEFAULT_FREQ   2.4e6
@@ -85,7 +85,7 @@ typedef int step_mode_t;
 // } fbin8_t;
 
 
-typedef struct {
+typedef struct __packed {
     int8_t real;
     int8_t imag;
 } fbin_t;
@@ -163,9 +163,11 @@ typedef struct {
     uint32_t vga_gain;  // steps of 2 dB, 0-62 dB
     //volatile uint16_t samps;
 
+
     int32_t  samps;     // each sample is a collection of bins
     //int32_t  bins;      // how many bins per sample
 
+    uint8_t  clockout_enable;
     uint8_t  amp_enable;
 
     const char* serial; // serial number of board to open. If NULL then it just
@@ -173,6 +175,8 @@ typedef struct {
 
     uint32_t tx_vga_gain;   
     int8_t   tx_amp;
+
+    
 
 
 

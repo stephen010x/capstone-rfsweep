@@ -24,8 +24,10 @@
 
 // #define MEASURE_STEP_MODE  STEP_MODE_1_16
 // #define STEPS_PER_REV      (200*16)
-#define MEASURE_STEP_MODE  STEP_MODE_1_4
-#define STEPS_PER_REV      (200*4*57/11)
+// #define MEASURE_STEP_MODE  STEP_MODE_1_4
+// #define STEPS_PER_REV      (200.0*4*57/11.0)
+#define MEASURE_STEP_MODE  STEP_MODE_1_1
+#define STEPS_PER_REV      (200.0*57/11.0)
 
 //#define STEPS_PER_REV (200*16)
 
@@ -214,7 +216,8 @@ ssize_t message_type_getsize(message_type_t type, int32_t data_bytes) {
 
     switch (type) {
         case MESSAGE_DATA:
-            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.data) + (size_t)data_bytes;
+            return sizeof(PSEUDOMSG.type) + sizeof(PSEUDOMSG.data.size) + 
+                            (size_t)data_bytes;
         
         case MESSAGE_MEASURE:
         case MESSAGE_RECEIVE:
@@ -1032,6 +1035,7 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
     params->vga_gain   = msg->measure.vga_gain;
     params->amp_enable = msg->measure.amp_enable;
     params->samps      = msg->measure.samps;
+    params->clockout_enable = true;
     //params->serial     = _server_sdr_serial;
     //params->serial     = state->rserial;
 
@@ -1048,13 +1052,15 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
         // calculate angle
         angle = (int32_t)roundf((float)STEPS_PER_REV * (float)i / (float)steps);
         // round to snap step size
-        angle = (angle >> msg->measure.snappow) << msg->measure.snappow;
+        //angle = (angle >> msg->measure.snappow) << msg->measure.snappow;
         // set param "pretty" angle
         params->angle = 360.0f * angle / (float)STEPS_PER_REV;
 
         // move to desired angle
-        if (shall_rotate)
+        if (shall_rotate) {
+            DEBUG(debugf("stepping to %f", (float)angle);)
             stepper_stepto(angle);
+        }
 
         // take measurement
         err = hackrf_read(params);

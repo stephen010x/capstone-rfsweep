@@ -142,8 +142,7 @@ static struct {
 };
 
 
-static pthread_t tthread[3];
-
+static pthread_t __unused tthread[3];
 
 
 
@@ -203,12 +202,12 @@ void init_gpio(void) {
     vassert(("failed to set gpio defaults", !err));
 
 
-    // create step thread
-    DEBUG(debugf("creating gpio tthread 0");)
-    err = pthread_create(&tthread[0], NULL, &_step_thread, NULL);
-    vassert(("failed to create step thread", !err));
+    // // create step thread
+    // DEBUG(debugf("creating gpio tthread 0");)
+    // err = pthread_create(&tthread[0], NULL, &_step_thread, NULL);
+    // vassert(("failed to create step thread", !err));
 
-    // create multistep thread
+    // // create multistep thread
     // debugf("creating gpio tthread 1");
     // err = pthread_create(&tthread[1], NULL, &_multistep_thread, NULL);
     // vassert(("failed to create step thread", !err));
@@ -222,23 +221,24 @@ void init_gpio(void) {
 //static __destruct void exit_gpio(void) {
 void exit_gpio(void) {
     void *retval;
+    (void)retval;
 
     _gpio_enabled = false;
 
     DEBUG(debugf("canceling gpio threads");)
 
     // cancel threads
-    if (tthread[0] != 0) {
-        pthread_cancel(tthread[0]);
-        pthread_join(tthread[0], &retval);
-        wassert(("gpio tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
-        DEBUG(
-        if (retval == PTHREAD_CANCELED)
-            debugf("gpio tthread 0 successfully canceled");
-        )
-    } else {
-        warnf("tried to cancel gpio tthread 0 not running");
-    }
+    // if (tthread[0] != 0) {
+    //     pthread_cancel(tthread[0]);
+    //     pthread_join(tthread[0], &retval);
+    //     wassert(("gpio tthread 0 failed to cancel", retval == PTHREAD_CANCELED));
+    //     DEBUG(
+    //     if (retval == PTHREAD_CANCELED)
+    //         debugf("gpio tthread 0 successfully canceled");
+    //     )
+    // } else {
+    //     warnf("tried to cancel gpio tthread 0 not running");
+    // }
     
     // if (tthread[1] != 0) {
     //     pthread_cancel(tthread[1]);
@@ -273,7 +273,7 @@ void exit_gpio(void) {
 
 
 
-static void *_step_thread(void *args) {
+static __unused void *_step_thread(void *args) {
     (void)args;
     int err;
 
@@ -288,7 +288,7 @@ static void *_step_thread(void *args) {
             if (i < 1000)
                 micros_busy_for(1);
             else
-                micros_block_for(100);
+                micros_block_for(10000);
                 
             pthread_testcancel();
         }
@@ -477,7 +477,7 @@ static void _step_dec(void) {
 
 
 // this function is blocking if called too frequently
-int stepper_step(step_dir_t dir) {
+int stepper_step_noblock(step_dir_t dir) {
     int err;
 
     // if current step is active, then block until over
@@ -499,6 +499,40 @@ int stepper_step(step_dir_t dir) {
     // set direction
     err = _stepper_setdir(dir);
     assert(!err, err);
+
+    // increment step and fstep counter
+    if (dir == STEP_DIR_CLOCKWISE)
+        _step_inc();
+    else
+        _step_dec();
+
+    return 0;
+}
+
+
+
+int stepper_step(step_dir_t dir) {
+    int err;
+
+    // set direction
+    err = _stepper_setdir(dir);
+    assert(!err, err);
+
+    // step
+    
+    // turn on step, stepping motor
+    err = gpioWrite(GPIO_STEP, 1);
+    assert(("failed write to GPIO_STEP", !err), -1);
+
+    //micros_block_for(5); // minimum of 1us
+    micros_busy_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
+    
+    // turn off step, in prep for next turn-on
+    err = gpioWrite(GPIO_STEP, 0);
+    assert(("failed write to GPIO_STEP", !err), -1);
+    
+    micros_busy_for(MIN_MICROS_PER_STEP>>(5-global.mode_mult));
+
 
     // increment step and fstep counter
     if (dir == STEP_DIR_CLOCKWISE)

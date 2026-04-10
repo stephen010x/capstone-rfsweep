@@ -201,7 +201,7 @@ while (len(raw if is_binary else items) > 0):
     s = Sample()
     s.timestamp = timestamp
     s.angle     = angle
-    s.freq      = freq * 1000
+    s.freq      = freq
     s.band      = band
     s.samprate  = samprate
     s.bins      = bins

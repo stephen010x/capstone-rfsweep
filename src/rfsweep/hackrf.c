@@ -336,6 +336,9 @@ static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_tran
                 real_band_hz == params->band_hz), -1);
     }
     )
+
+    // set clock_enable
+    hackrf_set_clkout_enable(device, params->clockout_enable);
     
 
     // apparently won't be exact frequency. See the hackrf.h lib header
@@ -679,8 +682,10 @@ static int tx_callback(hackrf_transfer_t *transfer) {
     // since this is shifted to the center frequency, all we need to do is 
     // transmit a dc signal
     transfer->valid_length = transfer->buffer_length;
+    //transfer->valid_length = 10;
 
     for (int i = 0; i < transfer->buffer_length; i++) {
+    //for (int i = 0; i < 10; i++) {
         ((int8_t*)transfer->buffer)[i] = params->tx_amp;
     }
 

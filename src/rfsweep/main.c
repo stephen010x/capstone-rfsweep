@@ -724,6 +724,14 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                 case FLAG_BAND:
                     global.band_hz = strtou32(val);
                     if (errno) return -9;
+                    realband = 
+                        (double)hackrf_real_bandwidth((uint32_t)global.band_hz);
+                    if (realband != global.band_hz) {
+                        alertf(STR_WARN, 
+                            "rounding bandwidth to nearest supported frequency %f",
+                            realband);
+                        global.band_hz = realband;
+                    }
                     break;
 
                 case FLAG_AMPLIFY:
@@ -732,14 +740,6 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
 
                 case FLAG_SRATE:
                     global.srate_hz = strtof64(val);
-                    realband = 
-                        (double)hackrf_real_bandwidth((uint32_t)global.srate_hz);
-                    if (realband != global.srate_hz) {
-                        alertf(STR_WARN, 
-                            "rounding bandwidth to nearest supported frequency %f",
-                            realband);
-                        global.srate_hz = realband;
-                    }
                     if (errno) return -10;
                     break;
 
