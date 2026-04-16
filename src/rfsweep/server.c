@@ -10,8 +10,9 @@
 //#include <sched.h>
 
 
-#include "toolkit/debug.h"
 #include "rfsweep.h"
+// needs to be below "rfsweep.h" due to cygwin header conflicts
+#include "toolkit/debug.h"
 
 
 

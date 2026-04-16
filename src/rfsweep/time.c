@@ -4,9 +4,15 @@
 #include <errno.h>
 
 
+// for some reason having this here fixes errors in debug.h
+// windows compatability has turned this into an inclusion nightmare
+#include <stdio.h>
+
+
+#include "rfsweep.h"
+// needs to be below "rfsweep.h" due to cygwin header conflicts
 #include "toolkit/debug.h"
 #include "toolkit/macros.h"
-#include "rfsweep.h"
 
 
 static uint64_t start_us = 0;

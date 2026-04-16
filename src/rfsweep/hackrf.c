@@ -1,3 +1,48 @@
+// there is no way we are getting libusb to work on windows for now, so 
+// we just won't compile with hackrf at all on windows, easy as that.
+#ifndef __LINUX__
+
+
+// for some reason having this here fixes errors in debug
+// windows compatability has turned this into an inclusion nightmare
+#include <stdio.h>
+
+
+// to make sure prototypes are correct
+#include "rfsweep.h"
+#include "toolkit/debug.h"
+
+
+#define __HRF_RDCT(__retst)                                 \
+    alertf(STR_ERROR, "NOT COMPILED FOR HACKRF LIBRARY!");  \
+    __retst
+
+
+
+
+fbins_t *fbins_new(int32_t)                     {__HRF_RDCT(return NULL);}
+size_t fbins_sizeof(fbins_t *)                  {__HRF_RDCT(return -1);  }
+void hparams_defaults(hparams_t *)              {__HRF_RDCT()            }
+int hparams_init(hparams_t *, const char *)     {__HRF_RDCT(return -1);  }
+void hparams_free(hparams_t *)                  {__HRF_RDCT()            }
+uint32_t hackrf_real_bandwidth(uint32_t)        {__HRF_RDCT(return 0);   }
+int hackrf_read(hparams_t *)                    {__HRF_RDCT(return -1);  }
+int hackrf_write(hparams_t *)                   {__HRF_RDCT(return -1);  }
+int hackrf_stop(hparams_t *)                    {__HRF_RDCT(return -1);  }
+int hackrf_is_finished(hparams_t *)             {__HRF_RDCT(return -1);  }
+void hackrf_wait_until_finished(hparams_t *)    {__HRF_RDCT()            }
+void hackrf_transmit_enable(hparams_t *)        {__HRF_RDCT()            }
+void init_libhackrf(void)                       {__HRF_RDCT()            }
+void exit_libhackrf(void)                       {__HRF_RDCT()            }
+
+
+
+
+
+#else /* #ifdef __WINDOWS__ */
+
+
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,12 +56,14 @@
 //#include "kissfft/kiss_fft.h"
 
 //#include "hackrf.h"
-#include "toolkit/debug.h"
-#include "toolkit/macros.h"
 
 
 #define MY_HACKRF_SOURCE
 #include "rfsweep.h"
+
+// needs to be below "rfsweep.h" due to cygwin header conflicts
+#include "toolkit/debug.h"
+#include "toolkit/macros.h"
 
 
 // https://github.com/greatscottgadgets/hackrf/blob/main/host/libhackrf/src/hackrf.h
@@ -137,7 +184,7 @@ void hparams_free(hparams_t *params) {
 
 uint32_t hackrf_real_bandwidth(uint32_t band_hz) {
     uint32_t val = hackrf_compute_baseband_filter_bw(band_hz);
-    debugf("the selected frequency is %0.3f MHz", val/1e6f);
+    msgf("the selected frequency is %0.3f MHz", val/1e6f);
     return val;
 }
 
@@ -759,6 +806,9 @@ int hackrf_run_tests(void) {
 
 
 
+
+
+#endif /* #ifdef __WINDOWS__ */
 
 
 

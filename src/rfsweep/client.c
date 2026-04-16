@@ -4,8 +4,9 @@
 #include <errno.h>
 #include <inttypes.h>
 
-#include "toolkit/debug.h"
 #include "rfsweep.h"
+// needs to be below "rfsweep.h" due to cygwin header conflicts
+#include "toolkit/debug.h"
 
 
 
@@ -217,7 +218,7 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
     message_t *msg;
 
     // connect to server
-    err = net_connect(&net, state->ip, state->port, -1);
+    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
     assert(!err, err);
 
     // create and populate message
@@ -233,6 +234,12 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
         .amp_enable = state->amp_enable,
         .snappow    = state->snappow, 
     };
+
+    if (state->band_hz > state->srate_hz) {
+        warnf("The baseband filter (%f Hz) exceeds the sample rate (%f Hz)! "
+              "This will result in aliasing!",
+              (double)state->band_hz, (double)state->srate_hz);
+    }
 
     // send request to server
     err = message_write(&net, msg, CLIENT_TIMEOUT);
@@ -583,7 +590,7 @@ static int _client_request_success(const globalstate_t *state, message_t *msg) {
     //message_t *rmsg;
 
     // connect to server
-    err = net_connect(&net, state->ip, state->port, -1);
+    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
     assert(!err, err);
 
     // send request to server

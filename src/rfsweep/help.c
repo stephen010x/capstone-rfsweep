@@ -1,6 +1,7 @@
 
-#include "toolkit/macros.h"
 #include "rfsweep.h"
+// Keeping this under rfsweep.h prevents errors caused by macro redefinitions
+#include "toolkit/macros.h"
 
 
 

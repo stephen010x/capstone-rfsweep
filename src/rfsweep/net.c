@@ -14,13 +14,18 @@
 #include <poll.h>       // for poll
 #include <string.h>
 #include <inttypes.h>
+#ifdef __LINUX__
 #include <asm/termbits.h>
+#elifdef __WINDOWS__
+#include <termios.h>
+#endif
 #include <sys/ioctl.h>
 // good heavens, why do each of these need their own header???
 
 
-#include "toolkit/debug.h"
 #include "rfsweep.h"
+// needs to be below "rfsweep.h" due to cygwin header conflicts
+#include "toolkit/debug.h"
 
 
 
@@ -405,7 +410,7 @@ int net_await(const net_t *net, net_mode_t mode, int timeout_ms) {
     if (err < 1) {
         // timeout occured
         if (err == 0) {
-            alertf(STR_ERROR, "timeout occurred");
+            DEBUG(alertf(STR_ERROR, "timeout occurred");)
             return ETIMEDOUT;
         }
         
@@ -949,7 +954,11 @@ static const char *_net_err_name(int err) {
         case EINVADDRESS: return "EINVADDRESS";
         
         default:
+            #ifdef __LINUX__
             return strerrorname_np(err);
+            #else
+            return strerror(err);
+            #endif
     }
 
     return NULL;

@@ -3,16 +3,23 @@
 #include <time.h>
 #include <pthread.h>
 #include <sched.h>
+typedef __WCHAR_TYPE__ ___wchar_t; /* resolves a cygwin error in stdatomic.h for some reason*/
 #include <stdatomic.h>
 #include <signal.h>
-
-#include "toolkit/debug.h"
-#include "toolkit/macros.h"
-#include "rfsweep.h"
 
 #ifdef _RASPI
 #include <pigpio.h>
 #endif
+
+// this prevents macro errors incurred by redefined macros that are set
+// in rfsweep.h->macros.h before debug.h->stdio.h
+#include <stdio.h>
+
+#include "rfsweep.h"
+// needs to be below "rfsweep.h" due to cygwin header conflicts
+#include "toolkit/debug.h"
+#include "toolkit/macros.h"
+
 
 
 // https://media.pbclinear.com/pdfs/pbc-linear-data-sheets/data-sheet-stepper-motor-support.pdf

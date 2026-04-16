@@ -10,8 +10,9 @@
 #include <errno.h>
 //#include <sched.h>
 
-#include "toolkit/debug.h"
 #include "rfsweep.h"
+// needs to be below "rfsweep.h" due to cygwin header conflicts
+#include "toolkit/debug.h"
 
 
 // TODO:
@@ -127,6 +128,7 @@ enum {
     FLAGTYPE_DOUBLE,        // flags with "--"
     FLAGTYPE_PLAIN,         // flags with no dashes
     FLAGTYPE_EMPTY,         // empty or no flags
+    FLAGTYPE_IGNORE,
 };
 
 
@@ -254,7 +256,6 @@ static const stringmap_t flagstrings[] = {
     {.mode = FLAG_SRATE,    .string = "srate"   },
     {.mode = FLAG_LNA_GAIN, .string = "lna-gain"},
     {.mode = FLAG_VGA_GAIN, .string = "vga-gain"},
-    {.mode = FLAG_DEFAULTS, .string = "defaults"},
     {.mode = FLAG_ANGLE,    .string = "angle"   },
     {.mode = FLAG_STEPS,    .string = "steps"   },
     {.mode = FLAG_STEPMODE, .string = "stepmode"},
@@ -270,6 +271,8 @@ static const char *line =
 #endif
 
 
+
+static bool dont_print_help;
 
 
 
@@ -298,12 +301,15 @@ static void *run_tests_thread(void*);
 int main(int argc, char *argv[]) {
     int err;
 
+    //dont_print_help = false;
+
     // arguments will also be evaluated here
     // so that we don't have malloc the serial or ip strings
     // that are put into the global state
     err = parse_args(argc-1, (const char **)argv+1, argh_mode, NULL);
     if (err) {
-        print_help(global.mode);
+        if (!dont_print_help)
+            print_help(global.mode);
         return err;
     }
 
@@ -324,7 +330,7 @@ int main(int argc, char *argv[]) {
 // handling recursive arguments. (so long as I have the right handler parameters)
 static int parse_args(int argc, const char *argv[], arghandler_t handler, void* data) {
     //int n, err, type;
-    int n, type;
+    int n, type, end;
     // I think since it is all handled via the handler, 
     // we can reasonably keep the strings on the stack
     //char str[argc][MAX_ARG_CHARS];
@@ -350,9 +356,9 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
 
         // detect if "--flag=" flag
         //n = sscanf(argv[i], "--%s=", str);
-        n = sscanf(argv[i], "--%[^=\t\r\n ]=%[\040-\377]", str, val);
+        n = sscanf(argv[i], "--%[^=\t\r\n ]=%[\040-\377]%n", str, val, &end);
         //if (n == EOF) goto _overflow;
-        if (n == 2) {
+        if (n == 2 && argv[i][end] == '\0') {
         
             // // ensure flag follows "--flag=val" format
             // n = sscanf(argv[i], "--%s=%s", str, val);
@@ -372,7 +378,15 @@ static int parse_args(int argc, const char *argv[], arghandler_t handler, void* 
             //goto _error;
         }
 
+        end = 0;
+        n = sscanf(argv[i], "--%[^=\t\r\n ]=%n", str, &end);
+        if (n == 1 && argv[i][end] == '\0') {
+            type = FLAGTYPE_IGNORE;
+            goto _match;
+        }
+
         // detect if "--flag" flag
+        // n = sscanf(argv[i], "--%s", str);
         n = sscanf(argv[i], "--%s", str);
         //if (n == EOF) goto _overflow;
         if (n == 1) {
@@ -499,6 +513,8 @@ static uint64_t parse_shortflags(const char *str) {
 
 
 
+// return number of arguemnts handled
+// or negative number if error
 static int argh_mode(int type, const char *str, const char *val, int argc, 
                      const char *argv[], void *) {
     int err;
@@ -604,6 +620,11 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
         case FLAGTYPE_EMPTY:
             printf(str_help);
             break;
+
+
+        default:
+            alertf(STR_ERROR, "unrecognized command type (%d)", type);
+            return -10;
     }
 
     // since we run parse_args in this function, which will consume all arguments, 
@@ -618,7 +639,8 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
 
 
 
-
+// return number of arguemnts handled
+// or negative number if error
 static int argh_flags(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
     int err;
     uint64_t sflags;
@@ -627,6 +649,12 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
     //float64_t val;
 
     switch (type) {
+
+        case FLAGTYPE_IGNORE:
+            warnf("using default value for flag --%s", str);
+            break;
+
+    
         // if contains h flag, then print help. otherwise complain
         case FLAGTYPE_SINGLE:
             sflags = parse_shortflags(str);
@@ -678,7 +706,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     break;
 
                 case FLAG_PORT:
-                    global.port = strtou16(val);
+                    global.port = _strtou16(val);
                     if (errno) return -3;
                     break;
 
@@ -695,34 +723,36 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     break;
 
                 case FLAG_SAMPS:
-                    global.samps = strtoi32(val);
+                    global.samps = _strtoi32(val);
                     if (errno) return -4;
                     break;
 
-                case FLAG_SNAP:
-                    global.snappow = strtou8(val);
-                    if (errno) return -5;
-                    break;
+                // case FLAG_SNAP:
+                //     global.snappow = _strtou8(val);
+                //     if (errno) return -5;
+                //     break;
 
                 case FLAG_ANGLE:
                     global.is_angle = true; // for rotate mode
-                    global.angle = strtof32(val);
+                    global.angle = _strtof32(val);
                     if (errno) return -6;
                     break;
 
                 case FLAG_STEPS:
                     global.is_angle = false; // for rotate mode
-                    global.steps = strtoi32(val);
+                    global.steps = _strtoi32(val);
                     if (errno) return -7;
                     break;
 
                 case FLAG_FREQ:
-                    global.freq_hz = strtou64(val);
+                    // global.freq_hz = _strtou64(val);
+                    global.freq_hz = (uint64_t)_strtof64(val);
                     if (errno) return -8;
                     break;
 
                 case FLAG_BAND:
-                    global.band_hz = strtou32(val);
+                    // global.band_hz = _strtou32(val);
+                    global.band_hz = (uint32_t)_strtof64(val);
                     if (errno) return -9;
                     realband = 
                         (double)hackrf_real_bandwidth((uint32_t)global.band_hz);
@@ -739,22 +769,23 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     break;
 
                 case FLAG_SRATE:
-                    global.srate_hz = strtof64(val);
+                    global.srate_hz = _strtof64(val);
                     if (errno) return -10;
                     break;
 
                 case FLAG_LNA_GAIN:
-                    global.lna_gain = strtou32(val);
+                    // global.lna_gain = _strtou32(val);
+                    global.lna_gain = (uint32_t)_strtof64(val);
                     if (errno) return -11;
                     break;
 
                 case FLAG_VGA_GAIN:
-                    global.vga_gain = strtou32(val);
+                    global.vga_gain = _strtou32(val);
                     if (errno) return -12;
                     break;
 
                 case FLAG_STEPMODE:
-                    global.stepmode = strtou8(val);
+                    global.stepmode = _strtou8(val);
                     if (errno) return -13;
                     break;
 
@@ -763,7 +794,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     break;
 
                 case FLAG_TX_AMP:
-                    global.tx_amp = strtoi8(val);
+                    global.tx_amp = _strtoi8(val);
                     if (errno) return -14;
                     break;
                     
@@ -785,7 +816,11 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
             // TODO: Run with default values here
             // Actually, just run here in general, this is where the recursive
             // loop would end
-            eval_args();
+            err = eval_args();
+            if (err) {
+                dont_print_help = true;
+                return -1;
+            }
             return argc;
     }
 

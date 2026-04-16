@@ -1,3 +1,4 @@
+#ifdef __LINUX__
 /*
 Copyright (c) 2012-2026 Great Scott Gadgets <info@greatscottgadgets.com>
 Copyright (c) 2012, Jared Boone <jared@sharebrained.com>
@@ -3561,3 +3562,5 @@ int ADDCALL hackrf_radio_write_register(
 #ifdef __cplusplus
 } // __cplusplus defined.
 #endif
+
+#endif /* #ifdef __LINUX__ */

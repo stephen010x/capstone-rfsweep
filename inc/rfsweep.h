@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+
 #include <netinet/in.h>
 
 #include "toolkit/macros.h"
@@ -575,16 +576,16 @@ int32_t   strtoi32_custom(const char *str);
 int16_t   strtoi16_custom(const char *str);
 int8_t     strtoi8_custom(const char *str);
 
-#define strtof64(...)  strtof64_custom(__VA_ARGS__)
-#define strtof32(...)  strtof32_custom(__VA_ARGS__)
-#define strtou64(...)  strtou64_custom(__VA_ARGS__)
-#define strtou32(...)  strtou32_custom(__VA_ARGS__)
-#define strtou16(...)  strtou16_custom(__VA_ARGS__)
-#define  strtou8(...)   strtou8_custom(__VA_ARGS__)
-#define strtoi64(...)  strtoi64_custom(__VA_ARGS__)
-#define strtoi32(...)  strtoi32_custom(__VA_ARGS__)
-#define strtoi16(...)  strtoi16_custom(__VA_ARGS__)
-#define  strtoi8(...)   strtoi8_custom(__VA_ARGS__)
+#define _strtof64(...)  strtof64_custom(__VA_ARGS__)
+#define _strtof32(...)  strtof32_custom(__VA_ARGS__)
+#define _strtou64(...)  strtou64_custom(__VA_ARGS__)
+#define _strtou32(...)  strtou32_custom(__VA_ARGS__)
+#define _strtou16(...)  strtou16_custom(__VA_ARGS__)
+#define  _strtou8(...)   strtou8_custom(__VA_ARGS__)
+#define _strtoi64(...)  strtoi64_custom(__VA_ARGS__)
+#define _strtoi32(...)  strtoi32_custom(__VA_ARGS__)
+#define _strtoi16(...)  strtoi16_custom(__VA_ARGS__)
+#define  _strtoi8(...)   strtoi8_custom(__VA_ARGS__)
 
 
 

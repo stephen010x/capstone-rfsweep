@@ -3,9 +3,14 @@
 # ld options
 # https://sourceware.org/binutils/docs/ld/Options.html
 
+# right now this will be linux only but with cross compiler capabilities
+
 
 TARGET := rfsweep
 #INCLUDEE := hackrf.h
+
+COPYOVER_LINUX   := src/process.py src/run.sh src/fastrun.sh
+COPYOVER_WINDOWS := src/process.py src/run.bat src/fastrun.bat lib/cygwin/bin/cygwin1.dll
 
 TMPDIR := tmp
 SRCDIR := src
@@ -23,21 +28,25 @@ WASM_LIBS    :=
 
 
 CC := gcc
+#CC_WINDOWS := x86_64-w64-mingw32-gcc-posix
+# CC_WINDOWS := x86_64-w64-mingw32-gcc
+#CC_WINDOWS := wine ./lib/cygwin/gcc.exe
+CC_WINDOWS := gcc
 # NOTE: -std=c23 is strict c23 compliance, whereas -std=gnu23 includes gnu specific features
 # Here are the extensions
 # https://gcc.gnu.org/onlinedocs/gcc/C-Extensions.html
-CFLAGS := -std=gnu23 -fvisibility=internal -I/usr/include/libusb-1.0 -D__ENABLE_SYSMESSAGES__
+CFLAGS := -fvisibility=internal -D__ENABLE_SYSMESSAGES__
 # -llibhackrf.so -lhackrf
 #LFLAGS := -L./lib/kissfft/ -lusb-1.0 -Wl,-Bstatic -lkissfft-float -Wl,-Bdynamic -lm
-LFLAGS := -lusb-1.0 -Wl,-Bstatic -Wl,-Bdynamic -lm
+LFLAGS := -Wl,-Bstatic -Wl,-Bdynamic -lm
 BFLAGS := -Wall -Wextra
 #LIBS   :=
 
 IS_ARM := $(shell echo | $(CC) -dM -E - | grep -E '__arm__|__aarch64__' >/dev/null && echo yes)
 ifneq ($(IS_ARM),yes)
-LFLAGS += -lplplot
+	#LFLAGS += -lplplot
 else
-LFLAGS += -lpigpio
+	LFLAGS += -lpigpio
 endif
 
 
@@ -62,6 +71,7 @@ DEBUG_BFLAGS := -g -Og -fsanitize=address,undefined -fno-omit-frame-pointer -lat
 RELEASE_CFLAGS :=
 RELEASE_LFLAGS := -s
 RELEASE_BFLAGS := -Os -g0
+# RELEASE_BFLAGS := -Os -g
 
 
 STATIC_CFLAGS := -D__STATIC_LIB__
@@ -73,13 +83,13 @@ DYNAMIC_LFLAGS :=
 DYNAMIC_BFLAGS := 
 
 
-WINDOWS_CFLAGS := -D__WIN32__
-WINDOWS_LFLAGS :=
+WINDOWS_CFLAGS := -Ilib/cygwin/include -D__WIN32__ -std=gnu2x
+WINDOWS_LFLAGS := -Llib/cygwin/lib -lcygwin -lpthread
 WINDOWS_BFLAGS :=
 
-LINUX_CFLAGS := -D__LINUX__
-LINUX_LFLAGS :=
-LINUX_BFLAGS :=
+LINUX_CFLAGS := -D__LINUX__ -I/usr/include/libusb-1.0 -std=gnu23
+LINUX_LFLAGS := -lusb-1.0
+LINUX_BFLAGS := 
 #LINUX_LIBS   :=
 
 WASM_CFLAGS := -D__WEBASM__
@@ -101,14 +111,16 @@ WHITELIST := $(WHITELIST) preproc preproc_debug
 # ============================================
 
 
+
 # so the first word is the goal, and subsiquent words are modifiers
 # the goal is basically optimization target, but subsiquent goal can be static
 GOAL := $(firstword $(MAKECMDGOALS))
 GOAL := $(if $(GOAL),$(GOAL),$(DEFAULT))
 # should grab all sources relative to makefile.
 # colon equal (:=) removed, so as to grab all generated c files as well
-SRCS = $(shell find -L $(SRCDIR) -name "*.c")
-INCS = $(shell find -L $(INCDIR) -name "*.h")
+SRCS = $(shell /usr/bin/find -L $(SRCDIR) -type f -name "*.c")
+INCS = $(shell /usr/bin/find -L $(INCDIR) -type f -name "*.h")
+# $(info $(SRCS))
 ifneq ($(filter $(GOAL),$(WHITELIST)),)
 	OBJS = $(SRCS:%.c=$(TMPDIR)/$(GOAL)/%.o)
 	DEPS = $(SRCS:%.c=$(TMPDIR)/$(GOAL)/%.d)
@@ -128,8 +140,11 @@ CFLAGS  := $(CFLAGS) $(LIBINCS)
 LFLAGS  := $(LFLAGS) $(LIBBINS)
 
 
+ifndef WINDOWS
+ifndef LINUX
 ifeq ($(OS),Windows_NT) 
-	$(error Winbows not yet implemented)
+	#$(error Winbows not yet implemented)
+	WINDOWS := WINDOWS
 else
 	OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
 	ifeq ($(OS),Linux)
@@ -140,7 +155,8 @@ else
 		$(error Incompatable operating system)
 	endif
 endif
-
+endif
+endif
 
 
 #==========================================
@@ -201,6 +217,9 @@ _dynamic:
 ifdef LINUX
 
 
+COPYOVER := $(COPYOVER_LINUX)
+
+
 CFLAGS += $(LINUX_CFLAGS)
 LFLAGS += $(LINUX_LFLAGS)
 BFLAGS += $(LINUX_BFLAGS)
@@ -217,6 +236,19 @@ endif
 #==========================================
 
 
+ifdef WINDOWS
+
+COPYOVER := $(COPYOVER_WINDOWS)
+
+CFLAGS += $(WINDOWS_CFLAGS)
+LFLAGS += $(WINDOWS_LFLAGS)
+BFLAGS += $(WINDOWS_BFLAGS)
+
+CC := $(CC_WINDOWS)
+
+endif
+
+
 
 #$(BINTARG): FORCE
 # $(BINTARG): $(OBJS)
@@ -227,7 +259,7 @@ endif
 $(BINTARG): $(OBJS) FORCE Makefile
 	@mkdir -p $(dir $@)
 	$(CC) $(BFLAGS) -o $@ $(OBJS) -L$(LIBDIR) $(LFLAGS)
-	cp src/process.py src/run.bat bin/
+	cp $(COPYOVER) bin/
 
 # $(LIBBINTARG).a: $(OBJS)
 # 	@mkdir -p $(dir $@)
