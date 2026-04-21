@@ -13,7 +13,9 @@ if not exist "%TMPDIR%" mkdir "%TMPDIR%"
 
 
 cd %TMPDIR%
-..\%CMDPATH% -q -R "c:\cygwin64" -s "%MIRROR%" -P "%PACKAGES%" -Y -O -N -X -n 
+..\%CMDPATH% -qONndr -R "c:\cygwin64" -s "%MIRROR%" -P "%PACKAGES%
+:: -Y -X
 cd ..
 
 
+setx PATH "%PATH%;c:\cygwin64\bin"

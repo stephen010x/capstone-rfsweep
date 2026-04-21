@@ -1,7 +1,9 @@
 #!/bin/bash
 
-outfile=data-$(printf '%x' $(date +%s)).bin
+outdir="data/"
 extflags="--binary"
+
+offset=0.1
 
 def_ip=10.42.0.1
 def_port=12346
@@ -10,10 +12,21 @@ def_srate=10e6
 def_band=
 def_lna_gain=16
 def_vga_gain=20
-def_isamp=false
+def_isamp=n
 def_steps=360
 def_samps=1
 def_smode=1
+
+
+
+pytest=$(which python)
+if [ -n "$pytest" ]; then py=python; fi
+pytest=$(which python3)
+if [ -n "$pytest" ]; then py=python3; fi
+if [ -z "$py" ]; then
+    echo "Could not find 'python' command. Check if python3 is installed."
+    exit 1
+fi
 
 
 echo
@@ -31,28 +44,28 @@ echo
 echo "Connection Options"
 echo "------------------"
 
-read -p "Enter Controller IP: " ip
-read -p "Enter Controller Port: " port
+read -p "Enter Controller IP [$def_ip]: " ip
+read -p "Enter Controller Port [$def_port]: " port
 
 ip=${ip:-$def_ip}
 port=${port:-$def_port}
 
-./rfsweep ping --ip=ip >/dev/null 2>&1
+./rfsweep ping --ip=$ip --port=$port >/dev/null 2>&1
 if [ "$?" != "0" ]; then
     echo
     echo "Unable to connect to Controller on <$ip:$port>."
     echo "Check if correct IP and Port, and check if Controller is on."
-    #exit 1
+    exit 1
 fi
 
 echo
 echo "HackRF Options"
 echo "--------------"
 
-read -p "Enter Center Freq (Hz): " freq
-read -p "Enter Band Filter (Hz): " band
-read -p "Enter Sample Rate (Hz): " srate
-read -p "Enter LNA-Gain (0-40 dB): " _lna_gain
+read -p "Enter Center Freq (Hz) [$def_freq]: " freq
+read -p "Enter Sample Rate (Hz) [$def_srate]: " srate
+read -p "Enter Band Filter (Hz) [srate*0.75]: " band
+read -p "Enter LNA-Gain (0-40 dB) [$def_lna_gain]: " _lna_gain
 
 _lna_gain=${_lna_gain:-$def_lna_gain}
 
@@ -61,7 +74,7 @@ if [ "$_lna_gain" != "$lna_gain" ]; then
     echo "Rounding LNA-Gain to $lna_gain dB."
 fi
 
-read -p "Enter VGA-Gain (0-62 dB): " _vga_gain
+read -p "Enter VGA-Gain (0-62 dB) [$def_vga_gain]: " _vga_gain
 
 _vga_gain=${_vga_gain:-$def_vga_gain}
 
@@ -70,15 +83,15 @@ if [ "$_vga_gain" != "$vga_gain" ]; then
     echo "Rounding VGA-Gain to $vga_gain dB."
 fi
 
-read -p "Enable Amplifier? (y/n):  " isamp
+read -p "Enable Amplifier? (y/n) [$def_isamp]: " isamp
 
 echo
 echo "Data Options"
 echo "------------"
 
-read -p "Enter Total Sample Steps: " steps
-read -p "Enter Samples per Step: " samps
-read -p "Enter Microstep Mode (1/2/4/8/16): " smode
+read -p "Enter Total Sample Steps [$def_steps]: " steps
+read -p "Enter Samples per Step [$def_samps]: " samps
+read -p "Enter Microstep Mode (1/2/4/8/16) [$def_smode]: " smode
 
 echo
 read -p "Press Enter to run test..."
@@ -87,12 +100,6 @@ read -p "Press Enter to run test..."
 if [ "$isamp" == "y" ] || [ "$isamp" == "Y" ]  || [ "$isamp" == "yes" ] || [ "$isamp" == "Yes" ]; then
     extflags="$extflags --amplify"
 fi
-
-
-if [ -z "$def_srate" ]; then
-    def_band=$(($(printf "%.0f" def_srate)*75/100))
-fi
-
 
 
 freq=${freq:-$def_freq}
@@ -104,10 +111,25 @@ smode=${smode:-$def_smode}
 srate=${srate:-$def_srate}
 
 
+# if [ -z "$band" ]; then
+#     band=$(($(printf "%.0f" srate)*75/100))
+# fi
 
-runstr="./rfsweep measure --ip=$ip --port=$port --steps=$steps --samps=$samps --stepmode=$smode --file=$outfile --freq=$freq --band=$band --srate=$srate --lna-gain=$lna_gain --vga-gain=$vga_gain --samps=$samps $extflags"
+
+
+# offset center frequency by 10% of sample rate to prevent DC from overlapping our signal
+#realfreq=$(($(printf "%.0f" freq) - $(printf "%.0f" srate) / 10))
+realfreq=$($py -c "print(f'{int($freq - $srate*$offset):e}'.replace('000e+0', 'e'))")
+
+
+mkdir -p $outdir
+outfile=$outdir/data-$(printf '%x' $(date +%s)).bin
+
+
+runstr="./rfsweep measure --ip=$ip --port=$port --steps=$steps --samps=$samps --stepmode=$smode --file=$outfile --freq=$realfreq --band=$band --srate=$srate --lna-gain=$lna_gain --vga-gain=$vga_gain --samps=$samps $extflags"
+
+pystr="$py process.py --freq $freq $outfile"
 
 echo 
-echo $runstr
-$runstr
-
+echo "$runstr && $pystr"
+$runstr && $pystr

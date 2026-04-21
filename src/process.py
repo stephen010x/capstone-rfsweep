@@ -11,19 +11,37 @@ import copy
 import math
 import matplotlib.pyplot as pyplot
 import matplotlib.ticker as ticker
+import matplotlib.transforms as trans
 import random
 import sys
+import argparse
+import time
+import os
+import threading as thread
 
 
 
 
+# options
 is_binary = True
-filenames = sys.argv[2:]
 binsize = 2048
 overlap = 0.5
-# target = 2.41e9
-target = sys.argv[1]
-filtband = 2e5
+filtband = 4e5
+outdir = "images/"
+
+
+
+# process arguments
+p = argparse.ArgumentParser()
+p.add_argument('--freq', type=float, required=False)  # optional frequency flag
+p.add_argument('files', nargs='*')                  # collect all non‑flag args
+args = p.parse_args()
+
+# frequency to filter for
+target = args.freq
+
+# list of files to process
+filenames = args.files
 
 
 # # gain stuff
@@ -39,9 +57,15 @@ Gmin = -21
 
 
 
+# output file dir
+outfiledir = outdir + "/plots-" + str(hex(int(time.time()*1000)))[2:] + "/"
+
+
 
 
 def main():
+
+    global target
 
     # load files into samples
     frames = files_to_frames(filenames, is_binary)
@@ -109,8 +133,13 @@ def main():
     Sspec  = np.array([todB(np.abs(f.fbins))*2 for f in favg])
 
 
+    # calculate target filter frequency
+    freqpeak = Frame.get_max_signal_freq(favg)
+    print(f"Peak signal estimated to occur at {freqpeak} Hz.")
+    target = freqpeak if target is None else target
+
     # doing this last so it doesn't affect the other plots
-    print("Applying Bandpass Filter to Frames...")
+    print(f"Applying Bandpass Filter ({target:.3e} \u00B1 {filtband/2:.0e} Hz) to Frames...")
     frand = np.array([f.deepcopy().filter(target, filtband, 1e-10) for f in frand])
     favg  = np.array([f.deepcopy().filter(target, filtband, 1e-10) for f in favg])
     frms  = np.array([f.deepcopy().filter(target, filtband, 1e-10) for f in frms])
@@ -134,30 +163,47 @@ def main():
 
 
     # create graphs
-    print("Plotting Graphs...")
     rootplot   = Plot(4, 4)
     pmin = min([min(frad1), min(frad2), min(frad3)])
     pmax = max([max(frad1), max(frad2), max(frad3)])
-    plot_polar  = rootplot.subplot_polar(       pos=(0,0), span=(2,2), range=(pmin, pmax), title='Radial Gain Chart')
-    plot_linear = rootplot.subplot_linlog(      pos=(2,0), span=(2,2), xlabel='Frequency [Hz]', ylabel='Power', title='Fourier Spectrum Analysis')
-    plot_spect  = rootplot.subplot_spectrogram( pos=(0,2), span=(4,2), xlabel='Frequency [Hz]', ylabel='Angle [deg]', alabel='dB', title='Frequency Spectrogram')
+    plot_polar  = rootplot.subplot_polar(pos=(0,0), span=(2,2), range=(pmin, pmax), 
+            title=f'Polar Gain Chart ({target:.3e} Hz)'.replace('+0', '').replace('+', ''))
+    plot_linear = rootplot.subplot_linlog(pos=(2,0), span=(2,2), 
+            xlabel='Frequency [Hz]', ylabel='Power', title='Fourier Spectrum Analysis')
+    plot_spect  = rootplot.subplot_spectrogram(pos=(0,2), span=(4,2), 
+            xlabel='Frequency [Hz]', ylabel='Angle [deg]', alabel='dB', title='Frequency Spectrogram')
 
 
     # setup polar plots
     plot_polar.add_line(theta, frad3, label='Random',  color='lightblue', line='-')
-    plot_polar.add_line(theta, frad2, label='RMS',     color='#d62728',   line='-')
-    plot_polar.add_line(theta, frad1, label='Average', color='#1f77b4',   line='--') #'#1f77b4' '#2ca02c'
+    #plot_polar.add_line(theta, frad2, label='RMS',     color='#d62728',   line='-')
+    plot_polar.add_line(theta, frad1, label='Average', color='black',     line='-') #'#1f77b4' '#2ca02c'
     
     # setup linear plots
     plot_linear.add_line(frange, flin1, label='Random',  color='lightblue', line='-')
     plot_linear.add_line(frange, flin3, label='RMS',     color='#d62728',   line='-')
-    plot_linear.add_line(frange, flin2, label='Average', color='#1f77b4',   line='-') #'#1f77b4' '#2ca02c'
+    plot_linear.add_line(frange, flin2, label='Average', color='black'  ,   line='-') #'#1f77b4' '#2ca02c'
 
     # setup spectrogram plot
     plot_spect.set_spectro(frange, arange, Sspec, shading='gouraud', cmap='magma');
 
+    # print output image to file
+    def save_graphs():
+        rootplot.deepcopy().save(    outfiledir, "plots.png", size=(16,9))
+        plot_polar.deepcopy().save(  outfiledir, "fig1.png")
+        plot_linear.deepcopy().save( outfiledir, "fig2.png")
+        plot_spect.deepcopy().save(  outfiledir, "fig3.png")
+
+    t1 = thread.Thread(target=save_graphs, args=[])
+    t1.start()
+
     # display plots
+    print("Plotting Graphs...")
     rootplot.show()
+
+    print("Saving Graphs...")
+    t1.join()
+    print(f"Saved Graphs to \"{outfiledir}\".")
 
 
     print("Done.")
@@ -246,7 +292,7 @@ class Frame:
         #ret = []
         for i, val in enumerate(self.fbins):
             #ret.append(self.fbins[i] * (1 if -band < frange[i] - freq < band else n))
-            self.fbins[i] *= (1 if -band < frange[i] - freq < band else n)
+            self.fbins[i] *= (1 if -band/2 < frange[i] - freq < band/2 else n)
         #return ret
         return self
 
@@ -350,6 +396,21 @@ class Frame:
     def __eq__(self, other):
         return self.angle == other.angle
 
+
+    def get_max_signal_freq(samples):
+        # array of indices to max for each sample
+        maxi = [np.argmax(s.fbins) for s in samples]
+        # get mean
+        mean = np.mean(maxi)
+        # sort by largest deviations from the mean. largest at the end
+        maxi.sort(key=lambda x: abs(x-mean))
+        # cut 50% of the most deviant samples to ensure that we get our 
+        # signal if it is 50% or more dominant
+        maxi = maxi[:len(maxi)//2]
+        # Round our new mean to an index
+        index = round(np.mean(maxi))
+        # return frequency
+        return samples[0].fftrange()[index]
         
 
 
@@ -484,6 +545,7 @@ class Plot:
         self.plot = None
         self.is_polar    = False
         self.is_colorbar = False
+        # self.plot = pyplot
 
 
     def copy(self):
@@ -495,8 +557,8 @@ class Plot:
 
     # def subplot_linlog(self, window=((0,0),(0,0)), title=None, xlabel=None, ylabel=None)
     def subplot_linlog(self, pos=(0,0), span=(0,0), title=None, xlabel=None, ylabel=None):
-        new = self.copy()
-        new.plot = self._create_subplot(pos, span)
+        #new = self.copy()
+        new = self._create_subplot(pos, span)
         
         new.plot.set_yscale('log', base=10)
         new.plot.set_title(title)
@@ -506,9 +568,10 @@ class Plot:
         return new
 
 
-    def add_line(self, X, Y, label=None, color=None, line='-'):
+    def add_line(self, X, Y, label=None, color=None, line='-', lw=None):
         if self.is_polar:
-            self.plot.plot(np.append(X, X[0]), np.append(Y, Y[0]), linestyle=line, label=label, color=color)
+            self.plot.plot(np.append(X, X[0]), np.append(Y, Y[0]), linestyle=line, label=label, 
+                    color=color, lw=lw)
 
         else:
             self.plot.plot(X, Y, linestyle=line, label=label, color=color)
@@ -525,8 +588,8 @@ class Plot:
 
 
     def subplot_polar(self, pos=(0,0), span=(0,0), range=None, title=None):
-        new = self.copy()
-        new.plot = self._create_subplot(pos, span, projection='polar')
+        #new = self.copy()
+        new = self._create_subplot(pos, span, projection='polar')
         new.is_polar = True
 
         new.plot.set_title(title)
@@ -547,8 +610,8 @@ class Plot:
 
 
     def subplot_spectrogram(self, pos=(0,0), span=(0,0), title=None, xlabel=None, ylabel=None, alabel=None):
-        new = self.copy()
-        new.plot = self._create_subplot(pos, span)
+        #new = self.copy()
+        new = self._create_subplot(pos, span)
         new.is_colorbar = True
         new.alabel = alabel
 
@@ -560,119 +623,39 @@ class Plot:
 
 
     def _create_subplot(self, pos=(0,0), span=(0,0), projection=None):
-        xmin, ymin = pos
-        # xmax, ymax = window[1]
-        # xspan = xax-xmin+1
-        # yspan = yax-ymin+1
-        xspan, yspan = span
-        return pyplot.subplot2grid((self.rows, self.cols), (ymin,xmin), rowspan=yspan, colspan=xspan, projection=projection)
+        new = self.copy()
+        new.span = span
+        new.pos = pos
+        new.plot = pyplot.subplot2grid((self.rows, self.cols), (pos[1], pos[0]), rowspan=span[1], colspan=span[0], projection=projection)
+        return new
 
 
     def show(self):
+        #fig = pyplot.gcf()
+        #fig.set_dpi(100)
         pyplot.subplots_adjust(hspace=1, wspace=1)
         pyplot.show()
 
 
+    def save(self, outdir, name, size=None):
+        fig = pyplot.gcf() if self.plot is None else self.plot.figure
+        os.makedirs(outdir, exist_ok=True)
+        pyplot.subplots_adjust(hspace=1, wspace=1)
 
-# 
-# # frequency
-# x = samples[0].fftrange()
-# # angle
-# y = [s.angle for s in samples]
-# # signal
-# S = np.array([np.real(20 * np.log10(np.abs(s.fbins)**2)) for s in samples])
-# 
-# x0 = x[5:-5]
-# y1 = np.abs(random.choice(samples).fbins)[5:-5]**2
-# y2 = np.abs(Frame.average(samples).fbins)[5:-5]**2
-# 
-# 
-# # free samples
-# samples = None
-# 
-# #exit()
-# 
-# # graph
-# print("Plotting Samples...")
-# plot = [None]*16
-# # fig = plt.figure()
-# 
-# # polar graph
-# # plot[0] = pyplot.subplot(2, 1, 1, projection='polar')
-# plot[0] = pyplot.subplot2grid((4, 4), (0,0), projection='polar', rowspan=2, colspan=2)
-# # spectrogram
-# # plot[1] = pyplot.subplot(2, 1, 2)
-# plot[1] = pyplot.subplot2grid((4, 4), (2,0), rowspan=2, colspan=4)
-# # sample graph 1
-# # plot[2] = pyplot.subplot2grid((4, 4), (1,2), rowspan=1, colspan=2)
-# plot[2] = pyplot.subplot2grid((4, 4), (0,2), rowspan=2, colspan=2)
-# # sample graph 2
-# #plot[3] = pyplot.subplot2grid((4, 4), (0,2), rowspan=1, colspan=2)
-# #plot[3] = pyplot.subplot2grid((4, 4), (0,1), rowspan=2, colspan=1)
-# 
-# 
-# 
-# # radial graph
-# # plot[0].set_theta_zero_location('N')
-# # plot[0].set_theta_direction(-1)
-# # plot[0].set_xticks(np.deg2rad(np.arange(0,360,15)))
-# # plot[0].set_xticklabels([f"{d}°" for d in np.arange(0,360,15)])
-# # plot[0].yaxis.set_major_locator(ticker.MaxNLocator(nbins=6))
-# # plot[0].set_rlabel_position(0)
-# # #plot[0].set_rscale('log', base=10)
-# # plot[0].set_rmax(max(radius))
-# # plot[0].set_rmin(min(radius))
-# # plot[0].plot(np.append(theta, theta[0]), np.append(radius, radius[0]), '-')
-# 
-# # sample graph
-# # plot[1] = pyplot.subplot(2, 1, 2)
-# # plot[1].set_yscale('log', base=10)
-# # plot[1].plot(x, y, linestyle='-')
-# 
-# #print(len(samples[0].fbins), binsize)
-# 
-# # spectrogram
-# # plot[1] = pyplot.subplot(2, 1, 2)
-# # plot[1].specgram(x, NFFT=binsize, Fs=fs, noverlap=512, cmap='viridis', scale='dB')
-# # plot[1].xlabel('Time [s]'); plt.ylabel('Frequency [Hz]'); plt.colorbar(label='dB')
-# 
-# # spectrogram
-# plot[1].pcolormesh(x, y, S, shading='gouraud', cmap='magma')
-# plot[1].set_xlabel('Frequency [Hz]')
-# plot[1].set_ylabel('Angle [deg]')
-# pyplot.colorbar(plot[1].collections[0], ax=plot[1], label='dB')
-# 
-# 
-# # sample graph 1
-# plot[2].set_yscale('log', base=10)
-# # plot[2].set_title('Random angle')
-# plot[2].set_xlabel('Frequency [Hz]')
-# plot[2].set_ylabel('Power')
-# plot[2].plot(x0, y1, linestyle='-', label='random')
-# plot[2].plot(x0, y2, linestyle='-', label='average')
-# plot[2].legend()
-# 
-# # sample graph 2
-# # plot[3].set_yscale('log', base=10)
-# # plot[3].set_title('Average over angle')
-# # plot[3].set_xlabel('Frequency [Hz]')
-# # plot[3].set_ylabel('Power')
-# # plot[3].plot(x0, y2, linestyle='-')
-# 
-# 
-# 
-# # plot[3].text(0.6, 0.3, f"Gain_min: {Gmin:0.2f} dB;\n\nGain_max: {Gmax:0.2f} dB;\n\n" +
-# #                        f"min_angle: {minangle:0.1f}\u00B0;\n\nmax_angle: {maxangle:0.1f}\u00B0;\n\nAngle diff: {diffangle:0.1f}\u00B0;")
-# # plot[3].axis('off')
-# #plot[3] = pyplot.add_subplot(1, 3, 3); ax.axis('off');
-# 
-# 
-# #pyplot.tight_layout(pad=0.1)
-# #pyplot.tight_layout(pad=0.0)
-# pyplot.subplots_adjust(hspace=1, wspace=1)
-# pyplot.show()
-# 
-# #print(sum(x), sum(y), sum(theta), sum(radius))
+        if size is None: size = (16, 12)
+        fig.set_size_inches(size[0], size[1], forward=True)
+
+        if self.plot is not None:
+            pos  = (self.pos[0] * size[0]/self.cols, self.pos[1] * size[1]/self.rows)
+            pos  = (pos[0], size[1]/2 - pos[1])
+            span = (self.span[0] * size[0]/self.cols, self.span[1] * size[1]/self.rows)
+            bbox = trans.Bbox.from_bounds(pos[0], pos[1], span[0], span[1])
+            
+            fig.savefig(outdir + "/" + name, dpi=200, bbox_inches=bbox)
+            
+        else:
+            fig.savefig(outdir + "/" + name, dpi=200)
+
 
 
 
@@ -733,5 +716,3 @@ class Plot:
 
 if __name__ == "__main__":
     main()
-
-

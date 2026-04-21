@@ -9,8 +9,9 @@
 TARGET := rfsweep
 #INCLUDEE := hackrf.h
 
-COPYOVER_LINUX   := src/process.py src/run.sh src/fastrun.sh
-COPYOVER_WINDOWS := src/process.py src/run.bat src/fastrun.bat lib/cygwin/bin/cygwin1.dll
+COPYOVER_LINUX   := src/process.py src/transmit.sh  src/run.sh  src/fastrun.sh
+COPYOVER_WINDOWS := src/process.py src/transmit.bat src/run.bat src/fastrun.bat
+COPYOVER_WINDOWS := $(COPYOVER_WINDOWS) lib/cygwin/bin/cygwin1.dll lib/libhackrf/windows/hackrf-tools
 
 TMPDIR := tmp
 SRCDIR := src
@@ -259,7 +260,7 @@ endif
 $(BINTARG): $(OBJS) FORCE Makefile
 	@mkdir -p $(dir $@)
 	$(CC) $(BFLAGS) -o $@ $(OBJS) -L$(LIBDIR) $(LFLAGS)
-	cp $(COPYOVER) bin/
+	cp -r $(COPYOVER) bin/
 
 # $(LIBBINTARG).a: $(OBJS)
 # 	@mkdir -p $(dir $@)

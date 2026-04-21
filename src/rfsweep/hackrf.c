@@ -1,47 +1,4 @@
-// there is no way we are getting libusb to work on windows for now, so 
-// we just won't compile with hackrf at all on windows, easy as that.
-#ifndef __LINUX__
-
-
-// for some reason having this here fixes errors in debug
-// windows compatability has turned this into an inclusion nightmare
-#include <stdio.h>
-
-
-// to make sure prototypes are correct
-#include "rfsweep.h"
-#include "toolkit/debug.h"
-
-
-#define __HRF_RDCT(__retst)                                 \
-    alertf(STR_ERROR, "NOT COMPILED FOR HACKRF LIBRARY!");  \
-    __retst
-
-
-
-
-fbins_t *fbins_new(int32_t)                     {__HRF_RDCT(return NULL);}
-size_t fbins_sizeof(fbins_t *)                  {__HRF_RDCT(return -1);  }
-void hparams_defaults(hparams_t *)              {__HRF_RDCT()            }
-int hparams_init(hparams_t *, const char *)     {__HRF_RDCT(return -1);  }
-void hparams_free(hparams_t *)                  {__HRF_RDCT()            }
-uint32_t hackrf_real_bandwidth(uint32_t)        {__HRF_RDCT(return 0);   }
-int hackrf_read(hparams_t *)                    {__HRF_RDCT(return -1);  }
-int hackrf_write(hparams_t *)                   {__HRF_RDCT(return -1);  }
-int hackrf_stop(hparams_t *)                    {__HRF_RDCT(return -1);  }
-int hackrf_is_finished(hparams_t *)             {__HRF_RDCT(return -1);  }
-void hackrf_wait_until_finished(hparams_t *)    {__HRF_RDCT()            }
-void hackrf_transmit_enable(hparams_t *)        {__HRF_RDCT()            }
-void init_libhackrf(void)                       {__HRF_RDCT()            }
-void exit_libhackrf(void)                       {__HRF_RDCT()            }
-
-
-
-
-
-#else /* #ifdef __WINDOWS__ */
-
-
+#ifdef __LINUX__
 
 
 #include <stdio.h>
@@ -64,6 +21,163 @@ void exit_libhackrf(void)                       {__HRF_RDCT()            }
 // needs to be below "rfsweep.h" due to cygwin header conflicts
 #include "toolkit/debug.h"
 #include "toolkit/macros.h"
+
+
+#else /* #ifdef __LINUX__ */
+
+
+// for some reason having this here fixes errors in debug
+// windows compatability has turned this into an inclusion nightmare
+#include <stdio.h>
+// to make sure prototypes are correct
+#include "rfsweep.h"
+#include "toolkit/debug.h"
+
+
+
+#endif /* #ifdef __LINUX__ */
+
+
+
+
+
+#ifndef __LINUX__
+
+#define ADDAPI
+#define ADDCALL
+
+typedef struct {
+    uint32_t bandwidth_hz;
+} max2837_ft_t;
+
+static const max2837_ft_t max2837_ft[] = {
+    {1750000},
+    {2500000},
+    {3500000},
+    {5000000},
+    {5500000},
+    {6000000},
+    {7000000},
+    {8000000},
+    {9000000},
+    {10000000},
+    {12000000},
+    {14000000},
+    {15000000},
+    {20000000},
+    {24000000},
+    {28000000},
+    {0}};
+
+extern ADDAPI uint32_t ADDCALL hackrf_compute_baseband_filter_bw(const uint32_t bandwidth_hz);
+
+#endif /* #ifndef __LINUX__ */
+
+
+
+
+// simply call free to free this
+fbins_t *fbins_new(int32_t bcount) {
+    fbins_t *mem;
+
+    //debugf("allocating new fbin of size %d.", bcount);
+
+    mem = malloc(sizeof(fbins_t) + bcount * sizeof(fbin_t));
+    assert(mem != NULL, NULL);
+
+    mem->bcount = bcount;
+    
+    return mem;
+}
+
+
+
+
+
+size_t fbins_sizeof(fbins_t *fbins) {
+    return sizeof(fbins_t) + fbins->bcount * sizeof(fbin_t);
+}
+
+
+
+
+
+
+
+
+uint32_t hackrf_real_bandwidth(uint32_t band_hz) {
+    uint32_t val = hackrf_compute_baseband_filter_bw(band_hz);
+    //msgf("the selected filter bandwidth is %0.3f MHz", val/1e6f);
+    return val;
+}
+
+
+
+
+
+
+
+
+// there is no way we are getting libusb to work on windows for now, so 
+// we just won't compile with hackrf at all on windows, easy as that.
+#ifndef __LINUX__
+
+
+
+#define __HRF_RDCT(__retst)                                 \
+    alertf(STR_ERROR, "NOT COMPILED FOR HACKRF LIBRARY!");  \
+    __retst
+
+
+
+
+// fbins_t *fbins_new(int32_t)                     {__HRF_RDCT(return NULL);}
+// size_t fbins_sizeof(fbins_t *)                  {__HRF_RDCT(return -1);  }
+void hparams_defaults(hparams_t *)              {__HRF_RDCT()            }
+int hparams_init(hparams_t *, const char *)     {__HRF_RDCT(return -1);  }
+void hparams_free(hparams_t *)                  {__HRF_RDCT()            }
+int hackrf_read(hparams_t *)                    {__HRF_RDCT(return -1);  }
+int hackrf_write(hparams_t *)                   {__HRF_RDCT(return -1);  }
+int hackrf_stop(hparams_t *)                    {__HRF_RDCT(return -1);  }
+int hackrf_is_finished(hparams_t *)             {__HRF_RDCT(return -1);  }
+void hackrf_wait_until_finished(hparams_t *)    {__HRF_RDCT()            }
+void hackrf_transmit_enable(hparams_t *)        {__HRF_RDCT()            }
+void init_libhackrf(void)                       {__HRF_RDCT()            }
+void exit_libhackrf(void)                       {__HRF_RDCT()            }
+
+
+
+
+
+/* Return final bw. */
+// From libhackrf source code
+uint32_t ADDCALL hackrf_compute_baseband_filter_bw(const uint32_t bandwidth_hz)
+{
+    const max2837_ft_t* p = max2837_ft;
+    while (p->bandwidth_hz != 0) {
+        if (p->bandwidth_hz >= bandwidth_hz) {
+            break;
+        }
+        p++;
+    }
+
+    /* Round down (if no equal to first entry) and if > bandwidth_hz */
+    if (p != max2837_ft) {
+        if (p->bandwidth_hz > bandwidth_hz)
+            p--;
+    }
+
+    return p->bandwidth_hz;
+}
+
+
+
+
+
+#else /* #ifndef __LINUX__ */
+
+
+
 
 
 // https://github.com/greatscottgadgets/hackrf/blob/main/host/libhackrf/src/hackrf.h
@@ -116,37 +230,14 @@ static int tx_callback(hackrf_transfer_t *transfer);
 
 
 
-// simply call free to free this
-fbins_t *fbins_new(int32_t bcount) {
-    fbins_t *mem;
-
-    //debugf("allocating new fbin of size %d.", bcount);
-
-    mem = malloc(sizeof(fbins_t) + bcount * sizeof(fbin_t));
-    assert(mem != NULL, NULL);
-
-    mem->bcount = bcount;
-    
-    return mem;
-}
-
-
-
-
-
-size_t fbins_sizeof(fbins_t *fbins) {
-    return sizeof(fbins_t) + fbins->bcount * sizeof(fbin_t);
-}
-
-
-
 
 
 void hparams_defaults(hparams_t *params) {
     *params = (hparams_t){
         .srate_hz = 10e6,
         .freq_hz  = 2.4e6,
-        .band_hz  = 10e6,
+        //.band_hz  = 10e6,
+        .band_hz  = 0, // 0 will just use the default of 0.75*srate
         .lna_gain = 16,
         .vga_gain = 20,
         .samps = 1,
@@ -177,15 +268,6 @@ void hparams_free(hparams_t *params) {
     DEBUG(
         //*params = (hparams_t){0};
     )
-}
-
-
-
-
-uint32_t hackrf_real_bandwidth(uint32_t band_hz) {
-    uint32_t val = hackrf_compute_baseband_filter_bw(band_hz);
-    msgf("the selected frequency is %0.3f MHz", val/1e6f);
-    return val;
 }
 
 
@@ -360,7 +442,8 @@ static int hackrf_free_board(hackrf_device_t *device) {
 
 static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_transmit) {
     int err;
-    DEBUG(uint32_t real_band_hz;)
+    //DEBUG(uint32_t real_band_hz;)
+    uint32_t real_band_hz;
     
     //uint8_t enable_amp = false;
     //uint8_t enable_ant = true;
@@ -376,13 +459,13 @@ static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_tran
     // calculate actual bandwidth we will be using
     // will be forced to one of these: 1.75, 2.5, 3.5, 5, 5.5, 6, 7, 8, 
     //      9, 10, 12, 14, 15, 20, 24, 28MHz
-    DEBUG(
-    if (!is_transmit) {
+    //DEBUG(
+    if ((!is_transmit) && (params->band_hz != 0)) {
         real_band_hz = hackrf_compute_baseband_filter_bw(params->band_hz);
         assert(("param bandwidth not an accepted bandwidth", 
                 real_band_hz == params->band_hz), -1);
     }
-    )
+    //)
 
     // set clock_enable
     hackrf_set_clkout_enable(device, params->clockout_enable);
@@ -425,7 +508,8 @@ static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_tran
 
     // set baseband sampling bandwidth
     // resets after sample rate is set, so call this after sample rate
-    if (!is_transmit) {
+    // if zero, then use default
+    if ((!is_transmit) && (params->band_hz != 0)) {
         err = hackrf_set_baseband_filter_bandwidth(device, params->band_hz);
         assert(!err, err);
     }
@@ -741,6 +825,10 @@ static int tx_callback(hackrf_transfer_t *transfer) {
 
 
 
+#endif /* #ifndef __LINUX__ */
+
+
+
 
 
 
@@ -806,9 +894,6 @@ int hackrf_run_tests(void) {
 
 
 
-
-
-#endif /* #ifdef __WINDOWS__ */
 
 
 

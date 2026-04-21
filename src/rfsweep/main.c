@@ -33,7 +33,7 @@ xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|
 */
 
 // max chars per argument
-#define MAX_ARG_CHARS 32
+#define MAX_ARG_CHARS 256
 //#define MAX_ARGS      16
 
 
@@ -644,7 +644,7 @@ static int argh_mode(int type, const char *str, const char *val, int argc,
 static int argh_flags(int type, const char *str, const char *val, int argc, const char *argv[], void *) {
     int err;
     uint64_t sflags;
-    double realband;
+    //double realband;
     //char *end;
     //float64_t val;
 
@@ -754,14 +754,14 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                     // global.band_hz = _strtou32(val);
                     global.band_hz = (uint32_t)_strtof64(val);
                     if (errno) return -9;
-                    realband = 
-                        (double)hackrf_real_bandwidth((uint32_t)global.band_hz);
-                    if (realband != global.band_hz) {
-                        alertf(STR_WARN, 
-                            "rounding bandwidth to nearest supported frequency %f",
-                            realband);
-                        global.band_hz = realband;
-                    }
+                    // realband = 
+                    //     (double)hackrf_real_bandwidth((uint32_t)global.band_hz);
+                    // if (realband != global.band_hz) {
+                    //     alertf(STR_WARN, 
+                    //         "rounding bandwidth to nearest supported frequency %f",
+                    //         realband);
+                    //     global.band_hz = realband;
+                    // }
                     break;
 
                 case FLAG_AMPLIFY:

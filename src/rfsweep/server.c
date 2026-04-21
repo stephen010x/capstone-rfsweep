@@ -1039,6 +1039,7 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
     params->clockout_enable = true;
     //params->serial     = _server_sdr_serial;
     //params->serial     = state->rserial;
+    
 
     // start data collection loop
     for (int i = 0; i < steps; i++) {
