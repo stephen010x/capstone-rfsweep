@@ -55,7 +55,7 @@ if "$is_amp"=="true" "extflags=%extflags% --amplify"
 
 
 :: add 10% of sample rate to center frequency to prevent DC from overlapping our signal
-%py% -c "print(f'{int(%freq% - %srate%*%offset%):e}'.replace('000e+0', 'e'))" > "%TEMP%\out.txt"
+%py% -c "print(f'{int(%freq% - %srate%*%offset%):g}'" > "%TEMP%\out.txt"
 set /p realfreq=<"%TEMP%\out.txt"
 del "%TEMP%\out.txt"
 

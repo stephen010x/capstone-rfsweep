@@ -68,7 +68,10 @@ typedef __WCHAR_TYPE__ ___wchar_t; /* resolves a cygwin error in stdatomic.h for
 #endif
 #define MIN_MICROS_PER_STEP ((int64_t)1e6/MAX_STEPS_PER_SEC)
 
-#define STEPS_PER_REV (200*57/11)
+#define STEPS_PER_REV (200*57/11.0)
+
+// higher modes is smaller multiplier
+#define MODE_TO_MULTPOW(__mode) (4 - (((__mode) == 0b111) ? 0b100 : (__mode)))
 
 
 
@@ -123,6 +126,7 @@ static int _stepper_setdir(step_dir_t dir);
 static void _step_inc(void);
 static void _step_dec(void);
 static void *_stepper_stepto_thread(stephandler_t *handle);
+static int _stepper_align(step_mode_t newmode);
 //static void _signandler_2(int sig);
 
 
@@ -393,11 +397,17 @@ int stepper_enable(bool enable) {
 // don't call this while the stepper is running
 int stepper_mode(step_mode_t mode) {
     int err;
+    #ifdef __DEBUG__
+    int nsteps, msteps;
+    #endif
 
     DEBUG(
     assert(("step mode must be within the range 0 to 4 or 7", 
         (mode >= 0 && mode <= 4) || mode == 7), -1);
     )
+
+    err  = _stepper_align(mode);
+    assert(!err, err);
 
     err = 0;
     err |= gpioWrite(GPIO_MS1, !!(mode & MASK_MS1));
@@ -408,9 +418,47 @@ int stepper_mode(step_mode_t mode) {
     global.mode = mode;
 
     // calculate mode multiplier
-    global.mode_mult = (4 - ((mode == 0b111) ? 0b100 : mode));
+    //global.mode_mult = (4 - ((mode == 0b111) ? 0b100 : mode));
+    global.mode_mult = MODE_TO_MULTPOW(mode);
+
+    DEBUG(
+    // assert that no steps are lost when changing modes
+    msteps = stepper_getmsteps();
+    nsteps = (msteps >> global.mode_mult) << global.mode_mult;
+    assert(msteps == nsteps, -1);
+    )
     
     msgf("mode set to %d with mult %d", mode, 1<<global.mode_mult);
+
+    return 0;
+}
+
+
+
+
+// snaps motor to alignment for changing stepper mode without loosing steps
+// uses the currently set direction.
+// snaps based on 16 mode microstepping
+static int _stepper_align(step_mode_t newmode) {
+    int msteps, nsteps, msnap_pow, err;
+
+    // if the new mode is larger then we can just return early
+    if (newmode > global.mode)
+        return 0;
+
+    msnap_pow = MODE_TO_MULTPOW(newmode);
+
+    // step until aligned
+    // retains direction
+    for (;;) {
+        msteps = stepper_getmsteps();
+        nsteps = (msteps >> msnap_pow) << msnap_pow;
+        if (msteps == nsteps)
+            break;
+
+        err = stepper_step(global.dir);
+        if (err) return -1;
+    }
 
     return 0;
 }
@@ -661,6 +709,14 @@ int32_t stepper_getmsteps(void) {
 
 
 
+float stepper_getangle(void) {
+    int32_t msteps;
+    msteps = stepper_getmsteps();
+    return msteps * 360.0 / (((float)STEPS_PER_REV) * (1 << 4));
+}
+
+
+
 void stepper_setorigin(void) {
     pthread_mutex_lock(&global.step_mutex);
     global.step = 0;
@@ -704,16 +760,16 @@ int stepper_stepto(int32_t angle) {
 
 
 // snaps to nearest step (round)
-int32_t angle_to_step(float32_t angle) {
+__weak_inline int32_t angle_to_step(float32_t angle) {
     // steps per revolution
-    float spr = STEPS_PER_REV << (4 - global.mode_mult);
+    float spr = (float)STEPS_PER_REV * (1 << (4 - global.mode_mult));
     return (int32_t)(angle * spr / 360.0 + 0.5);
 }
 
 
-float32_t step_to_angle(int32_t step) {
+__weak_inline float32_t step_to_angle(int32_t step) {
     // steps per revolution
-    float spr = STEPS_PER_REV << (4 - global.mode_mult);
+    float spr = (float)STEPS_PER_REV * (1 << (4 - global.mode_mult));
     return step * 360.0 / spr;
 }
 

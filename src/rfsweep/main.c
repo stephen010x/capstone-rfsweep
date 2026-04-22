@@ -39,23 +39,6 @@ xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|xxx.xxx.xxx.xxx|
 
 
 
-
-
-enum {
-    MODE_NULL = 0,
-    MODE_SERVER,
-    MODE_RESET,
-    MODE_RESTART,
-    MODE_GETLOGS,
-    MODE_TRANSMIT,
-    MODE_MEASURE,
-    MODE_ROTATE,
-    MODE_RECEIVE,
-    MODE_TEST,
-    MODE_PING,
-};
-
-
 enum {
     FLAG_NULL = 0,
     
@@ -203,7 +186,7 @@ globalstate_t global = {
     .rserial  = DEFAULT_RSERIAL,
     .tserial  = DEFAULT_TSERIAL,
     .samps    = DEFAULT_SAMPS,
-    .snappow  = DEFAULT_SNAP,
+    //.snappow  = DEFAULT_SNAP,
     .steps    = DEFAULT_STEPS,
     .freq_hz  = DEFAULT_FREQ,
     .band_hz  = DEFAULT_BAND,
@@ -663,9 +646,9 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                 return argc;
                 
             } else if (sflags & ((uint64_t)1<<FLAG_v)) {
-                alertf(STR_ERROR, "verbose mode -v currently not supported");
-                return -1;
-                //global.is_verbose = true;
+                //alertf(STR_ERROR, "verbose mode -v currently not supported");
+                //return -1;
+                global.is_verbose = true;
                 
             } else {
                 alertf(STR_ERROR, "unrecognized flags \"-%s\"", str);
@@ -870,8 +853,8 @@ static int eval_args(void) {
 
     err = 0;
 
-    if (global.is_verbose)
-        fprintf(stderr, str_help_defaults);
+    // if (global.is_verbose)
+    //     fprintf(stderr, str_help_defaults);
 
     switch (global.mode) {
         case MODE_SERVER:

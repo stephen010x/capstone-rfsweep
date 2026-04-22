@@ -1,4 +1,6 @@
 
+https://pysdr.org/content/hackrf.html
+
 For gdb
 ```sh
 export ASAN_OPTIONS=detect_leaks=0

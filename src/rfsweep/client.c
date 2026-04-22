@@ -86,6 +86,9 @@ static int _client_request(const globalstate_t *restrict state, const message_t 
     net_t net;
     //message_t *msg;
 
+    // optional verbose print
+    if (state->is_verbose) print_msg_verbose(state, msg);
+
     // connect to server
     err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
     assert(!err, err);
@@ -154,6 +157,9 @@ int client_request_getlogs(const globalstate_t *state) {
     message_t *msg;
 
     msgf("Sending GETLOGS request to server");
+
+    // optional verbose print
+    if (state->is_verbose) print_msg_verbose(state, NULL);
 
     // connect to server
     err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
@@ -234,8 +240,23 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
         .samps      = state->samps,
         .steps      = state->steps,
         .amp_enable = state->amp_enable,
-        .snappow    = state->snappow, 
+        //.snappow    = state->snappow, 
     };
+    
+
+    switch (state->stepmode) {
+        case 1:  msg->measure.stepmode = STEP_MODE_1_1;  break;
+        case 2:  msg->measure.stepmode = STEP_MODE_1_2;  break;
+        case 4:  msg->measure.stepmode = STEP_MODE_1_4;  break;
+        case 8:  msg->measure.stepmode = STEP_MODE_1_8;  break;
+        case 16: msg->measure.stepmode = STEP_MODE_1_16; break;
+        
+        default:
+            free(msg);
+            alertf(STR_ERROR, "invalid stepmode \"%d\".", state->stepmode);
+            return -1;
+    }
+
 
 
 
@@ -243,7 +264,8 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
     if (state->band_hz == 0) {
         // we are doing this now ourselves so that we can check if aliasing happens
         msg->measure.band_hz = hackrf_real_bandwidth(state->srate_hz * 3 / 4);
-        msgf("Selecting default passband filter bandwidth of %d Hz.", (int)msg->measure.band_hz);
+        msgf("Selecting default baseband filter bandwidth of %d Hz.", 
+                (int)msg->measure.band_hz);
         
     } else {
         msg->measure.band_hz = hackrf_real_bandwidth(state->band_hz);
@@ -253,10 +275,13 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
     }
 
     if (state->band_hz > state->srate_hz) {
-        warnf("The passband filter bandwidth (%f Hz) exceeds the sample rate (%f Hz)! "
+        warnf("The baseband filter bandwidth (%f Hz) exceeds the sample rate (%f Hz)! "
               "This will result in aliasing!",
               (double)state->band_hz, (double)state->srate_hz);
     }
+
+    // optional verbose print
+    if (state->is_verbose) print_msg_verbose(state, msg);
     
 
 
@@ -701,6 +726,9 @@ int client_request_rotate(const globalstate_t *state) {
             return -1;
     }
 
+    // optionally print verbose stuff
+    if (state->is_verbose) print_msg_verbose(state, msg);
+
     err = _client_request_success(state, msg);
 
     free(msg);
@@ -743,9 +771,92 @@ int client_request_transmit(const globalstate_t *state) {
         msg = message_new(MESSAGE_TRANSMIT_DISABLE, 0);
     }
 
+    // optionally print verbose stuff
+    if (state->is_verbose) print_msg_verbose(state, msg);
+
     err = _client_request_success(state, msg);
 
     free(msg);
 
     return err;
+}
+
+
+
+
+
+
+
+void print_msg_verbose(const globalstate_t *state, const message_t *msg) {
+    #define _PREPAD "        "
+
+    printf("PARAMETERS (-v)\n");
+
+    switch (state->mode) {
+        case MODE_PING:
+        case MODE_RESET:
+        case MODE_GETLOGS:
+        case MODE_RESTART:
+        case MODE_TRANSMIT:
+        case MODE_RECEIVE:
+        case MODE_MEASURE:
+        case MODE_ROTATE:
+            printf(_PREPAD "--ip=%s\n",   state->ip);
+            __fallthrough;
+        case MODE_SERVER:
+            printf(_PREPAD "--port=%d\n", (int)state->port);
+            break;
+    }
+
+    switch (state->mode) {
+        case MODE_PING:
+        case MODE_RESET:
+        case MODE_GETLOGS:
+        case MODE_RESTART:
+            break;
+            
+        case MODE_SERVER:
+            printf(_PREPAD "--log=\"%s\"\n",     state->logpath);
+            printf(_PREPAD "--tserial=\"%s\"\n", state->tserial);
+            printf(_PREPAD "--rserial=\"%s\"\n", state->rserial);
+            break;
+            
+        case MODE_TRANSMIT:
+            if (!state->transmit_enable)
+                break;
+            printf(_PREPAD "--freq=%g\n",     (float)msg->transmit_enable.freq_hz);
+            printf(_PREPAD "--vga-gain=%d\n", (int)msg->transmit_enable.vga_gain);
+            printf(_PREPAD "--tx-amp=%d\n",   (int)msg->transmit_enable.tx_amp);
+            if (msg->transmit_enable.amp_enable) 
+                 printf(_PREPAD "--amplify\n");
+            else printf(_PREPAD "--no-amplify\n");
+            break;
+            
+        case MODE_RECEIVE:
+        case MODE_MEASURE:
+            printf(_PREPAD "--file=\"%s\"\n", state->fpath);
+            printf(_PREPAD "--freq=%g\n",     (float)msg->measure.freq_hz);
+            printf(_PREPAD "--band=%g\n",     (float)msg->measure.band_hz);
+            printf(_PREPAD "--srate=%g\n",    (float)msg->measure.srate_hz);
+            printf(_PREPAD "--lna-gain=%d\n", (int)msg->measure.lna_gain);
+            printf(_PREPAD "--vga-gain=%d\n", (int)msg->measure.vga_gain);
+            printf(_PREPAD "--steps=%d\n",    (int)msg->measure.steps);
+            printf(_PREPAD "--samps=%d\n",    (int)msg->measure.samps);
+            printf(_PREPAD "--stepmode=%d\n", (int)msg->measure.stepmode);
+            if (msg->measure.amp_enable) printf(_PREPAD "--amplify\n");
+            else                         printf(_PREPAD "--no-amplify\n");
+            if (state->out_binary) printf(_PREPAD "--binary\n");
+            else                   printf(_PREPAD "--ascii\n");
+            break;
+            
+        case MODE_ROTATE:
+            if (state->is_angle)
+                 printf(_PREPAD "--angle=%f\n",    (float)msg->rotate.angle);
+            else printf(_PREPAD "--steps=%d\n",    (int)msg->rotate.steps);
+            printf(_PREPAD "--stepmode=%d\n", (int)msg->rotate.stepmode);
+            break;
+
+        default:
+            warnf("VERBOSE MODE -v NOT SUPPORTED FOR MODE (%d)\n", state->mode);
+    }
 }

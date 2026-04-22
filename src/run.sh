@@ -119,7 +119,7 @@ srate=${srate:-$def_srate}
 
 # offset center frequency by 10% of sample rate to prevent DC from overlapping our signal
 #realfreq=$(($(printf "%.0f" freq) - $(printf "%.0f" srate) / 10))
-realfreq=$($py -c "print(f'{int($freq - $srate*$offset):e}'.replace('000e+0', 'e'))")
+realfreq=$($py -c "print(f'{int($freq - $srate*$offset):g}'")
 
 
 mkdir -p $outdir

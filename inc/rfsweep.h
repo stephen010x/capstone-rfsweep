@@ -43,7 +43,7 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 #define DEFAULT_LOG    NULL
 //#define DEFAULT_SAMPS  10
 #define DEFAULT_SAMPS  1
-#define DEFAULT_SNAP   4    // now ignored
+//#define DEFAULT_SNAP   4    // now ignored
 #define DEFAULT_STEPS  360
 
 #define DEFAULT_FREQ   2.4e6
@@ -276,6 +276,24 @@ typedef int8_t message_type_t;
 
 
 
+enum {
+    MODE_NULL = 0,
+    MODE_SERVER,
+    MODE_RESET,
+    MODE_RESTART,
+    MODE_GETLOGS,
+    MODE_TRANSMIT,
+    MODE_MEASURE,
+    MODE_ROTATE,
+    MODE_RECEIVE,
+    MODE_TEST,
+    MODE_PING,
+};
+
+
+
+
+
 
 
 
@@ -300,10 +318,8 @@ typedef struct __packed {
             int16_t  steps;     // how many total steps in a full revolution
             
             uint8_t  amp_enable;
-            uint8_t  snappow;   // round micro-step size to this pow2 exponent.
-
-            // transmitter
-            // TODO: add transmitter params here
+            //uint8_t  snappow;   // round micro-step size to this pow2 exponent.
+            uint8_t  stepmode;
             
         } measure, receive;
 
@@ -384,7 +400,7 @@ typedef struct {
         const char *rserial;
         const char *tserial;
         int32_t   samps;
-        uint8_t   snappow;
+        //uint8_t   snappow;
         bool      transmit_enable;
         int32_t   steps;
         float32_t angle;
@@ -511,6 +527,7 @@ float32_t step_to_angle(int32_t step);
 stephandler_t *stepper_stepto_noblock(int32_t angle);
 bool stepper_is_stepping_to(stephandler_t *handle);
 int stepper_stepto_free(stephandler_t *handle);
+float stepper_getangle(void);
 
 
 
@@ -620,6 +637,7 @@ int client_request_ping(     const globalstate_t *state );
 int client_request_rotate(   const globalstate_t *state );
 int client_request_receive(  const globalstate_t *state );
 int client_request_transmit( const globalstate_t *state );
+void print_msg_verbose(const globalstate_t *state, const message_t *msg);
 
 
 

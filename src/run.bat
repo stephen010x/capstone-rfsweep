@@ -116,7 +116,7 @@ if "%srate%"=="" set "srate=%def_srate%"
 
 :: offset center frequency by 10% of sample rate to prevent DC from overlapping our signal
 :: %py% -c "print(int(%freq% - %srate%*%offset%))" > "%TEMP%\out.txt"
-%py% -c "print(f'{int(%freq% - %srate%*%offset%):e}'.replace('000e+0', 'e'))" > "%TEMP%\out.txt"
+%py% -c "print(f'{int(%freq% - %srate%*%offset%):g}'" > "%TEMP%\out.txt"
 set /p realfreq=<"%TEMP%\out.txt"
 del "%TEMP%\out.txt"
 

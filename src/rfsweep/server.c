@@ -27,8 +27,8 @@
 // #define STEPS_PER_REV      (200*16)
 // #define MEASURE_STEP_MODE  STEP_MODE_1_4
 // #define STEPS_PER_REV      (200.0*4*57/11.0)
-#define MEASURE_STEP_MODE  STEP_MODE_1_1
-#define STEPS_PER_REV      (200.0*57/11.0)
+//#define MEASURE_STEP_MODE  STEP_MODE_1_1
+//#define STEPS_PER_REV      (200.0*57/11.0)
 
 //#define STEPS_PER_REV (200*16)
 
@@ -765,6 +765,10 @@ int server_run(globalstate_t *_state) {
     state = _state;
 
 
+    // optional verbose print
+    if (state->is_verbose) print_msg_verbose(state, NULL);
+
+
     // run server init
     _init_server();
     
@@ -974,7 +978,8 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
             // set origin
             //stepper_setorigin();
             // set step mode
-            stepper_mode(MEASURE_STEP_MODE);
+            // stepper_mode(MEASURE_STEP_MODE);
+            stepper_mode(msg->measure.stepmode);
         }
 
         // start measurements
@@ -985,12 +990,12 @@ static int _server_measure_start(const net_t *restrict client, const message_t *
         (void)&&end_motor;
         
         if (shall_rotate) {
+            // take out of microstepping mode
+            stepper_mode(STEP_MODE_1_1);
             // quick pause
             micros_block_for(1e6);
             // step back to origin
             stepper_stepto(0);
-            // take out of microstepping mode
-            stepper_mode(STEP_MODE_1_1);
             // wait for motor to settle before turnoff
             micros_block_for(1e6);
             // disable motor
@@ -1043,7 +1048,8 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
 
     // start data collection loop
     for (int i = 0; i < steps; i++) {
-        int32_t angle;
+        //int32_t angle;
+        float angle;
 
         // check to see if data loop is still running
         // if not, then abort
@@ -1052,17 +1058,24 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
         msgf("collecting data [%d/%d]", i+1, steps);
 
         // calculate angle
-        angle = (int32_t)roundf((float)STEPS_PER_REV * (float)i / (float)steps);
+        //angle = (int32_t)roundf((float)STEPS_PER_REV * (float)i / (float)steps);
         // round to snap step size
         //angle = (angle >> msg->measure.snappow) << msg->measure.snappow;
         // set param "pretty" angle
-        params->angle = 360.0f * angle / (float)STEPS_PER_REV;
+        //params->angle = 360.0f * angle / (float)STEPS_PER_REV;
+
+        // calculate desired angle
+        angle = 360.0f * (float)i / (float)steps;
 
         // move to desired angle
         if (shall_rotate) {
-            DEBUG(debugf("stepping to %f", (float)angle);)
-            stepper_stepto(angle);
+            DEBUG(debugf("stepping to %f", angle);)
+            //stepper_stepto(angle);
+            stepper_stepto(angle_to_step(angle));
         }
+
+        // get the actual angle we are at
+        params->angle = stepper_getangle();
 
         // take measurement
         err = hackrf_read(params);
