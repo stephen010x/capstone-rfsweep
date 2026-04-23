@@ -67,7 +67,8 @@ static const max2837_ft_t max2837_ft[] = {
     {20000000},
     {24000000},
     {28000000},
-    {0}};
+    {0},
+};
 
 extern ADDAPI uint32_t ADDCALL hackrf_compute_baseband_filter_bw(const uint32_t bandwidth_hz);
 
@@ -217,8 +218,8 @@ static int hackrf_free_board(hackrf_device_t *device);
 static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_transmit);
 static int begin_receiver(hackrf_device_t *device, hparams_t *params);
 static int begin_transmitter(hackrf_device_t *device, hparams_t *params);
-static int stop_receiver(hackrf_device_t *device);
-static int stop_transmitter(hackrf_device_t *device);
+static int stop_receiver(hparams_t *params);
+static int stop_transmitter(hparams_t *params);
 static int rx_callback(hackrf_transfer_t *transfer);
 static int tx_callback(hackrf_transfer_t *transfer);
 
@@ -254,6 +255,9 @@ void hparams_defaults(hparams_t *params) {
 // just use hparams_default and explicit board open for more control, I guess.
 int hparams_init(hparams_t *params, const char *serial) {
     int err;
+    // make sure device is null. If not, then it already exists and trying to
+    // set it again will create a memory leak, as well as lock up hackrf
+    assert(("hackrf device already exists", params->_device == NULL), -1);
     hparams_defaults(params);
     params->serial = serial;
     err = hackrf_open_board(&params->_device, serial);
@@ -266,8 +270,11 @@ int hparams_init(hparams_t *params, const char *serial) {
 void hparams_free(hparams_t *params) {
     hackrf_free_board(params->_device);
     DEBUG(
-        //*params = (hparams_t){0};
+    //*params = (hparams_t){0};
     )
+
+    // for hackrf_stop to be able to detect if it has been freed
+    params->_device = NULL;
 }
 
 
@@ -326,10 +333,13 @@ int hackrf_write(hparams_t *params) {
 int hackrf_stop(hparams_t *params) {
     int err;
 
+    if (params->_device == NULL)
+        return -1;
+
     if (params->is_transmit)
-        err = stop_transmitter(params->_device);
+        err = stop_transmitter(params);
     else
-        err = stop_receiver(params->_device);
+        err = stop_receiver(params);
         
     assert(!err, err);
     return 0;
@@ -554,7 +564,10 @@ static int begin_receiver(hackrf_device_t *device, hparams_t *params) {
     params->is_transmit = false;
 
     err = hackrf_start_rx(device, (hackrf_sample_block_cb_fn)rx_callback, params);
-    assert(("hackrf failed to start receiver loop", !err), err);
+    if (err) alertf(STR_ERROR, "hackrf_start_rx() failed: %s (%d)\n",
+            hackrf_error_name(err), err);
+    if (err) return err;
+    //assert(("hackrf failed to start receiver loop", !err), err);
 
     return 0;
 }
@@ -587,14 +600,27 @@ static int begin_transmitter(hackrf_device_t *device, hparams_t *params) {
 
 
 
-static int stop_receiver(hackrf_device_t *device) {
+static int stop_receiver(hparams_t *params) {
     int err;
-    
-    err = hackrf_stop_rx(device);
+
+    // something that doesn't seem to be documented (as far as I could tell, 
+    // maybe it is in there somewhere), but evident in the hackrf source code,
+    // is that one must either call hackrf_stop_rx, hackrf_stop_tx, or
+    // hackrf_close, in order for libhackrf to allow you call hackrf_start_rx
+    // and possibly also hackrf_start_tx again after calling it the first time.
+    // I think I initially assumed that it could also be triggered by the
+    // rx_callback, but I found no evidence of that in the source code, so
+    // I guess not.
+    // Anyhow, to fix this I commented out the hackrf_is_finished check below.
+    // And did the same in the stop_transmitter function
+
+    //if (!hackrf_is_finished(params)) {
+    err = hackrf_stop_rx(params->_device);
     assert(("hackrf failed to stop receiver loop", !err), err);
+    //}
 
     // disable antenna
-    err = hackrf_set_antenna_enable(device, 0);
+    err = hackrf_set_antenna_enable(params->_device, 0);
     assert(("hackrf_set_antenna_enable(..., 0)", !err), err);
 
     return 0;
@@ -604,14 +630,17 @@ static int stop_receiver(hackrf_device_t *device) {
 
 
 
-static int stop_transmitter(hackrf_device_t *device) {
+static int stop_transmitter(hparams_t *params) {
     int err;
-    
-    err = hackrf_stop_tx(device);
+
+    // read comment in stop_receiver
+    // if (!hackrf_is_finished(params)) {
+    err = hackrf_stop_tx(params->_device);
     assert(("hackrf failed to stop transmitter loop", !err), err);
+    // }
 
     // disable antenna
-    err = hackrf_set_antenna_enable(device, 0);
+    err = hackrf_set_antenna_enable(params->_device, 0);
     assert(("hackrf_set_antenna_enable(..., 0)", !err), err);
 
     return 0;
@@ -623,6 +652,9 @@ static int stop_transmitter(hackrf_device_t *device) {
 
 __weak_inline int hackrf_is_finished(hparams_t *params) {
     return (hackrf_is_streaming(params->_device) != HACKRF_TRUE);
+    // int err = hackrf_is_streaming(params->_device);
+    // debugf("ECODE: %s (%d)\n", hackrf_error_name(err), err);
+    // return (err != HACKRF_TRUE);
 }
 
 
@@ -836,7 +868,8 @@ static int tx_callback(hackrf_transfer_t *transfer) {
 int hackrf_run_tests(void) {
     int err;
     //hackrf_device_t *device;
-    hparams_t params;
+    hparams_t params = {0}; // must set to zero to prevent
+                            // device non-null false flags
     fbins_t *fbins;
 
     // init hackrf

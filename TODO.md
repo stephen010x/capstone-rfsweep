@@ -4,8 +4,8 @@
 - [x] Fix recorded angle calculation to actual rather than ideal
 - [x] Ensure that changing stepper_mode will not lose steps
 - [x] Add assertion to stepper_mode that no steps are lost
-- [ ] Fix server crashing when disabling transmitter
-- [ ] Fine tune motor delay
+- [x] Fix server crashing when disabling transmitter
+- [-] Fine tune motor delay
 
 ## TESTS
 - [ ] Test with thread sanatizer (both client and server)
@@ -22,6 +22,8 @@
 - [ ] Write the actual readme/documentation
 - [ ] Make default for band_hz be 0.75% of srate_hz
 - [ ] Add --clock flag to enable receiver/transmitter clock
+- [ ] Have scripts poll server for error logs when something doesn't work
+- [ ] Add copyover for raspi systemd startup and other scripts
 
 ---
 
