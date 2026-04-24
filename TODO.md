@@ -6,6 +6,7 @@
 - [x] Add assertion to stepper_mode that no steps are lost
 - [x] Fix server crashing when disabling transmitter
 - [-] Fine tune motor delay
+- [x] Make file output replace rather than append
 
 ## TESTS
 - [ ] Test with thread sanatizer (both client and server)

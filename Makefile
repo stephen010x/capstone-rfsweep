@@ -9,9 +9,14 @@
 TARGET := rfsweep
 #INCLUDEE := hackrf.h
 
-COPYOVER_LINUX   := src/process.py src/transmit.sh  src/run.sh  src/fastrun.sh
-COPYOVER_WINDOWS := src/process.py src/transmit.bat src/run.bat src/fastrun.bat
+# COPYOVER_LINUX   := src/process.py src/transmit.sh  src/run.sh  src/fastrun.sh
+# COPYOVER_WINDOWS := src/process.py src/transmit.bat src/run.bat src/fastrun.bat
+# COPYOVER_WINDOWS := $(COPYOVER_WINDOWS) lib/cygwin/bin/cygwin1.dll lib/libhackrf/windows/hackrf-tools
+
+COPYOVER_LINUX   := src/process.py src/linux/*
+COPYOVER_WINDOWS := src/process.py src/windows/*
 COPYOVER_WINDOWS := $(COPYOVER_WINDOWS) lib/cygwin/bin/cygwin1.dll lib/libhackrf/windows/hackrf-tools
+COPYOVER_RASPI   := src/raspi/*
 
 TMPDIR := tmp
 SRCDIR := src
@@ -42,13 +47,6 @@ CFLAGS := -fvisibility=internal -D__ENABLE_SYSMESSAGES__
 LFLAGS := -Wl,-Bstatic -Wl,-Bdynamic -lm
 BFLAGS := -Wall -Wextra
 #LIBS   :=
-
-IS_ARM := $(shell echo | $(CC) -dM -E - | grep -E '__arm__|__aarch64__' >/dev/null && echo yes)
-ifneq ($(IS_ARM),yes)
-	#LFLAGS += -lplplot
-else
-	LFLAGS += -lpigpio
-endif
 
 
 DB := gdb
@@ -149,9 +147,15 @@ ifeq ($(OS),Windows_NT)
 else
 	OS := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
 	ifeq ($(OS),Linux)
-		LINUX := LINUX
 		#BLFLAGS += -target *-*-linux-gnu
 		#MAKEOSFILE := make/linux.mk
+		IS_ARM := $(shell echo | $(CC) -dM -E - | grep -E '__arm__|__aarch64__' >/dev/null && echo yes)
+		ifneq ($(IS_ARM),yes)
+			LINUX := LINUX
+		else
+			RASPI := RASPI
+			LFLAGS += -lpigpio
+		endif
 	else
 		$(error Incompatable operating system)
 	endif
@@ -235,6 +239,22 @@ BFLAGS += $(LINUX_BFLAGS)
 endif
 #==========================================
 #==========================================
+
+
+
+ifdef RASPI
+
+
+COPYOVER := $(COPYOVER_RASPI)
+
+
+CFLAGS += $(LINUX_CFLAGS)
+LFLAGS += $(LINUX_LFLAGS)
+BFLAGS += $(LINUX_BFLAGS)
+
+endif
+
+
 
 
 ifdef WINDOWS

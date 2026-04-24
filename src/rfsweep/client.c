@@ -333,6 +333,8 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
                             printf(outformatstr);
                         }
                     }
+                } else {
+                    dump_binto_file(state->fpath, NULL, 0);
                 }
                 msgf("collecting data [%d/%d]", i+1, state->steps);
                 err = _handle_measuredata(state, msg, i);
