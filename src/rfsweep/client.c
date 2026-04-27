@@ -15,7 +15,11 @@
 // int client_read();
 // int client_
 
+#ifdef __DEBUG__
+#define CLIENT_TIMEOUT -1
+#else
 #define CLIENT_TIMEOUT 1000     /* one second */
+#endif
 
 
 
@@ -271,11 +275,11 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
         msg->measure.band_hz = hackrf_real_bandwidth(state->band_hz);
 
         if (msg->measure.band_hz != state->band_hz)
-            warnf("Rounding filter bandwidth to %d Hz", (int)msg->measure.band_hz);
+            warnf("Rounding filter bandwidth to %g Hz", (float)msg->measure.band_hz);
     }
 
     if (state->band_hz > state->srate_hz) {
-        warnf("The baseband filter bandwidth (%f Hz) exceeds the sample rate (%f Hz)! "
+        warnf("The baseband filter bandwidth (%g Hz) exceeds the sample rate (%g Hz)! "
               "This will result in aliasing!",
               (double)state->band_hz, (double)state->srate_hz);
     }
@@ -329,6 +333,8 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
                             printf(outformatstr);
                         }
                     }
+                } else {
+                    dump_binto_file(state->fpath, NULL, 0);
                 }
                 msgf("collecting data [%d/%d]", i+1, state->steps);
                 err = _handle_measuredata(state, msg, i);
@@ -825,8 +831,8 @@ void print_msg_verbose(const globalstate_t *state, const message_t *msg) {
             
         case MODE_SERVER:
             printf(_PREPAD "--log=\"%s\"\n",     state->logpath);
-            printf(_PREPAD "--tserial=\"%s\"\n", state->tserial);
             printf(_PREPAD "--rserial=\"%s\"\n", state->rserial);
+            printf(_PREPAD "--tserial=\"%s\"\n", state->tserial);
             break;
             
         case MODE_TRANSMIT:
@@ -850,7 +856,7 @@ void print_msg_verbose(const globalstate_t *state, const message_t *msg) {
             printf(_PREPAD "--vga-gain=%d\n", (int)msg->measure.vga_gain);
             printf(_PREPAD "--steps=%d\n",    (int)msg->measure.steps);
             printf(_PREPAD "--samps=%d\n",    (int)msg->measure.samps);
-            printf(_PREPAD "--stepmode=%d\n", (int)msg->measure.stepmode);
+            printf(_PREPAD "--stepmode=%d\n", (int)state->stepmode);
             if (msg->measure.amp_enable) printf(_PREPAD "--amplify\n");
             else                         printf(_PREPAD "--no-amplify\n");
             if (state->out_binary) printf(_PREPAD "--binary\n");
@@ -861,7 +867,7 @@ void print_msg_verbose(const globalstate_t *state, const message_t *msg) {
             if (state->is_angle)
                  printf(_PREPAD "--angle=%f\n",    (float)msg->rotate.angle);
             else printf(_PREPAD "--steps=%d\n",    (int)msg->rotate.steps);
-            printf(_PREPAD "--stepmode=%d\n", (int)msg->rotate.stepmode);
+            printf(_PREPAD "--stepmode=%d\n", (int)state->stepmode);
             break;
 
         default:

@@ -265,13 +265,14 @@ const char *str_help_rotate =
 
 // TODO: update this
 const char *str_help_defaults =
-    "DEFAULTS"                                            "\n"
+    "DEFAULTS (--defaults)"                               "\n"
     "        --ip="         STRINGIFY(DEFAULT_IP)         "\n"
     "        --port="       STRINGIFY(DEFAULT_PORT)       "\n"
+    "        --log="        STRINGIFY(DEFAULT_LOG)        "\n"
     "        --rserial="    STRINGIFY(DEFAULT_RSERIAL)    "\n"
     "        --tserial="    STRINGIFY(DEFAULT_TSERIAL)    "\n"
     "        --samps="      STRINGIFY(DEFAULT_SAMPS)      "\n"
-    // "        --snap="       STRINGIFY(DEFAULT_SNAP)       "\n"
+    //"        --snap="       STRINGIFY(DEFAULT_SNAP)       "\n"
     "        --steps="      STRINGIFY(DEFAULT_STEPS)      "\n"
     "        --freq="       STRINGIFY(DEFAULT_FREQ)       "\n"
     "        --band="       STRINGIFY(DEFAULT_BAND)       "\n"

@@ -34,8 +34,13 @@
 
 
 
-//#define SERVER_TIMEOUT 10000    /* ten seconds */
-#define SERVER_TIMEOUT 600000   /*10 minutes*/
+
+#ifdef __DEBUG__
+#define SERVER_TIMEOUT -1
+#else
+// #define SERVER_TIMEOUT 600000   /*10 minutes*/
+#define SERVER_TIMEOUT 10000    /* ten seconds */
+#endif
 
 
 
@@ -843,7 +848,8 @@ int server_run(globalstate_t *_state) {
 
 static int _server_message_handler(const net_t *restrict client, const message_t *restrict msg) {
     int err;
-    hparams_t params;
+    hparams_t params = {0}; // we must set to zero to prevent
+                            // device not-null false flags
 
 
     msgf("received \"%s\" message (%d)", message_type_str(msg->type), msg->type);

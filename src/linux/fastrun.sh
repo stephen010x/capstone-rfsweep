@@ -59,7 +59,7 @@ fi
 # add 10% of sample rate to center frequency to prevent DC from overlapping our signal
 #realfreq=$(($(printf "%.0f" freq) + $(printf "%.0f" srate) / 10))
 #realfreq=$($py -c "print(f\"{int($freq - $srate*$offset):e}\".replace(\"000e+0\", \"e\"))")
-realfreq=$($py -c "print(f\"{int($freq - $srate*$offset)g}\"")
+realfreq=$($py -c "print(f\"{int($freq - $srate*$offset):g}\")")
 
 
 mkdir -p $outdir
@@ -68,7 +68,7 @@ outfile=$outdir/data-$(printf '%x' $(date +%s)).bin
 
 runstr="./rfsweep measure --ip=$ip --port=$port --steps=$steps --samps=$samps --stepmode=$stepmode --file=$outfile --freq=$realfreq --band=$band --srate=$srate --lna-gain=$lna_gain --vga-gain=$vga_gain --samps=$samps $extflags"
 
-pystr="python3 process.py --freq $freq $outfile"
+pystr="$py process.py --freq $freq $outfile"
 
 echo "$runstr && $pystr"
 $runstr && $pystr
