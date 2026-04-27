@@ -769,6 +769,7 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
 
                 case FLAG_STEPMODE:
                     global.stepmode = _strtou8(val);
+                    printf("STEPMODE %d\n", (int)global.stepmode);
                     if (errno) return -13;
                     break;
 

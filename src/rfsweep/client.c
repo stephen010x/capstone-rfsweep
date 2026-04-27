@@ -437,9 +437,13 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     } else if (state->fpath == NULL) {
 
         // print out params
-        printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-               fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
-               fbins->band_hz, (double)fbins->srate_hz, fbins->bcount*2);
+        // printf("%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+        //        fbins->timestamp_us, (double)fbins->angle, fbins->freq_hz, 
+        //        fbins->band_hz, (double)fbins->srate_hz, fbins->bcount*2);
+        printf("%lld %g %g %g %g %lld",
+                (long long)fbins->timestamp_us, (double)fbins->angle,
+                (double)fbins->freq_hz,         (double)fbins->band_hz,
+                (double)fbins->srate_hz,        (long long)fbins->bcount*2);
 
         // print out bins
         for (int i = 0; i < fbins->bcount; i++)
@@ -453,10 +457,14 @@ static int _handle_measuredata(const globalstate_t *restrict state, const messag
     } else {
 
         // print out params
-        err = append_strto_file(state->fpath, 
-                "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
-                fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
-                fbins->band_hz, fbins->srate_hz, fbins->bcount*2);
+        // err = append_strto_file(state->fpath, 
+        //         "%" PRId64 " %f %" PRIu64 " %" PRIu32 " %f %" PRId32,
+        //         fbins->timestamp_us, fbins->angle, fbins->freq_hz, 
+        //         fbins->band_hz, fbins->srate_hz, fbins->bcount*2);
+        err = append_strto_file(state->fpath, "%lld %g %g %g %g %lld",
+                (long long)fbins->timestamp_us, (double)fbins->angle,
+                (double)fbins->freq_hz,         (double)fbins->band_hz,
+                (double)fbins->srate_hz,        (long long)fbins->bcount*2);
         assert(!err, -2);
 
         // print out bins

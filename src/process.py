@@ -23,7 +23,7 @@ import threading as thread
 
 
 # options
-is_binary = True
+text_extensions = ['txt', 'ssv', 'log']
 binsize = 2048
 overlap = 0.5
 filtband = 4e5
@@ -68,7 +68,7 @@ def main():
     global target
 
     # load files into samples
-    frames = files_to_frames(filenames, is_binary)
+    frames = files_to_frames(filenames)
 
 
     print("Splitting Frames...")
@@ -189,10 +189,10 @@ def main():
 
     # print output image to file
     def save_graphs():
-        rootplot.deepcopy().save(    outfiledir, "plots.png", size=(16,9))
         plot_polar.deepcopy().save(  outfiledir, "fig1.png")
         plot_linear.deepcopy().save( outfiledir, "fig2.png")
         plot_spect.deepcopy().save(  outfiledir, "fig3.png")
+        rootplot.deepcopy().save(    outfiledir, "plots.png", size=(16,9))
 
     t1 = thread.Thread(target=save_graphs, args=[])
     t1.start()
@@ -203,6 +203,12 @@ def main():
 
     print("Saving Graphs...")
     t1.join()
+
+    # rootplot.save(    outfiledir, "plots.png", size=(16,9))
+    # plot_polar.save(  outfiledir, "fig1.png")
+    # plot_linear.save( outfiledir, "fig2.png")
+    # plot_spect.save(  outfiledir, "fig3.png")
+    
     print(f"Saved Graphs to \"{outfiledir}\".")
 
 
@@ -402,6 +408,7 @@ class Frame:
         maxi = [np.argmax(s.fbins) for s in samples]
         # get mean
         mean = np.mean(maxi)
+        print(maxi, mean)
         # sort by largest deviations from the mean. largest at the end
         maxi.sort(key=lambda x: abs(x-mean))
         # cut 50% of the most deviant samples to ensure that we get our 
@@ -422,21 +429,34 @@ class Frame:
 
 # FORMAT: <timestamp_micro:f64> <angle:f64> <freq_hz:f64> <band_hz:f64> <samplerate_hz:f64> <bincount:i64> [ <real:i8> <imaginary:i8> ...]
 
-def files_to_frames(filenames, is_binary):
+def files_to_frames(filenames):
     samples = []
 
     for filename in filenames:
+        # determine filetype
+        s = filename.split('.')
+        if len(s) > 1 and s[-1] in text_extensions:
+            is_binary = False
+        else:
+            is_binary = True
+
+        
+    
         # load items
         print(f"Loading Items from {filename}...")
         if is_binary:
             raw = np.fromfile(filename, dtype=np.uint8)
         else:
-            items = np.loadtxt(filename, dtype=str, comments=None)
+            #items = np.loadtxt(filename, dtype=str, comments=None).split('\n')
+            with open(filename, 'r', encoding='utf-8') as file:
+                lines = file.read().splitlines()
+            # discard first line
+            lines = lines[1:]
 
 
         # process data
         print("Formatting Data...")
-        while (len(raw if is_binary else items) > 0):
+        while (len(raw if is_binary else lines) > 0):
 
             if is_binary:
                 # separate params
@@ -448,22 +468,39 @@ def files_to_frames(filenames, is_binary):
                 # print(timestamp, angle, freq, band, samprate, bincount)
                 # for i in range(8*6, 8*6+8): print(f'{raw[i]:02x} ', end="")
                 # print()
+                print(timestamp, angle, freq, band, samprate, bincount)
+                print(len(raw), bincount)
                 bins_raw = np.frombuffer(raw, dtype='i1', count=bincount, offset=8*6)
 
                 # 88 de da 71 71 2a 35 8d
                 
             else:
                 # separate params
-                timestamp, angle, freq, band, samprate = np.array(items[:5], dtype='f8')
-
+                #timestamp, angle, freq, band, samprate = np.array(items[:5], dtype='f8')
+                
                 # get bins
-                bincount = int(items[5])
-                bins = np.array(items[6:bincount+6], dtype='i1')
+                #bincount = int(items[5])
+                #bins = np.array(items[6:bincount+6], dtype='i1')
+
+                data = lines[0].split(' ')
+                timestamp, angle, freq, band, samprate = [float(s) for s in data[:5]]
+                bincount = int(data[5])
+                bins_raw = np.array(data[6:], dtype='i1')
+
+
+                if bincount != len(bins_raw):
+                    print("WARNING: bincount is not equal to size of data")
+
+
+                
                 
 
             # format bins
             bins = bins_raw.astype(np.float32).reshape((-1,2))
             bins = bins[:,0] + 1j*bins[:,1]
+
+            # print(bins)
+            # print(timestamp, angle, freq, band, samprate, bincount)
 
                 
             # create and populate sample
@@ -484,7 +521,7 @@ def files_to_frames(filenames, is_binary):
             if is_binary:
                 raw = raw[bincount+6*8:]
             else:
-                items = items[bincount+8:]
+                lines = lines[1:]
 
     return samples
 
