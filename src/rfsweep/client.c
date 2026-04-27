@@ -322,21 +322,21 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
                 //debugf("Server POLLING...");
                 break;
 
-        
+
             case MESSAGE_DATA:
-                if (!state->out_binary) {
-                    // print format information
-                    if (i == 0) {
+                if (i == 0) {
+                    if (!state->out_binary) {
+                        // print format information
                         if (state->fpath) {
                             dump_strto_file(state->fpath, outformatstr);
                         } else {
                             printf(outformatstr);
                         }
+                    } else {
+                        dump_binto_file(state->fpath, NULL, 0);
                     }
-                } else {
-                    dump_binto_file(state->fpath, NULL, 0);
                 }
-                msgf("collecting data [%d/%d]", i+1, state->steps);
+                msgf("collecting data [%d/%d]", i+1, state->steps * state->samps);
                 err = _handle_measuredata(state, msg, i);
                 i++;
                 break;
@@ -678,7 +678,7 @@ static int _client_request_success(const globalstate_t *state, message_t *msg) {
 
 
             case MESSAGE_SUCCESS:
-                msgf("Rotation complete.");
+                msgf("Action complete.");
                 err = 0;
                 free(msg);
                 goto _exit_net;

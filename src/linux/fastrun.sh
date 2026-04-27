@@ -22,10 +22,15 @@ steps=360       # how many angles to take samples
 samps=1         # how many samples to take at each angle
 stepmode=1      # microstep mode (1/2/4/8/16)
 
+tx_vga_gain=20  # Transmitter VGA Gain  (0-47 dB, step of 1 dB)
+tx_amp=127      # Transmitter Amplitude (0-127)
+tis_amp=false   # Enable transmitter amplifier?
+
 # -----------------
 # Output Settings
 outdir="data/"
 extflags="--binary"
+textflags=""
 
 
 
@@ -55,6 +60,10 @@ if [ "$is_amp" == "true" ]; then
     extflags="$extflags --amplify"
 fi
 
+if [ "$tis_amp" == "true" ]; then
+    textflags="$textflags --amplify"
+fi
+
 
 # add 10% of sample rate to center frequency to prevent DC from overlapping our signal
 #realfreq=$(($(printf "%.0f" freq) + $(printf "%.0f" srate) / 10))
@@ -65,10 +74,13 @@ realfreq=$($py -c "print(f\"{int($freq - $srate*$offset):g}\")")
 mkdir -p $outdir
 outfile=$outdir/data-$(printf '%x' $(date +%s)).bin
 
+transon="./rfsweep transmit enable  --ip=$ip --port=$port --freq=$freq --vga-gain=$tx_vga_gain --tx-amp=$tx_amp $textflags"
+
+transoff="./rfsweep transmit disable  --ip=$ip --port=$port --freq=$freq --vga-gain=$tx_vga_gain --tx-amp=$tx_amp $textflags"
 
 runstr="./rfsweep measure --ip=$ip --port=$port --steps=$steps --samps=$samps --stepmode=$stepmode --file=$outfile --freq=$realfreq --band=$band --srate=$srate --lna-gain=$lna_gain --vga-gain=$vga_gain --samps=$samps $extflags"
 
 pystr="$py process.py --freq $freq $outfile"
 
-echo "$runstr && $pystr"
-$runstr && $pystr
+echo "$transon; ($runstr; $transoff) && $pystr"
+$transon; ($runstr; $transoff) && $pystr
