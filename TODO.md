@@ -5,12 +5,14 @@
 - [x] Ensure that changing stepper_mode will not lose steps
 - [x] Add assertion to stepper_mode that no steps are lost
 - [x] Fix server crashing when disabling transmitter
-- [-] Fine tune motor delay
+- [x] Fine tune motor delay
 - [x] Make file output replace rather than append
+- [x] Fix process.py plots.png output
 
 ## TESTS
 - [ ] Test with thread sanatizer (both client and server)
 - [ ] Test various transmitter script and rfsweep transmitter signal amplitude values
+- [ ] Test text file with process.py
 
 ## FEATURES
 - [x] Remove --snap flag and features. Replace with --stepmode
@@ -25,6 +27,8 @@
 - [ ] Add --clock flag to enable receiver/transmitter clock
 - [ ] Have scripts poll server for error logs when something doesn't work
 - [ ] Add copyover for raspi systemd startup and other scripts
+- [ ] Add transmit enable and disable to scripts (dont stop if transmit fails)
+- [ ] Add to scripts to print last few lines of logs if error
 
 ---
 
@@ -44,3 +48,4 @@
         to rotate faster.
 - [ ] Consider flags for measure command to enable transmitter for measurements
 - [ ] Add --no-amplify and --ascii flags that do nothing
+- [ ] Have --binary and --file=data.bin be default

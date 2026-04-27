@@ -46,7 +46,7 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 //#define DEFAULT_SNAP   4    // now ignored
 #define DEFAULT_STEPS  360
 
-#define DEFAULT_FREQ   2.4e6
+#define DEFAULT_FREQ   2.4e9
 #define DEFAULT_BAND   0
 #define DEFAULT_SRATE  10e6
 #define DEFAULT_LNA    16
