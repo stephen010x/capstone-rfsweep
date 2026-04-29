@@ -2,7 +2,7 @@
 
 :: =================================================
 :: =================================================
-:: Edit settings below
+:: Edit settings below. (avoid whitespace)
 
 
 :: -----------------
@@ -23,9 +23,17 @@ SET "samps=1"       & REM - how many samples to take at each angle
 SET "stepmode=1"    & REM - microstep mode (1/2/4/8/16)
 
 :: -----------------
+:: Transmitter Settings
+SET "tx_enable=true"    & REM - enable transmitter?
+SET "tx_vga_gain=20"    & REM - TX VGA Gain (0-47 dB, steps of 1 dB)
+SET "tx_ampl=127"       & REM - TX signal amplitude (0-127)
+SET "tx_is_amp=true"    & REM - enable TX amplifier?
+SET "tx_clock=true"     & REM - enable TX clock out?
+
+:: -----------------
 :: Output Settings
-SET "outdir=data\"
-SET "extflags=--binary"
+SET "outdir=data\"      & REM - output directory
+SET "extflags=--binary" & REM - extra flags
 
 
 
@@ -36,6 +44,11 @@ SET "extflags=--binary"
 :: =================================================
 :: =================================================
 :: You don't need to edit anything past this point
+
+
+
+
+
 
 
 set "offset=0.1"    & REM - offsets our center frequency by offset*srate
@@ -51,11 +64,13 @@ if "%py%"=="" (
 )
 
 
-if "$is_amp"=="true" "extflags=%extflags% --amplify"
+if "%is_amp%"=="true"    set "extflags=%extflags% --amplify"
+if "%tx_is_amp%"=="true" set "tx_extflags=%tx_extflags% --amplify"
+if "%tx_clock%"=="true"  set "tx_extflags=%tx_extflags% --clock"
 
 
 :: add 10% of sample rate to center frequency to prevent DC from overlapping our signal
-%py% -c "print(f'{int(%freq% - %srate%*%offset%):g}'" > "%TEMP%\out.txt"
+%py% -c "print(f'{int(%freq% - %srate%*%offset%):g}')" > "%TEMP%\out.txt"
 set /p realfreq=<"%TEMP%\out.txt"
 del "%TEMP%\out.txt"
 
@@ -69,10 +84,60 @@ del "%TEMP%\out.txt"
 
 set "runstr=rfsweep measure --ip=%ip% --port=%port% --steps=%steps% --samps=%samps% --stepmode=%stepmode% --file=%outfile% --freq=%realfreq% --band=%band% --srate=%srate% --lna-gain=%lna_gain% --vga-gain=%vga_gain% --samps=%samps% %extflags%"
 
+set "txstartstr=rfsweep transmit enable --ip=%ip% --port=%port% --freq=%freq% --vga-gain=%tx_vga_gain% --tx-ampl=%tx_ampl% %tx_extflags%"
+
+set "txendstr=rfsweep transmit disable --ip=%ip% --port=%port%"
+
+set "errstr=./rfsweep getlogs --ip=%ip% --port=%port%"
+
 set "pystr=%py% process.py --freq %freq% %outfile%"
 
-echo %runstr% ^&^& %pystr%
-%runstr% && %pystr%
+
 
 echo.
-pause
+
+:: start transmitter
+if "%tx_enable%"=="true" (
+    echo %txstartstr%
+    %txstartstr% || (
+        :: I hate powershell so much.
+        echo.
+        echo === SERVER LOGS ===
+        echo -------------------
+        %errstr% | powershell -noprofile -command ^
+            "Get-Content -Raw - | Select-Object -Last 10"
+        pause
+        exit /b 1
+    )
+)
+
+:: take measurements
+echo.
+echo %runstr% ^&^& %pystr%
+(
+    %runstr% || (
+        :: I hate powershell so much.
+        echo.
+        echo === SERVER LOGS ===
+        echo -------------------
+        %errstr% | powershell -noprofile -command ^
+            "Get-Content -Raw - | Select-Object -Last 10"
+        cmd /c "exit /b 5"
+    )
+) && %pystr%
+
+
+:: stop transmitter
+if "%tx_enable%"=="true" (
+    echo.
+    echo Press Enter or close window to stop transmitter...
+    pause >nul
+    echo %txendstr%
+    %txendstr%
+
+    
+) else (
+    echo.
+    pause
+)
+

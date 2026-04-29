@@ -1047,7 +1047,7 @@ static int _server_measure(const message_t *restrict msg, hparams_t *restrict pa
     params->vga_gain   = msg->measure.vga_gain;
     params->amp_enable = msg->measure.amp_enable;
     params->samps      = msg->measure.samps;
-    params->clockout_enable = true;
+    params->clockout_enable = msg->measure.clock_enable;
     //params->serial     = _server_sdr_serial;
     //params->serial     = state->rserial;
     
@@ -1275,6 +1275,7 @@ static int _server_transmit(const net_t *restrict client, const message_t *restr
     params.tx_vga_gain = msg->transmit_enable.vga_gain;
     params.tx_amp      = msg->transmit_enable.tx_amp;
     params.amp_enable  = msg->transmit_enable.amp_enable;
+    params.clockout_enable = msg->transmit_enable.clock_enable;
     
 
     debugf("params.device %p", params._device);

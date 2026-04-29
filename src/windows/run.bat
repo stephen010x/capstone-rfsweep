@@ -52,7 +52,7 @@ if %ERRORLEVEL% neq 0 (
     echo.
     echo Unable to connect to Controller on ^<%ip%:%port%^>.
     echo Check if correct IP and Port, and check if Controller is on.
-    exit /b 1
+    :: exit /b 1
 )
 
 echo.
@@ -90,15 +90,16 @@ echo.
 set /p "dummy=Press Enter to run test..."
 
 
-if "%isamp%" neq "y" if "%isamp%" neq "Y" if "%isamp%" neq "yes" if "%isamp%" neq "Yes" goto skipamp
+if "%isamp:~0,1%" neq "y" if "%isamp:~0,1%" neq "Y" goto skipamp
 set "extflags=%extflags% --amplify"
 :skipamp
 
 
 
 
-if "%freq%"=="" set "freq=%def_freq%"
-if "%band%"=="" set "band=%def_band%"
+
+if "%freq%"==""  set "freq=%def_freq%"
+if "%band%"==""  set "band=%def_band%"
 if "%isamp%"=="" set "isamp=%def_isamp%"
 if "%steps%"=="" set "steps=%def_steps%"
 if "%samps%"=="" set "samps=%def_samps%"
@@ -116,7 +117,7 @@ if "%srate%"=="" set "srate=%def_srate%"
 
 :: offset center frequency by 10% of sample rate to prevent DC from overlapping our signal
 :: %py% -c "print(int(%freq% - %srate%*%offset%))" > "%TEMP%\out.txt"
-%py% -c "print(f'{int(%freq% - %srate%*%offset%):g}'" > "%TEMP%\out.txt"
+%py% -c "print(f'{int(%freq% - %srate%*%offset%):g}')" > "%TEMP%\out.txt"
 set /p realfreq=<"%TEMP%\out.txt"
 del "%TEMP%\out.txt"
 
@@ -130,12 +131,22 @@ del "%TEMP%\out.txt"
 
 set "runstr=rfsweep measure --ip=%ip% --port=%port% --steps=%steps% --samps=%samps% --stepmode=%smode% --file=%outfile% --freq=%realfreq% --band=%band% --srate=%srate% --lna-gain=%lna_gain% --vga-gain=%vga_gain% --samps=%samps% %extflags%"
 
+set "errstr=./rfsweep getlogs --ip=%ip% --port=%port%"
+
 set "pystr=%py% process.py --freq %freq% %outfile%"
 
 echo.
 echo %runstr% ^&^& %pystr%
-%runstr% && %pystr%
-
-
+(
+    %runstr% || (
+        :: I hate powershell so much.
+        echo.
+        echo === SERVER LOGS ===
+        echo -------------------
+        %errstr% | powershell -noprofile -command ^
+            "Get-Content -Raw - | Select-Object -Last 10"
+        cmd /c "exit /b 5"
+    )
+) && %pystr%
 echo.
 pause

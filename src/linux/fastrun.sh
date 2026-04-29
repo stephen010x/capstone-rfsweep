@@ -2,7 +2,7 @@
 
 # =================================================
 # =================================================
-# Edit settings below
+# Edit settings below (avoid whitespace)
 
 
 # -----------------
@@ -29,7 +29,7 @@ tis_amp=false   # Enable transmitter amplifier?
 # -----------------
 # Output Settings
 outdir="data/"
-extflags="--binary"
+extflags="--binary --clock"
 textflags=""
 
 

@@ -10,25 +10,27 @@
 - [x] Fix process.py plots.png output
 
 ## TESTS
+- [x] Test text file with process.py
 - [ ] Test with thread sanatizer (both client and server)
 - [ ] Test various transmitter script and rfsweep transmitter signal amplitude values
-- [ ] Test text file with process.py
+- [ ] Test all 4 run scripts with new transmit and error log features
 
 ## FEATURES
 - [x] Remove --snap flag and features. Replace with --stepmode
 - [x] Make rotation back to origin fullspeed
 - [x] Update defaults help string
 - [x] Add verbose option -v
-- [ ] Ethernet support
-- [ ] Setup server loop and log script
-- [ ] Add cad models to a dir on the git repo (cleanup the kicad files)
+- [x] Ethernet support
+- [x] Setup server loop and log script
+- [x] Make default for band_hz be 0.75% of srate_hz
+- [x] Add --clock flag to enable receiver/transmitter clock
+- [x] Add copyover for raspi systemd startup and other scripts
+- [x] Add separate transmit script, and transmitter code to fastrun
+- [x] Add to scripts to print last few lines of logs if error
+- [x] Add cad models to a dir on the git repo (cleanup the kicad files)
 - [ ] Write the actual readme/documentation
-- [ ] Make default for band_hz be 0.75% of srate_hz
-- [ ] Add --clock flag to enable receiver/transmitter clock
-- [ ] Have scripts poll server for error logs when something doesn't work
-- [ ] Add copyover for raspi systemd startup and other scripts
-- [ ] Add transmit enable and disable to scripts (dont stop if transmit fails)
-- [ ] Add to scripts to print last few lines of logs if error
+- [ ] Have default ip address be the wlan0 or eth0 connection
+    - [ ] Have ip address default to eth0 then wlan0 then localhost
 
 ---
 
@@ -49,3 +51,11 @@
 - [ ] Consider flags for measure command to enable transmitter for measurements
 - [ ] Add --no-amplify and --ascii flags that do nothing
 - [ ] Have --binary and --file=data.bin be default
+- [ ] Have --clock flag fail when transmitter is either disabled or --clock flag wasn't 
+        also specified for the transmitter
+- [ ] Update shell scripts to match batch scripts
+- [ ] Verify that the clockout is detected with hackrf_get_clkin_status
+- [ ] Emit server error if the clockout for both hackrfs are detected
+- [ ] Add interactive mode to rfsweep (have it be default, with a flag to disable)
+- [ ] Rename --tx-ampl to --tx-mag or --magnitude
+- [ ] GUI Interface (Not happening)

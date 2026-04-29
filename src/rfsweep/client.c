@@ -244,6 +244,7 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
         .samps      = state->samps,
         .steps      = state->steps,
         .amp_enable = state->amp_enable,
+        .clock_enable = state->clock_enable,
         //.snappow    = state->snappow, 
     };
     
@@ -780,6 +781,7 @@ int client_request_transmit(const globalstate_t *state) {
                 .amp_enable = state->amp_enable,
                 .vga_gain   = state->vga_gain,
                 .tx_amp     = state->tx_amp,
+                .clock_enable = state->clock_enable,
         };
     } else {
         msg = message_new(MESSAGE_TRANSMIT_DISABLE, 0);
@@ -844,6 +846,9 @@ void print_msg_verbose(const globalstate_t *state, const message_t *msg) {
             if (msg->transmit_enable.amp_enable) 
                  printf(_PREPAD "--amplify\n");
             else printf(_PREPAD "--no-amplify\n");
+            if (msg->transmit_enable.clock_enable) 
+                 printf(_PREPAD "--clock\n");
+            else printf(_PREPAD "--no-clock\n");
             break;
             
         case MODE_RECEIVE:
@@ -859,6 +864,9 @@ void print_msg_verbose(const globalstate_t *state, const message_t *msg) {
             printf(_PREPAD "--stepmode=%d\n", (int)state->stepmode);
             if (msg->measure.amp_enable) printf(_PREPAD "--amplify\n");
             else                         printf(_PREPAD "--no-amplify\n");
+            if (msg->measure.clock_enable) 
+                 printf(_PREPAD "--clock\n");
+            else printf(_PREPAD "--no-clock\n");
             if (state->out_binary) printf(_PREPAD "--binary\n");
             else                   printf(_PREPAD "--ascii\n");
             break;

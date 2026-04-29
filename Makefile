@@ -13,10 +13,13 @@ TARGET := rfsweep
 # COPYOVER_WINDOWS := src/process.py src/transmit.bat src/run.bat src/fastrun.bat
 # COPYOVER_WINDOWS := $(COPYOVER_WINDOWS) lib/cygwin/bin/cygwin1.dll lib/libhackrf/windows/hackrf-tools
 
-COPYOVER_LINUX   := src/process.py src/linux/*
-COPYOVER_WINDOWS := src/process.py src/windows/*
-COPYOVER_WINDOWS := $(COPYOVER_WINDOWS) lib/cygwin/bin/cygwin1.dll lib/libhackrf/windows/hackrf-tools
+#COPYOVER_LINUX   := src/process.py src/linux/* LICENSE README.md
+#COPYOVER_WINDOWS := src/process.py src/windows/*
+#COPYOVER_WINDOWS := $(COPYOVER_WINDOWS) lib/cygwin/bin/cygwin1.dll lib/libhackrf/windows/hackrf-tools
+COPYOVER_WINDOWS := src/windows/*
+COPYOVER_LINUX   := src/linux/*
 COPYOVER_RASPI   := src/raspi/*
+COPYOVER_ALL	 :=
 
 TMPDIR := tmp
 SRCDIR := src
@@ -222,7 +225,7 @@ _dynamic:
 ifdef LINUX
 
 
-COPYOVER := $(COPYOVER_LINUX)
+COPYOVER := $(COPYOVER_LINUX) $(COPYOVER_ALL)
 
 
 CFLAGS += $(LINUX_CFLAGS)
@@ -245,7 +248,7 @@ endif
 ifdef RASPI
 
 
-COPYOVER := $(COPYOVER_RASPI)
+COPYOVER := $(COPYOVER_RASPI) $(COPYOVER_ALL)
 
 
 CFLAGS += $(LINUX_CFLAGS)
@@ -259,7 +262,7 @@ endif
 
 ifdef WINDOWS
 
-COPYOVER := $(COPYOVER_WINDOWS)
+COPYOVER := $(COPYOVER_WINDOWS) $(COPYOVER_ALL)
 
 CFLAGS += $(WINDOWS_CFLAGS)
 LFLAGS += $(WINDOWS_LFLAGS)

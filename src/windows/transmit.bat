@@ -1,14 +1,14 @@
 @echo off
+setlocal enabledelayedexpansion
 
 
+set def_ip=10.42.0.1
+set def_port=12346
 set def_freq=2.4e9
-set def_isamp=n
 set def_vga_gain=20
+set def_isamp=y
+set def_clock=y
 set def_ampl=127
-
-
-set "extflags="
-
 
 
 where python 1>nul 2>nul
@@ -22,48 +22,91 @@ if "%py%"=="" (
 
 
 echo.
-echo HACKRF TRANSMIT SCRIPT
-echo ======================
+echo RF ANTENNA TRANSMIT TOOL
+echo =======================
 echo.
+echo For the following options, enter a value and press enter.
+echo (leave blank and hit enter for default value)
 
 
-set /p "freq=Enter Transmission Frequency (Hz) [%def_freq%]: "
+echo.
+echo Connection Options
+echo ------------------
+
+set /p "ip=Enter Controller IP [%def_ip%]: "
+set /p "port=Enter Controller Port [%def_port%]: "
+
+if "%ip%"=="" set ip=%def_ip%
+if "%port%"=="" set port=%def_port%
+
+rfsweep ping --ip=%ip% --port=%port% 1>nul 2>nul
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo Unable to connect to Controller on ^<%ip%:%port%^>.
+    echo Check if correct IP and Port, and check if Controller is on.
+    exit /b 1
+)
+
+echo.
+echo HackRF Options
+echo --------------
+
+set /p "freq=Enter Center Freq (Hz) [%def_freq%]: "
 set /p "isamp=Enable Amplifier? (y/n) [%def_isamp%]: "
-set /p "vga_gain=Enter TX VGA-Gain (0-47 dB) [%def_vga_gain%]: "
-set /p "ampl=Enter Signal Amplitude (0-127) [%def_ampl%]: "
+set /p "vga_gain=Enter VGA-Gain (0-47 dB) [%def_vga_gain%]: "
+set /p "ampl=Enter Transmitting Amplitude (0-127) [%def_ampl%]: "
+set /p "clock=Enable Transmitter Clock Out? (y/n) [%def_clock%]: "
+
+echo.
+set /p "dummy=Press Enter to run test..."
 
 
 
-if "%vga_gain%"=="" set "vga_gain=%def_vga_gain%"
-if "%freq%"=="" set "freq=%def_freq%"
+if "%freq%"==""  set "freq=%def_freq%"
+if "%ampl%"==""  set "ampl=%def_ampl%"
 if "%isamp%"=="" set "isamp=%def_isamp%"
-if "%ampl%"=="" set "ampl=%def_ampl%"
+if "%clock%"=="" set "ampl=%def_clock%"
+if "%vga_gain%"=="" set "vga_gain=%def_vga_gain%"
 
 
-
-%py% -c "print(int(%freq%+0.5))" > "%TEMP%\out.txt"
-set /p realfreq=<"%TEMP%\out.txt"
-del "%TEMP%\out.txt"
-
-
-if "%isamp%" neq "y" if "%isamp%" neq "Y" if "%isamp%" neq "yes" if "%isamp%" neq "Yes" goto skipamp
-set "extflags=-a 1 %extflags%"
+if "%isamp:~0,1%" neq "y" if "%isamp:~0,1%" neq "Y" goto skipamp
+set "extflags=%extflags% --amplify"
 :skipamp
 
+if "%clock:~0,1%" neq "y" if "%clock:~0,1%" neq "Y" goto skipclock
+set "extflags=%extflags% --clock"
+:skipclock
 
 
-set "transtr=hackrf-tools\hackrf_transfer.exe -c %ampl% -p 1 -R -s 2000000 -f %realfreq% -x %vga_gain% %extflags%"
+
+
+set "txstartstr=rfsweep transmit enable --ip=%ip% --port=%port% --freq=%freq% --vga-gain=%vga_gain% --tx-ampl=%ampl% %extflags%"
+
+set "txendstr=rfsweep transmit disable --ip=%ip% --port=%port%"
 
 
 echo.
-echo %transtr%
-echo.
-echo Transmitting signal at %freq% Hz...
-echo Press Ctrl-C or close the window to stop transmission.
+
+%startstr%
 echo.
 
 
-%transtr%
+
 
 echo.
-pause
+echo %txstartstr%
+%txstartstr% || (
+    :: I hate powershell so much.
+    echo.
+    echo === SERVER LOGS ===
+    echo -------------------
+    %errstr% | powershell -noprofile -command ^
+        "Get-Content -Raw - | Select-Object -Last 10"
+)
+echo.
+echo Press Enter or close window to stop transmitter...
+pause >nul
+echo %txendstr%
+%txendstr%
+
+

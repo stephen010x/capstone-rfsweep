@@ -66,6 +66,7 @@ enum {
     FLAG_LNA_GAIN,
     FLAG_VGA_GAIN,
     FLAG_TX_AMP,
+    FLAG_CLOCK,
 
     // misc
     FLAG_DEFAULTS,
@@ -242,7 +243,8 @@ static const stringmap_t flagstrings[] = {
     {.mode = FLAG_ANGLE,    .string = "angle"   },
     {.mode = FLAG_STEPS,    .string = "steps"   },
     {.mode = FLAG_STEPMODE, .string = "stepmode"},
-    {.mode = FLAG_TX_AMP,   .string = "tx-amp"  },
+    {.mode = FLAG_TX_AMP,   .string = "tx-ampl" },
+    {.mode = FLAG_CLOCK,    .string = "clock"   },
     {.mode = FLAG_DEFAULTS, .string = "defaults"},
 };
 
@@ -780,6 +782,10 @@ static int argh_flags(int type, const char *str, const char *val, int argc, cons
                 case FLAG_TX_AMP:
                     global.tx_amp = _strtoi8(val);
                     if (errno) return -14;
+                    break;
+
+                case FLAG_CLOCK:
+                    global.clock_enable = true;
                     break;
                     
 

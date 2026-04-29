@@ -1,7 +1,7 @@
 #!/bin/bash
 
 outdir="data/"
-extflags="--binary"
+extflags="--binary --clock"
 
 offset=0.1
 
@@ -17,6 +17,11 @@ def_steps=360
 def_samps=1
 def_smode=1
 
+def_tenable=y
+def_tx_vga_gain=20
+def_tx_amp=127
+def_tis_amp=false
+
 
 
 pytest=$(which python)
@@ -29,6 +34,8 @@ if [ -z "$py" ]; then
 fi
 
 
+echo
+echo "WARNING: Transmitter capabilities not implemented in this script."
 echo
 echo "RF ANTENNA MEASURE TOOL"
 echo "======================="
@@ -93,11 +100,29 @@ read -p "Enter Total Sample Steps [$def_steps]: " steps
 read -p "Enter Samples per Step [$def_samps]: " samps
 read -p "Enter Microstep Mode (1/2/4/8/16) [$def_smode]: " smode
 
+
+# echo
+# echo "Transmitter Options"
+# echo "-------------------"
+# 
+# read -p "Enable Transmitter? (y/n) [$def_tenable]: " tenable
+# tenable=${tenable:-$def_tenable}
+# 
+# if [ "${tenable:0:1}" == "y" ]; then
+#     read -p "Enter Transmitter VGA-Gain () [$def_tx_vga_gain]: "
+#     read -p "Enter Transmitter Amplitude (0-127) [$def_tx_vamp]: "
+#     
+# fi
+# def_tx_vga_gain=20
+# def_tx_amp=127
+# def_tis_amp=false
+
+
 echo
 read -p "Press Enter to run test..."
 
 
-if [ "$isamp" == "y" ] || [ "$isamp" == "Y" ]  || [ "$isamp" == "yes" ] || [ "$isamp" == "Yes" ]; then
+if [ "${isamp:0:1}" == "y" ]; then
     extflags="$extflags --amplify"
 fi
 
@@ -128,8 +153,10 @@ outfile=$outdir/data-$(printf '%x' $(date +%s)).bin
 
 runstr="./rfsweep measure --ip=$ip --port=$port --steps=$steps --samps=$samps --stepmode=$smode --file=$outfile --freq=$realfreq --band=$band --srate=$srate --lna-gain=$lna_gain --vga-gain=$vga_gain --samps=$samps $extflags"
 
+errstr="(./rfsweep --ip=$ip --port=$port getlogs | tail -n 10)"
+
 pystr="$py process.py --freq $freq $outfile"
 
 echo 
 echo "$runstr && $pystr"
-$runstr && $pystr
+($runstr || (echo "\nSERVER LOGS:\n-----------"; $errstr; exit 1)) && $pystr

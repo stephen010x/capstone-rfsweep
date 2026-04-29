@@ -135,11 +135,12 @@ def main():
 
     # calculate target filter frequency
     freqpeak = Frame.get_max_signal_freq(favg)
-    print(f"Peak signal estimated to occur at {freqpeak} Hz.")
+    print(f"Peak signal estimated to occur at {freqpeak:g} Hz.")
     target = freqpeak if target is None else target
 
     # doing this last so it doesn't affect the other plots
-    print(f"Applying Bandpass Filter ({target:.3e} \u00B1 {filtband/2:.0e} Hz) to Frames...")
+    #print(f"Applying Bandpass Filter ({target:.3e} \u00B1 {filtband/2:.0e} Hz) to Frames...")
+    print(f"Applying Bandpass Filter ({target:g} \u00B1 {filtband/2:g} Hz) to Frames...")
     frand = np.array([f.deepcopy().filter(target, filtband, 1e-10) for f in frand])
     favg  = np.array([f.deepcopy().filter(target, filtband, 1e-10) for f in favg])
     frms  = np.array([f.deepcopy().filter(target, filtband, 1e-10) for f in frms])
@@ -408,7 +409,6 @@ class Frame:
         maxi = [np.argmax(s.fbins) for s in samples]
         # get mean
         mean = np.mean(maxi)
-        print(maxi, mean)
         # sort by largest deviations from the mean. largest at the end
         maxi.sort(key=lambda x: abs(x-mean))
         # cut 50% of the most deviant samples to ensure that we get our 
@@ -468,8 +468,8 @@ def files_to_frames(filenames):
                 # print(timestamp, angle, freq, band, samprate, bincount)
                 # for i in range(8*6, 8*6+8): print(f'{raw[i]:02x} ', end="")
                 # print()
-                print(timestamp, angle, freq, band, samprate, bincount)
-                print(len(raw), bincount)
+                # print(timestamp, angle, freq, band, samprate, bincount)
+                # print(len(raw), bincount)
                 bins_raw = np.frombuffer(raw, dtype='i1', count=bincount, offset=8*6)
 
                 # 88 de da 71 71 2a 35 8d

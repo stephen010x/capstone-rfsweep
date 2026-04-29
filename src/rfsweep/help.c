@@ -144,11 +144,14 @@ const char *str_help_transmit =
     "            the signal."                                           "\n"
     "            Steps of 1 dB. Ranges from 0 to 47 dB"                 "\n"
     ""                                                                  "\n"
-    "        --tx-amp=<amplitude>"                                      "\n"
+    "        --tx-ampl=<amplitude>"                                     "\n"
     "            Amplitude of transmission relative to gain (0-127)"    "\n"
     ""                                                                  "\n"
     "        --amplify"                                                 "\n"
-    "            Enable amplifier."                                     "\n";
+    "            Enable amplifier."                                     "\n"
+    ""                                                                  "\n"
+    "        --clock"                                                   "\n"
+    "            Enable transmitter clock out enable."                  "\n";
 
 
 
@@ -227,7 +230,10 @@ const char *str_help_measure =
     "            Enable amplifier."                                     "\n"
     ""                                                                  "\n"
     "        --binary"                                                  "\n"
-    "            Output results in binary instead of ascii."            "\n";
+    "            Output results in binary instead of ascii."            "\n"
+    ""                                                                  "\n"
+    "        --clock"                                                   "\n"
+    "            Enable receiver clock out enable."                     "\n";
 
 
 

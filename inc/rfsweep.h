@@ -320,6 +320,8 @@ typedef struct __packed {
             uint8_t  amp_enable;
             //uint8_t  snappow;   // round micro-step size to this pow2 exponent.
             uint8_t  stepmode;
+
+            uint8_t clock_enable;
             
         } measure, receive;
 
@@ -341,6 +343,7 @@ typedef struct __packed {
             //bool     enable;
             uint8_t  amp_enable;
             int8_t   tx_amp;
+            uint8_t clock_enable;
         } transmit_enable;
 
         
@@ -416,6 +419,7 @@ typedef struct {
         uint32_t  lna_gain;
         uint32_t  vga_gain;
         uint32_t  tx_amp;
+        bool      clock_enable;
     };
 } globalstate_t;
 
