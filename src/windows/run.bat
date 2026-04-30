@@ -6,7 +6,9 @@ set "extflags=--binary"
 
 set offset=0.1
 
-set def_ip=10.42.0.1
+set def_ipA=10.42.0.1
+set def_ipB=10.42.0.1
+set def_ipC=127.0.0.1
 set def_port=12346
 set def_freq=2.4e9
 set def_srate=10e6
@@ -41,18 +43,28 @@ echo.
 echo Connection Options
 echo ------------------
 
-set /p "ip=Enter Controller IP [%def_ip%]: "
+set /p "ip=Enter Controller IP [multiple]: "
 set /p "port=Enter Controller Port [%def_port%]: "
 
-if "%ip%"=="" set ip=%def_ip%
 if "%port%"=="" set port=%def_port%
+if "%ip%"=="" (
+  ((((rfsweep ping --ip=%def_ipA% --port=%port%) && set ip=%def_ipA%) || ^
+    ((rfsweep ping --ip=%def_ipB% --port=%port%) && set ip=%def_ipB%) || ^
+    ((rfsweep ping --ip=%def_ipC% --port=%port%) && set ip=%def_ipC%)) 1>NUL 2>NUL) || (
+        echo.
+        echo Tried ^<%def_ipA%:%port%^>, ^<%def_ipB%:%port%^>, ^<%def_ipC%:%port%^>
+        echo Unable to connect to server. Check if IP address is correct, and device is not turned off.
+        exit /b 1
+    )
+)
+
 
 rfsweep ping --ip=%ip% --port=%port% 1>nul 2>nul
 if %ERRORLEVEL% neq 0 (
     echo.
     echo Unable to connect to Controller on ^<%ip%:%port%^>.
-    echo Check if correct IP and Port, and check if Controller is on.
-    :: exit /b 1
+    echo Check if correct IP and Port, and check if controller is on.
+    exit /b 1
 )
 
 echo.
@@ -131,7 +143,7 @@ del "%TEMP%\out.txt"
 
 set "runstr=rfsweep measure --ip=%ip% --port=%port% --steps=%steps% --samps=%samps% --stepmode=%smode% --file=%outfile% --freq=%realfreq% --band=%band% --srate=%srate% --lna-gain=%lna_gain% --vga-gain=%vga_gain% --samps=%samps% %extflags%"
 
-set "errstr=./rfsweep getlogs --ip=%ip% --port=%port%"
+set "errstr=rfsweep getlogs --ip=%ip% --port=%port%"
 
 set "pystr=%py% process.py --freq %freq% %outfile%"
 

@@ -7,7 +7,10 @@
 
 :: -----------------
 :: Connection Settings
-SET "ip=10.42.0.1"
+:: It will try all three of these IPs
+SET "ipA=10.42.0.1" & REM - Wifi IP
+SET "ipB=10.42.0.1" & REM - Ethernet IP
+SET "ipC=127.0.0.1" & REM - Localhost IP
 SET "port=12346"
 
 :: -----------------
@@ -82,13 +85,29 @@ set "outfile=%outdir%\data-%unixtime%.bin"
 del "%TEMP%\out.txt"
 
 
+
+
+:: select working IP
+((
+((rfsweep ping --ip=%ipA% --port=%port%) && set ip=%ipA%) || ^
+((rfsweep ping --ip=%ipB% --port=%port%) && set ip=%ipB%) || ^
+((rfsweep ping --ip=%ipC% --port=%port%) && set ip=%ipC%)
+) 1>NUL 2>NUL) || (
+    echo.
+    echo Tried ^<%ipA%:%port%^>, ^<%ipB%:%port%^>, ^<%ipC%:%port%^>
+    echo Unable to connect to server. Check if IP address is correct, or device isn't turned off.
+    exit /b 1
+)
+
+
+
 set "runstr=rfsweep measure --ip=%ip% --port=%port% --steps=%steps% --samps=%samps% --stepmode=%stepmode% --file=%outfile% --freq=%realfreq% --band=%band% --srate=%srate% --lna-gain=%lna_gain% --vga-gain=%vga_gain% --samps=%samps% %extflags%"
 
 set "txstartstr=rfsweep transmit enable --ip=%ip% --port=%port% --freq=%freq% --vga-gain=%tx_vga_gain% --tx-ampl=%tx_ampl% %tx_extflags%"
 
 set "txendstr=rfsweep transmit disable --ip=%ip% --port=%port%"
 
-set "errstr=./rfsweep getlogs --ip=%ip% --port=%port%"
+set "errstr=rfsweep getlogs --ip=%ip% --port=%port%"
 
 set "pystr=%py% process.py --freq %freq% %outfile%"
 

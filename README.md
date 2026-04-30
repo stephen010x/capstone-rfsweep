@@ -1,3 +1,9 @@
+# Open Source RF Measurement System
+
+A senior capstone project by Stephen Harris and Jared Bell.
+
+Sponsored by Utah Tech University.
+
 
 https://pysdr.org/content/hackrf.html
 
@@ -5,6 +11,38 @@ https://pysdr.org/content/hackrf.html
 For gdb
 ```sh
 export ASAN_OPTIONS=detect_leaks=0
+
+
+
+
+
+
+## How to Compile
+
+### Compile for Debian (trixie)
+
+
+1. Install dependancies:
+
+`sudo apt update`
+
+`sudo apt-get install git gcc make libusb-1.0-0-dev`
+
+
+2. Clone this repository with git. `git clone --recurse-submodules https://github.com/stephen010x/capstone-rfsweep.git`
+
+If cloned without submodules, you can download the submodules like so:
+
+`git submodule init`
+
+`git submodule update`
+
+
+3. Recurse into directory `cd capstone-rfsweep`
+
+3. 
+
+
 ```
 
 ### How to Use:
