@@ -1,1 +1,1 @@
-/home/user/share/utahtech/capstone/capstone-rfsweep/src/process.py
+../process.py

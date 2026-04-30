@@ -1,1 +1,1 @@
-/home/user/share/utahtech/capstone/capstone-rfsweep/README.md
+../../README.md
