@@ -10,8 +10,8 @@ https://pysdr.org/content/hackrf.html
 
 For gdb
 ```sh
-export ASAN_OPTIONS=detect_leaks=0
 
+```
 
 
 
@@ -19,19 +19,26 @@ export ASAN_OPTIONS=detect_leaks=0
 
 ## How to Compile
 
-### Compile for Debian (trixie)
+
+
+
+### Compile for Debian/Ubuntu
+
+Tested on Debian (Trixie) and Ubuntu (Noble Numbat)
 
 
 1. Install dependancies:
 
 `sudo apt update`
 
-`sudo apt-get install git gcc make libusb-1.0-0-dev`
+`sudo apt-get install git gcc make libusb-1.0-0 libusb-1.0-0-dev`
 
 
 2. Clone this repository with git. `git clone --recurse-submodules https://github.com/stephen010x/capstone-rfsweep.git`
 
-If cloned without submodules, you can download the submodules like so:
+<!-- If you don't have git, you can install it like so: `sudo apt install git ca-certificates --no-install-recommends` -->
+
+If cloned without submodules, you can update the submodules like so:
 
 `git submodule init`
 
@@ -40,10 +47,68 @@ If cloned without submodules, you can download the submodules like so:
 
 3. Recurse into directory `cd capstone-rfsweep`
 
-3. 
+4. Run `make`
+
+Once complete, the compiled output can be found in `bin/`
 
 
-```
+
+### Compile for Windows
+
+`winget install Git.Git`
+`git clone https://github.com/stephen010x/capstone-rfsweep.git`
+run `install_cygwin.bat` or from cmd: `call install_cygwin.bat`
+`make`
+
+
+
+### Cross-Compile for Windows from Debian/Ubuntu
+
+1. Clone this repository. `git clone --recurse-submodules https://github.com/stephen010x/capstone-rfsweep.git`
+
+2. Recurse into directory `cd capstone-rfsweep`
+
+3. Install `wine` with `sudo apt-get install wine`
+
+4. Install `cygwin` with `wine install_cygwin.bat`
+
+5. To compile, run `./winebuild.sh`
+
+Once complete, the compiled output can be found in `bin/`
+
+
+
+
+## How to Use
+
+### Install Script Dependancies (optional)
+
+To use the scripts, you must install the script dependancies
+
+#### For Debian
+
+1. Install `python3` and `pip`
+
+`sudo apt update`
+
+`sudo apt-get install python3 pip --no-install-recommends`
+
+2. Install python dependancies `numpy`, `scipy`, and `matplotlib`
+
+`sudo apt-get install python3-numpy python3-scipy python3-matplotlib --no-install-recommends` 
+
+or...
+
+`pip install numpy scipy matplotlib --break-system-packages`
+
+
+#### For Windows
+
+
+
+
+
+
 
 ### How to Use:
 

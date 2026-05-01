@@ -1,0 +1,9 @@
+Some useful commands for testing
+
+
+==== To run an interactive docker ====
+sudo docker run --rm -it debian:latest bash
+
+
+==== To run GDB on the debug build ====
+export ASAN_OPTIONS=detect_leaks=0 gdb --args ./bin/rfsweep server -v

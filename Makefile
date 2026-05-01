@@ -85,11 +85,11 @@ DYNAMIC_LFLAGS :=
 DYNAMIC_BFLAGS := 
 
 
-WINDOWS_CFLAGS := -Ilib/cygwin/include -D__WIN32__ -std=gnu2x
+WINDOWS_CFLAGS := -Ilib/cygwin/include -Ilib/toolkit/inc -D__WIN32__ -std=gnu2x
 WINDOWS_LFLAGS := -Llib/cygwin/lib -lcygwin -lpthread
 WINDOWS_BFLAGS :=
 
-LINUX_CFLAGS := -D__LINUX__ -I/usr/include/libusb-1.0 -std=gnu23
+LINUX_CFLAGS := -D__LINUX__ -I/usr/include/libusb-1.0 -std=gnu2x
 LINUX_LFLAGS := -lusb-1.0
 LINUX_BFLAGS := 
 #LINUX_LIBS   :=
