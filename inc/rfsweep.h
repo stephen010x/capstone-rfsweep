@@ -39,7 +39,7 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 
 
 #define DEFAULT_IP     "10.42.0.1"
-#define DEFAULT_PORT   12346
+#define DEFAULT_PORT   7070
 #define DEFAULT_LOG    NULL
 //#define DEFAULT_SAMPS  10
 #define DEFAULT_SAMPS  1

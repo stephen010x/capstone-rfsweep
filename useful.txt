@@ -1,4 +1,4 @@
-Some useful commands for testing
+Some useful commands for testing:
 
 
 ==== To run an interactive docker ====

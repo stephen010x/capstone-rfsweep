@@ -5,7 +5,7 @@ setlocal enabledelayedexpansion
 set def_ipA=10.42.0.1
 set def_ipB=10.42.0.1
 set def_ipC=127.0.0.1
-set def_port=12346
+set def_port=7070
 set def_freq=2.4e9
 set def_vga_gain=20
 set def_isamp=y
@@ -78,7 +78,7 @@ set /p "dummy=Press Enter to run test..."
 if "%freq%"==""  set "freq=%def_freq%"
 if "%ampl%"==""  set "ampl=%def_ampl%"
 if "%isamp%"=="" set "isamp=%def_isamp%"
-if "%clock%"=="" set "ampl=%def_clock%"
+if "%clock%"=="" set "clock=%def_clock%"
 if "%vga_gain%"=="" set "vga_gain=%def_vga_gain%"
 
 
@@ -97,12 +97,13 @@ set "txstartstr=rfsweep transmit enable --ip=%ip% --port=%port% --freq=%freq% --
 
 set "txendstr=rfsweep transmit disable --ip=%ip% --port=%port%"
 
+set "errstr=rfsweep getlogs --ip=%ip% --port=%port%"
+
 
 echo.
 
 %startstr%
 echo.
-
 
 
 
@@ -117,7 +118,7 @@ echo %txstartstr%
         "Get-Content -Raw - | Select-Object -Last 10"
 )
 echo.
-echo Press Enter or close window to stop transmitter...
+echo Press Enter to stop transmitter...
 pause >nul
 echo %txendstr%
 %txendstr%

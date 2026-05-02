@@ -8,7 +8,7 @@
 # -----------------
 # Connection Settings
 ip=10.42.0.1
-port=12346
+port=7070
 
 # -----------------
 # Hackrf Settings

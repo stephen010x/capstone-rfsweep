@@ -6,7 +6,7 @@ extflags="--binary --clock"
 offset=0.1
 
 def_ip=10.42.0.1
-def_port=12346
+def_port=7070
 def_freq=2.4e9
 def_srate=10e6
 def_band=

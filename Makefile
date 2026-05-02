@@ -16,15 +16,15 @@ TARGET := rfsweep
 #COPYOVER_LINUX   := src/process.py src/linux/* LICENSE README.md
 #COPYOVER_WINDOWS := src/process.py src/windows/*
 #COPYOVER_WINDOWS := $(COPYOVER_WINDOWS) lib/cygwin/bin/cygwin1.dll lib/libhackrf/windows/hackrf-tools
-COPYOVER_WINDOWS := src/windows/*
+COPYOVER_WINDOWS := src/windows/* lib/libhackrf/windows/hackrf-tools
 COPYOVER_LINUX   := src/linux/*
 COPYOVER_RASPI   := src/raspi/*
 COPYOVER_ALL	 :=
 
-TMPDIR := tmp
-SRCDIR := src
-INCDIR := inc
-BINDIR := bin
+TMPDIR := tmp/
+SRCDIR := src/rfsweep/
+INCDIR := inc/
+BINDIR := bin/
 # this makefile expects libraries to use the same directory structure and names as specified above
 LIBDIR := lib
 

@@ -1,0 +1,11 @@
+[Unit]
+Description=Run startup.sh at boot
+# Wants/After can be adjusted if you need networking, filesystems, etc.
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/home/user/startup.sh
+
+[Install]
+WantedBy=multi-user.target

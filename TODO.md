@@ -13,6 +13,7 @@
 - [x] Test text file with process.py
 - [ ] Test various transmitter script and rfsweep transmitter signal amplitude values
 - [ ] Test all 4 run scripts with new transmit and error log features
+- [ ] Make sure that running `rfsweep receive` won't return back to origin
 
 ## FEATURES
 - [x] Remove --snap flag and features. Replace with --stepmode
@@ -27,7 +28,8 @@
 - [x] Add separate transmit script, and transmitter code to fastrun
 - [x] Add to scripts to print last few lines of logs if error
 - [x] Add cad models to a dir on the git repo (cleanup the kicad files)
-- [ ] Add to scripts to try for wlan first, then eth, then localhost
+- [x] Add to scripts to try for wlan first, then eth, then localhost
+    - [ ] Find and add default eth IP address to scripts
 - [ ] Write the actual readme/documentation
 
 ---

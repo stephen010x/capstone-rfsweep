@@ -11,7 +11,7 @@
 SET "ipA=10.42.0.1" & REM - Wifi IP
 SET "ipB=10.42.0.1" & REM - Ethernet IP
 SET "ipC=127.0.0.1" & REM - Localhost IP
-SET "port=12346"
+SET "port=7070"
 
 :: -----------------
 :: Hackrf Settings
