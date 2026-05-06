@@ -1,0 +1,962 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>README</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+      color: #606060;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    html { -webkit-text-size-adjust: 100%; }
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+</head>
+<body>
+<!-- 
+- https://markdownlivepreview.com/
+- https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/organizing-information-with-collapsed-sections
+- https://learnbyexample.github.io/customizing-pandoc/
+-->
+
+<h1 id="open-source-rf-measurement-system">Open Source RF Measurement
+System</h1>
+<p>A senior capstone project by Stephen Harris and Jared Bell.</p>
+<p>Sponsored by Utah Tech University.</p>
+<h2 id="todo">TODO:</h2>
+<p>These are the things that need to get done for this makefile</p>
+<ul class="task-list">
+<li><p><label><input type="checkbox" />(optional) add assembly and print
+instructions</label></p></li>
+<li><p><label><input type="checkbox" />Link to cad readme or
+files</label></p></li>
+<li><p><label><input type="checkbox" />Add images, findings, etc
+etc</label></p></li>
+<li><p><label><input type="checkbox" />Add table of
+contents</label></p></li>
+</ul>
+<p>Mention the goal of the project, and that the command line tool is
+only meant to collect data, while you can use whatever you want to
+process the data. But that a python file is provided by default. (also
+mention data format)</p>
+<h2 id="script-dependancies-optional">Script Dependancies
+(optional)</h2>
+<ul>
+<li>To use the scripts, you must install the script dependancies</li>
+</ul>
+<h3 id="debian-script-dependancies-optional">Debian Script Dependancies
+(optional)</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Update apt</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> apt update</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Install python3 and pip</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> apt-get install python3 pip <span class="at">--no-install-recommends</span></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Install python dependancies</span></span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a>    <span class="fu">sudo</span> apt-get install python3-numpy python3-scipy python3-matplotlib <span class="at">--no-install-recommends</span></span></code></pre></div>
+<!-- pip install numpy scipy matplotlib --break-system-packages -->
+
+<h3 id="windows-cmd-script-dependancies-optional">Windows CMD Script
+Dependancies (optional)</h3>
+<div class="sourceCode" id="cb2"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>    # Install python3</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    winget install Python.Python.3.14</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    # Install neccessary python libs</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>    pip install numpy scipy matplotlib</span></code></pre></div>
+<h3 id="windows-desktop-script-dependancies-optional">Windows Desktop
+Script Dependancies (optional)</h3>
+<ol type="1">
+<li>Install python from <a
+href="https://www.python.org/downloads/">https://www.python.org/downloads/</a></li>
+<li>Install neccessary python libs
+<code>pip install numpy scipy matplotlib</code></li>
+</ol>
+<p><code>rfsweep</code> is a command line tool with various options that
+allows the user to wirelessly send commands to the Raspberry PI
+controller that manages the motor and antennas. The communication is
+server/client based over TCP. Both the client and the server must be
+connected to Wi-Fi.</p>
+<p>Packaged alongside the <code>rfsweep</code> command are several
+interactive scripts to allow for less technical and more convenient use
+of <code>rfsweep</code>.</p>
+<div style="page-break-after: always;"></div>
+
+<hr />
+<h1 id="connecting-to-the-rfsweep-server">Connecting to the RFSWEEP
+server</h1>
+<p>Communication is managed wirelessly or through ethernet. Both the
+client and server must have some way to connect to each-other. The
+connection can either be wireless, or through ethernet. In order for
+communication to happen, the client has to know the IP address of the
+server.</p>
+<h2 id="from-the-pis-access-point-intended">From the PI's Access Point
+(intended)</h2>
+<ul>
+<li><p>The Raspberry PI is configured to broadcast a wireless access
+point that you can connect to called <code>raspi</code>. On the
+prototype, connecting to the <code>raspi</code> network requires no
+password.</p></li>
+<li><p>Note that you may <u><strong>lose connection to the
+internet</strong></u> when connecting to <code>raspi</code>. Generally
+it is an accepted risk to loose internet access while taking
+measurements. However, if you want internet access while connected to
+<code>raspi</code>, you can enable that by connecting the Raspberry PI
+controller to the internet by plugging in a USB Wi-Fi dongle to the USB
+hub connected to the Raspberry PI, and then accessing the PI through
+either <code>ssh</code> (See <a
+href="#ssh-into-the-raspberry-pi-controller">connecting to the PI
+through SSH</a>) or through other means. And then connecting to Wi-Fi
+from a network utility such as <code>nmtui</code>.</p></li>
+</ul>
+<h2 id="from-localhost">From localhost</h2>
+<ul>
+<li>If the server is running from the same computer as the client, you
+can connect them via the localhost IP address
+<code>127.0.0.1</code>.</li>
+</ul>
+<h2 id="from-a-local-connection">From a local connection</h2>
+<ul>
+<li>If both the client and the server are connected to the same local
+network, you can connect to the PI using it's local IP address.</li>
+</ul>
+<h2 id="from-a-public-connection">From a public connection</h2>
+<ul>
+<li>Connecting to the Raspberry PI through a public connection can be
+more tricky. First, you have to know the public IP address of the router
+that the PI is connected to. Next, you have to make sure the port
+(default is port 7070) the server is using is exposed on the router.
+(The default on most routers is to firewall all ports).</li>
+</ul>
+<h2 id="ssh-into-the-raspberry-pi-controller">SSH into the Raspberry PI
+Controller</h2>
+<ul>
+<li><p>The Raspberry PI is a headless controller. As a result, the
+easiest and most convenient way to access it is through SSH. Through
+SSH, you are able to access the PI directly through the command
+line.</p></li>
+<li><p>By default, the PI's wireless access point IP address is
+<code>10.42.0.1</code>. To SSH into the PI make sure you are connected
+to the <code>raspi</code> network broadcasted by the PI. (If you have
+only just turned on the PI, wait about 60 seconds for the device to boot
+up and configure the network). Then you can run
+<code>ssh user@10.42.0.1:/home/user</code> with password
+<code>pass</code>.</p></li>
+<li><p>For the prototype, both the Raspberry PI's root and user password
+has been set to <code>pass</code>.</p></li>
+<li><p>In the case of the PI's Access Point or Wi-Fi connection
+malfunctioning, you are able to take out it's SD memory card, and edit
+the <code>startup.sh</code> script in <code>/home/user/</code>. The
+startup script in the home user directory is ran whenever the PI boots
+up, and requires some technical competency in GNU/Linux command line and
+Bash scripting. This script is responsible for setting up Wi-Fi and
+autostarting the <code>rfsweep server</code>.</p></li>
+<li><p>If you wish to modify the Wi-Fi startup script, deleting the
+<code>key/</code> directory in the user home directory will trigger the
+Wi-Fi script to reconfigure the Access Point.</p></li>
+</ul>
+<div style="page-break-after: always;"></div>
+
+<hr />
+<h1 id="how-to-use-scripts">How to Use Scripts</h1>
+<h2 id="using-the-interactive-and-fast-scripts">Using the interactive
+and fast scripts</h2>
+<p>See <a href="#script-dependancies-optional">Script Dependancies</a>
+for how to install the dependancies required to run these scripts.</p>
+<p>Provided with the <code>rfsweep</code> binary are four scripts.
+<code>run.bat</code>, <code>fastrun.bat</code>,
+<code>transmit.bat</code>, and <code>process.py</code> for Windows. Or
+<code>run.sh</code>, <code>fastrun.sh</code>, and
+<code>process.py</code> for Linux.</p>
+<p>For the interactive transmitter and receiver scripts: If the IP
+address is left blank, these scripts will test for the known default
+access point address, followed by the known default ethernet address,
+followed by the localhost address.</p>
+<h2 id="interactive-transmitter-script">Interactive Transmitter
+Script</h2>
+<p><code>transmit.bat</code> is an interactive script that will prompt
+you for the transmitter parameters. See <a
+href="#rfsweep-parameters"><code>rfsweep</code> Parameters</a> for more
+information on the parameters.</p>
+<details>
+<summary>For instance:</summary>
+
+<pre><code>    RF ANTENNA TRANSMIT TOOL
+    ========================
+
+    For the following options, enter a value and press enter.
+    (leave blank and hit enter for default value)
+
+    Connection Options
+    ------------------
+    Enter Controller IP [multiple]:
+    Enter Controller Port [7070]:
+
+    HackRF Options
+    --------------
+    Enter Center Freq (Hz) [2.4e9]: 5.1e9
+    Enable Amplifier? (y/n) [y]: y
+    Enter VGA-Gain (0-47 dB) [20]: 40
+    Enter Transmitting Amplitude (0-127) [127]:
+    Enable Transmitter Clock Out? (y/n) [y]: n
+
+    Press Enter to run test...
+
+    rfsweep transmit enable --ip=10.42.0.1 --port=7070 --freq=5.1e9 --vga-gain=40 --tx-ampl=127 --amplify
+
+    Press Enter or close window to stop transmitter...
+    rfsweep transmit disable --ip=10.42.0.1 --port=7070</code></pre>
+</details>
+
+<h2 id="interactive-receiver-script">Interactive Receiver Script</h2>
+<p><code>run.bat</code> and <code>run.sh</code> act as an interactive
+script that will prompt you for the receiver parameters. See <a
+href="#rfsweep-parameters"><code>rfsweep</code> Parameters</a> for more
+information on the parameters.</p>
+<p>Once the script ends, it will run <code>process.py</code>, which will
+process and graph the data received.</p>
+<details>
+<summary>For instance:</summary>
+
+<pre><code>    RF ANTENNA MEASURE TOOL
+    =======================
+
+    For the following options, enter a value and press enter.
+    (leave blank and hit enter for default value)
+
+    Connection Options
+    ------------------
+    Enter Controller IP [multiple]:
+    Enter Controller Port [7070]:
+
+    HackRF Options
+    --------------
+    Enter Center Freq (Hz) [2.4e9]: 5.1e9
+    Enter Sample Rate (Hz) [10e6]:
+    Enter Band Filter (Hz) [srate*0.75]:
+    Enter LNA-Gain (0-40 dB) [16]: 20
+    Rounding LNA-Gain to 24 dB.
+    Enter VGA-Gain (0-62 dB) [20]: 16
+    Enable Amplifier? (y/n) [n]: y
+
+    Data Options
+    ------------
+    Enter Total Sample Steps [360]:
+    Enter Samples per Step [1]: 5
+    Enter Microstep Mode (1/2/4/8/16) [1]:
+
+    Press Enter to run test...
+
+    rfsweep measure --ip=10.42.0.1 --port=7070 --steps=360 --samps=5 --stepmode=1 --file=data\\data-1777676846.bin --freq=5.099e+09 --band= --srate=10e6 --lna-gain=24 --vga-gain=16 --samps=5 --binary --amplify &amp;&amp; python process.py --freq 5.1e9 data\\data-1777676846.bin</code></pre>
+</details>
+
+<h2 id="fastrun-script">Fastrun Script</h2>
+<p>The <code>fastrun.bat</code> and <code>fastrun.sh</code> scripts are
+non-interactive scripts that are meant to be edited. Inside they have
+variables that you can modify to allow for a quick, easy, and repeatable
+way to run tests without having to use the interactive scripts.</p>
+<p>These scripts manage both the transmitter and receiver. When finished
+it runs <code>process.py</code>, which will process and graph the data
+received.</p>
+<details>
+<summary>These are the variables intended to be modified within the script:</summary>
+
+<div class="sourceCode" id="cb5"><pre
+class="sourceCode bat"><code class="sourceCode dosbat"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">:: fastrun.bat</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="co">:: -----------------</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a><span class="co">:: Connection Settings</span></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">:: It will try all three of these IPs</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">ipA</span>=<span class="st">10.42.0.1&quot;</span> <span class="kw">&amp;</span> <span class="co">REM - Wifi IP</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">ipB</span>=<span class="st">10.42.0.1&quot;</span> <span class="kw">&amp;</span> <span class="co">REM - Ethernet IP</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">ipC</span>=<span class="st">127.0.0.1&quot;</span> <span class="kw">&amp;</span> <span class="co">REM - Localhost IP</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">port</span>=<span class="st">7070&quot;</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="co">:: -----------------</span></span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a><span class="co">:: Hackrf Settings</span></span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">freq</span>=<span class="st">2.4e9&quot;</span>    <span class="kw">&amp;</span> <span class="co">REM - center frequency</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">srate</span>=<span class="st">10e6&quot;</span>    <span class="kw">&amp;</span> <span class="co">REM - sample rate </span><span class="er">(</span><span class="co">Hz</span><span class="er">)</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">band</span>=<span class="st">&quot;</span>         <span class="kw">&amp;</span> <span class="co">REM - bandpass filter width. Leave blank to set to 75% of srate</span></span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">lna_gain</span>=<span class="st">16&quot;</span>   <span class="kw">&amp;</span> <span class="co">REM - LNA Gain </span><span class="er">(</span><span class="co">amplifies small signals</span><span class="er">)</span><span class="co"> </span><span class="er">(</span><span class="co">0-40 dB, step of 8 dB</span><span class="er">)</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">vga_gain</span>=<span class="st">20&quot;</span>   <span class="kw">&amp;</span> <span class="co">REM - VGA Gain </span><span class="er">(</span><span class="co">software amplifier</span><span class="er">)</span><span class="co"> </span><span class="er">(</span><span class="co">0-62 dB, step of 2 dB</span><span class="er">)</span></span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">is_amp</span>=<span class="st">false&quot;</span>  <span class="kw">&amp;</span> <span class="co">REM - enable amplifier</span></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">steps</span>=<span class="st">360&quot;</span>     <span class="kw">&amp;</span> <span class="co">REM - how many angles to take samples</span></span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">samps</span>=<span class="st">1&quot;</span>       <span class="kw">&amp;</span> <span class="co">REM - how many samples to take at each angle</span></span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">stepmode</span>=<span class="st">1&quot;</span>    <span class="kw">&amp;</span> <span class="co">REM - microstep mode </span><span class="er">(</span><span class="co">1/2/4/8/16</span><span class="er">)</span></span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a><span class="co">:: -----------------</span></span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a><span class="co">:: Transmitter Settings</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">tx_enable</span>=<span class="st">true&quot;</span>    <span class="kw">&amp;</span> <span class="co">REM - enable transmitter?</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">tx_vga_gain</span>=<span class="st">20&quot;</span>    <span class="kw">&amp;</span> <span class="co">REM - TX VGA Gain </span><span class="er">(</span><span class="co">0-47 dB, steps of 1 dB</span><span class="er">)</span></span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">tx_ampl</span>=<span class="st">127&quot;</span>       <span class="kw">&amp;</span> <span class="co">REM - TX signal amplitude </span><span class="er">(</span><span class="co">0-127</span><span class="er">)</span></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">tx_is_amp</span>=<span class="st">true&quot;</span>    <span class="kw">&amp;</span> <span class="co">REM - enable TX amplifier?</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">tx_clock</span>=<span class="st">true&quot;</span>     <span class="kw">&amp;</span> <span class="co">REM - enable TX clock out?</span></span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a><span class="co">:: -----------------</span></span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a><span class="co">:: Output Settings</span></span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">outdir</span>=<span class="st">data</span><span class="sc">\&quot;</span><span class="st">      &amp; REM - output directory</span></span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a><span class="bu">SET</span> <span class="st">&quot;</span><span class="va">extflags</span>=<span class="st">--binary&quot;</span> <span class="kw">&amp;</span> <span class="co">REM - extra flags</span></span></code></pre></div>
+</details>
+
+<h2 id="how-to-use-processpy">How to use <code>process.py</code></h2>
+<p><code>process.py</code> is a python script packaged with the binaries
+by default. This script is an optional companion script to the
+<code>rfsweep</code> command, and provides for an easy way to process
+and visually plot the data received by running
+<code>rfsweep measure</code> or <code>rfsweep receive</code>. See <a
+href="#how-to-use-rfsweep">How to use <code>rfsweep</code></a> for more
+information on how to use <code>rfsweep</code>.</p>
+<p>The <code>process.py</code> help manual is available by running:</p>
+<div class="sourceCode" id="cb6"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>process.py <span class="at">-h</span></span></code></pre></div>
+<p>To use <code>process.py</code>, append one or more file names for it
+to process. Files can be in binary format, as well as text format.
+<code>process.py</code> detects these formats via file extensions such
+as <code>.bin</code> and <code>.txt</code>. See <a
+href="#rfsweep-data-formats"><code>rfsweep</code> Data Formats</a> for
+more information on the accepted formats.</p>
+<p>Example usage:</p>
+<div class="sourceCode" id="cb7"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>process.py data1.bin data2.txt</span></code></pre></div>
+<p><code>process.py</code> is able to automatically determine the
+bandpass filter frequency by looking for the peak signal across all of
+the data points. However, this may be unreliable with messier signals.
+If you wish to manually specify a filter frequency, use the
+<code>--freq &lt;value&gt;</code> flag.</p>
+<div class="sourceCode" id="cb8"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>process.py data.bin -<span class="at">-freq</span> 2.41e9</span></code></pre></div>
+<div style="page-break-after: always;"></div>
+
+<hr />
+<h1 id="how-to-use-rfsweep">How to use <code>rfsweep</code></h1>
+<p><code>rfsweep</code> is the core command line executable that allows
+us to communicate with the server, (as well as acting as the core
+executable running the server on the Raspbery PI controller).</p>
+<p>Within the command line, you can get a help manual by running:</p>
+<div class="sourceCode" id="cb9"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>rfsweep <span class="at">-h</span></span></code></pre></div>
+<p>See <a href="#rfsweep-commands"><code>rfsweep</code> Commands</a> or
+<a href="rfsweep-parameters"><code>rfsweep</code> Parameters</a> for
+more detailed usage.</p>
+<h2 id="rfsweep-commands"><code>rfsweep</code> Commands</h2>
+<p><code>rfsweep</code> has several commands that can be sent to the
+server. You can view these commands by running:</p>
+<div class="sourceCode" id="cb10"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>rfsweep <span class="at">-h</span></span></code></pre></div>
+<p>Each command also has their own help manual:</p>
+<div class="sourceCode" id="cb11"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>rfsweep <span class="kw">&lt;</span>command<span class="kw">&gt;</span> -h</span></code></pre></div>
+<p>The commands are as listed below:</p>
+<pre><code>    COMMANDS:
+            ping        Ping server.
+            server      Start server.
+            reset       Reset remote server.
+            restart     Restart remote server system.
+            getlogs     Return remote server error logs.
+            transmit    Enable/disable remote server transmitter.
+            measure     Run remote server measurements.
+            receive     Run measurements without rotation.
+            rotate      Move motor to indicated angle.
+
+    USAGE:
+            rfsweep -h
+            rfsweep &lt;command&gt; -h
+            rfsweep &lt;command&gt; [options]</code></pre>
+<h2 id="rfsweep-parameters"><code>rfsweep</code> Parameters</h2>
+<p>Parameters are flags that typically follow after a command, that
+allows us to configure the behavior when the server receives the
+command. They typically follow the format
+<code>--&lt;param&gt;=&lt;value&gt;</code></p>
+<p>For instance,</p>
+<div class="sourceCode" id="cb13"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>rfsweep rotate -<span class="at">-angle</span>=360</span></code></pre></div>
+<p>All parameters have a default value. All You can query for the
+default parameters by running:</p>
+<div class="sourceCode" id="cb14"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>rfsweep -<span class="at">-defaults</span></span></code></pre></div>
+<p>Note that leaving parameters blank will result in them using their
+default value. Like so:</p>
+<div class="sourceCode" id="cb15"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>rfsweep ping -<span class="at">-ip</span>= -<span class="at">-port</span>=</span></code></pre></div>
+<p>Most parameters are specific to certain commands, as will be
+explained in the following subsections.</p>
+<h3 id="general-parameters">General Parameters</h3>
+<p>These are parameters that apply to every command except the
+<code>server</code> command.</p>
+<pre><code>    OPTIONS
+            -h
+                Print help message.
+
+            -v
+                Verbose. Echos parameters.
+
+            --ip=&lt;ip&gt;
+                Server ip address.
+
+            --port=&lt;port&gt;
+                Server port number.
+
+    DEFAULTS:
+            --ip=10.42.0.1
+            --port=7070
+
+    USAGE:
+            rfsweep &lt;command&gt; -h
+            rfsweep &lt;command&gt; [options]</code></pre>
+<h4 id="notes">NOTES:</h4>
+<p>The <code>-v</code> flag prints out the parameters being used. This
+tells us exactly what parameters is being sent to the server, and is
+useful for detecting whether or not we have passed <code>rfsweep</code>
+bad parameters.</p>
+<p>The <code>--ip</code> and <code>--port</code> flags set the IP
+address and PORT that points to the server. If these are wrong, then the
+client will fail to send any messages to the server.</p>
+<h3 id="rfsweep-ping-parameters"><code>rfsweep ping</code>
+Parameters</h3>
+<p>The <code>ping</code> command sends a probing signal to the server to
+determine if the server is reachable. If this command fails, it means
+that either A) The server is inactive, or B) The server is unreachable,
+which typically occurs when the server host computer or controller is
+off, or if your IP or PORT are wrong.</p>
+<p>If <code>ping</code> fails, check that the Raspberry PI is on, that
+you are connected to the <code>raspi</code> Wi-Fi SSID or through an
+Ethernet connection, and finally make sure that your IP address and PORT
+are correct.</p>
+<p>See <a href="#general-parameters">General Parameters</a> for
+<code>rfsweep ping</code> parameters.</p>
+<h3 id="rfsweep-server-parameters"><code>rfsweep server</code>
+Parameters</h3>
+<p>The <code>server</code> command is a special mode that behaves unlike
+any of the other commands. The other commands are clientside commands
+being sent to the server. Running <code>rfsweep server</code> will start
+a server instance that is able to receive any commands sent by
+<code>rfsweep</code> client commands.</p>
+<p>The prototype is configured to autostart this on the Raspberry
+PI.</p>
+<pre><code>    DESCRIPTION
+            Start server.
+
+    OPTIONS
+            -h
+                Print help message.
+
+            -v
+                Verbose. Echos parameters.
+
+            --log=&lt;filepath&gt;
+                Path to log file.
+
+            --port=&lt;port&gt;
+                Port to listen to.
+
+            --tserial=&lt;serial&gt;
+                Transmission HackRF serial string.
+
+            --rserial=&lt;port&gt;
+                Receiver HackRF serial string.
+
+    DEFAULTS:
+            --port=7070
+            --log=NULL
+            --rserial=&quot;0000000000000000d07864dc314d3287&quot;
+            --tserial=&quot;0000000000000000930c64dc285b0ec3&quot;
+
+    USAGE:
+            rfsweep server -h
+            rfsweep server [options]</code></pre>
+<h4 id="notes-1">NOTES:</h4>
+<p>The <code>--log</code> flag sets the path to the log file that the
+server will return when the client calls
+<code>rfsweep getlogs</code>.</p>
+<p>The <code>--tserial</code> and <code>--rserial</code> flags are the
+serial number strings for identifying the transmitter HackRF, and the
+receiver HackRF. These serial numbers are unique to each HackRF, and are
+how the server indentifies which HackRF is the receiver, and which is
+the transmitter. As a consiquence, using different HackRFs will require
+you to obtain the serial number, and specifying it in the flags. You can
+obtain the serial number by running <code>hackrf_info</code> from the
+HackRF Tools library, which can be found in the
+<code>hackrf-tools\</code> directory of the Windows build. Otherwise
+<code>hackrf_info</code> can be obtained through Debian <code>apt</code>
+or by following the instructions on the HackRF Docs: <a
+href="https://hackrf.readthedocs.io/en/latest/installing_hackrf_software.html">https://hackrf.readthedocs.io/en/latest/installing_hackrf_software.html</a>.</p>
+<h3 id="rfsweep-reset-parameters"><code>rfsweep reset</code>
+Parameters</h3>
+<p>The <code>rfsweep reset</code> command will tell the server to
+restart it's running process. If the <code>startup.sh</code> is not
+running <code>rfsweep server</code> on loop, then it will not restart,
+and will only kill the process.</p>
+<p>See <a href="#general-parameters">General Parameters</a> for
+<code>rfsweep reset</code> parameters.</p>
+<h3 id="rfsweep-restart-parameters"><code>rfsweep restart</code>
+Parameters</h3>
+<p>The <code>rfsweep restart</code> command will tell the server to
+reboot the computer that is running on, which typically should be the
+Rasberry PI controller.</p>
+<p>See <a href="#general-parameters">General Parameters</a> for
+<code>rfsweep restart</code> parameters.</p>
+<h3 id="rfsweep-getlogs-parameters"><code>rfsweep getlogs</code>
+Parameters</h3>
+<p>The <code>rfsweep getlogs</code> command will request the error logs
+from the server, and print it to stdout.</p>
+<p>See <a href="#general-parameters">General Parameters</a> for
+<code>rfsweep getlogs</code> parameters.</p>
+<h3 id="rfsweep-transmit-parameters"><code>rfsweep transmit</code>
+Parameters</h3>
+<p>The <code>rfsweep transmit enable</code> and
+<code>rfsweep transmit disable</code> command allows you to enable or
+disable the transmitter. When enabled, the transmitter will generate a
+sinusoidal wave on the specified frequency.</p>
+<pre><code>    OPTIONS
+            -h
+                Print help message.
+
+            -v
+                Verbose. Echos parameters.
+
+            --ip=&lt;ip&gt;
+                Server ip address.
+
+            --port=&lt;port&gt;
+                Server port.
+
+    HACKRF OPTIONS
+            --freq=&lt;freq_hz&gt;
+                Set center frequency (hz).
+
+            --vga-gain=&lt;gain_db&gt;
+                Variable gain amplifier. Software ampllification of
+                the signal.
+                Steps of 1 dB. Ranges from 0 to 47 dB
+
+            --tx-ampl=&lt;amplitude&gt;
+                Amplitude of transmission relative to gain (0-127)
+
+            --amplify
+                Enable amplifier.
+
+            --clock
+                Enable transmitter clock out enable.
+
+    DEFAULTS
+            --ip=10.42.0.1
+            --port=7070
+            --freq=2.4e9
+            --vga-gain=20
+            --tx-amp=127
+
+    USAGE:
+            rfsweep transmit enable  [options]
+            rfsweep transmit disable [options]</code></pre>
+<h3
+id="rfsweep-measure-and-rfsweep-receive-parameters"><code>rfsweep measure</code>
+and <code>rfsweep receive</code> Parameters</h3>
+<p>The <code>rfsweep measure</code> and <code>rfsweep receive</code> are
+the core commands of <code>rfsweep</code> that allows us to record
+measurements to later be processed.</p>
+<p>These commands are nearly identical. They both request the server to
+perform measurements, and return the data back to the client. The only
+difference between the two is that <code>rfsweep measure</code> will
+take measurements while rotating, whereas <code>rfsweep receive</code>
+will take measurements while remaining stationary.</p>
+<pre><code>    OPTIONS
+            -h
+                Print help message.
+
+            -v
+                Verbose. Echos parameters.
+
+            --ip=&lt;ip&gt;
+                Server ip address.
+
+            --port=&lt;port&gt;
+                Server port.
+
+            --file=&lt;filepath&gt;
+                Output server response to file rather than stdout.
+
+    HACKRF OPTIONS
+            --freq=&lt;freq_hz&gt;
+                Set center frequency (Hz).
+
+            --band=&lt;band_hz&gt;
+                Set baseband filter bandwidth (Hz). Will round the
+                frequency to the nearest supported frequency.
+
+            --srate=&lt;srate_hz&gt;
+                Set sample rate (Hz).
+
+            --lna-gain=&lt;gain_db&gt;
+                Low noise amplifier. Hardware amplification of small
+                signals. Steps of 8 dB. Ranges from 0 to 40 dB
+
+            --vga-gain=&lt;gain_db&gt;
+                Variable gain amplifier. Software ampllification of
+                the signal to adjust 8-bit saturation
+                Steps of 2 dB. Ranges from 0 to 62 dB
+
+            --steps=&lt;steps&gt;
+                Number of angles to take samples (divided across
+                360 degrees.
+
+            --samps=&lt;samples&gt;
+                Number of chunk samples to take per angle. (chunks
+                are usually around 65,536 interleaved bytes of data
+                each)
+
+            --stepmode=&lt;1/2/4/8/16&gt;
+                Set motor microstep resolution.
+
+            --amplify
+                Enable amplifier.
+
+            --binary
+                Output results in binary instead of ascii.
+
+            --clock
+                Enable receiver clock out enable.
+
+    DEFAULTS
+            --ip=10.42.0.1
+            --port=7070
+            --samps=1
+            --steps=360
+            --freq=2.4e9
+            --srate=10e6
+            --band=&lt;srate*0.75&gt;
+            --lna-gain=16
+            --vga-gain=20
+            --tx-amp=127
+            --stepmode=1
+
+    USAGE:
+            rfsweep measure [options]
+            rfsweep receive [options]</code></pre>
+<h4 id="notes-2">NOTES:</h4>
+<p>If <code>--band=0</code>, then</p>
+<h4 id="data-formatting">Data Formatting:</h4>
+<p>See something about data formatting</p>
+<div style="page-break-after: always;"></div>
+
+<hr />
+<h1 id="rfsweep-data-formats"><code>rfsweep</code> Data Formats</h1>
+<div style="page-break-after: always;"></div>
+
+<hr />
+<h2 id="setting-up-the-raspberry-pi">Setting up the Raspberry PI</h2>
+<div style="page-break-after: always;"></div>
+
+<hr />
+<h1 id="how-to-compile-rfsweep">How to compile <code>rfsweep</code></h1>
+<h2 id="compile-for-debianubuntu">Compile for Debian/Ubuntu</h2>
+<p>Tested on Debian (Trixie) and Ubuntu (Noble Numbat)</p>
+<pre><code># Update apt
+sudo apt update
+
+# Install dependancies
+sudo apt-get install git gcc make libusb-1.0-0 libusb-1.0-0-dev
+
+# Clone the project repository
+git clone https://github.com/stephen010x/capstone-rfsweep.git --recurse-submodules
+cd capstone-rfsweep
+
+# If cloned without submodules, you can update the submodules like so:
+git submodule init
+git submodule update
+
+# Build project
+make
+
+# Once complete, the compiled output can be found in &#39;bin/&#39;</code></pre>
+<!-- If you don't have git, you can install it like so: `sudo apt install git ca-certificates --no-install-recommends` -->
+
+<h2 id="compile-for-windows-cmd">Compile for Windows CMD</h2>
+<div class="sourceCode" id="cb21"><pre
+class="sourceCode cmd"><code class="sourceCode dosbat"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a># Open the windows command line</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a># Install git if not already installed</span>
+<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>winget install Git.Git</span>
+<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a># Clone the project repository</span>
+<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a>git clone https:/<span class="at">/github</span>.com<span class="at">/stephen010x/capstone-rfsweep</span>.git</span>
+<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> capstone<span class="at">-rfsweep</span></span>
+<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a># Install cygwin</span>
+<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a><span class="bu">call</span> <span class="ot">install_cygwin.bat</span></span>
+<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a># Build project</span>
+<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a>make</span>
+<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a># Once complete, the compiled output can be found in &#39;bin\&#39;</span></code></pre></div>
+<h2 id="compile-for-windows-desktop">Compile for Windows Desktop</h2>
+<ol type="1">
+<li>Download repository from <a
+href="https://github.com/stephen010x/capstone-rfsweep">https://github.com/stephen010x/capstone-rfsweep</a></li>
+<li>Run <code>install_cygwin.bat</code> to install Cygwin.</li>
+<li>From the CMD, run <code>make</code></li>
+<li>The binaries can found in <code>bin\</code></li>
+</ol>
+<h2 id="cross-compile-for-windows-from-debianubuntu">Cross-Compile for
+Windows from Debian/Ubuntu</h2>
+<pre><code># Update apt
+sudo apt update
+
+# Install wine
+sudo apt-get install wine
+
+# Clone the project repository
+git clone https://github.com/stephen010x/capstone-rfsweep.git --recurse-submodules
+cd capstone-rfsweep
+
+# Install Cygwin
+wine install_cygwin.bat
+
+# Build project
+./winebuild.sh
+
+# Once complete, the compiled output can be found in &#39;bin/&#39;</code></pre>
+<div style="page-break-after: always;"></div>
+
+<hr />
+<h1 id="resources-and-documentation">Resources and Documentation</h1>
+<ul>
+<li><a
+href="https://pysdr.org/content/hackrf.html">https://pysdr.org/content/hackrf.html</a></li>
+<li><a
+href="https://github.com/greatscottgadgets/hackrf/">https://github.com/greatscottgadgets/hackrf/</a></li>
+<li><a
+href="https://hackrf.readthedocs.io/en/latest/">https://hackrf.readthedocs.io/en/latest/</a></li>
+<li><a
+href="https://hackrf.readthedocs.io/en/latest/hackrf_one.html">https://hackrf.readthedocs.io/en/latest/hackrf_one.html</a></li>
+<li><a
+href="https://github.com/cygwin/cygwin/">https://github.com/cygwin/cygwin/</a></li>
+<li><a href="https://www.cygwin.com/">https://www.cygwin.com/</a></li>
+</ul>
+</body>
+</html>

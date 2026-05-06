@@ -339,6 +339,15 @@ server:
 
 
 
+# FONTS=-V mainfont="Terminus (TTF)" -V sansfont="Terminus (TTF)" -V monofont="Terminus (TTF)" --pdf-engine=xelatex
+
+readme:
+	mkdir -p $(BINDIR)
+	pandoc $(FONTS) --from gfm --to html --standalone README.md --output=$(BINDIR)/README.html
+	pandoc $(FONTS) --from gfm --to pdf  --standalone README.md --output=$(BINDIR)/README.pdf
+
+
+
 FORCE:
 
 
@@ -358,5 +367,5 @@ FORCE:
 #.PHONY: all fast debug release static dynamic preprocess
 .PHONY: all fast debug release static dynamic preprocess
 .PHONY: static_fast static_debug static_release dynamic_fast dynamic_debug dynamic_release
-.PHONY: clean test run shaders gdb analyze server FORCE
+.PHONY: clean test run shaders gdb analyze server FORCE readme
 .PHONY: _build _fast _debug _release _dynamic _static _optimize

@@ -1,3 +1,11 @@
+<!-- 
+https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting
+https://markdownlivepreview.com/
+
+https://learnbyexample.github.io/customizing-pandoc/
+-->
+
+
 # Open Source RF Measurement System
 
 A senior capstone project by Stephen Harris and Jared Bell.
@@ -20,11 +28,13 @@ Mention the goal of the project, and that the command line tool is only meant to
 
 
 
+---
 
 
-## Script Dependancies (optional)
 
-To use the scripts, you must install the script dependancies
+## Script Dependancoptional)
+
+- To use the scripts, you must install the script dependancies
 
 ### Debian Script Dependancies (optional)
 
@@ -60,77 +70,101 @@ pip install numpy scipy matplotlib
 
 
 
+---
+
+
+
 
 
 ## How to Use
 
-`rfsweep` is a command line tool with various options that allows the user to wirelessly send commands to the Raspberry PI controller that manages the motor and antennas. The communication is server/client based over TCP. Both the client and the server must be connected to Wi-Fi.
+- `rfsweep` is a command line tool with variouptiowirelessly send commands to the Raspberry PI controller that manages the motor and antennas. The communication is server/client based over TCP. Both the client and the server must be connected to Wi-Fi.
 
-Packaged alongside the `rfsweep` command are several interactive scripts to allow for less technical and more convenient use of `rfsweep`.
-
-
-### Connecting to the Rasperry PI controller
-
-Communication is managed wirelessly or through ethernet. To communicate, both the client and server must have some way to communicate. The connection can either be wireless, or through ethernet. In order for communication to happen, the client has to know the IP address of the server.
-
-#### From the PI's Access Point (intended)
-
-The Raspberry PI is configured to broadcast a wireless access point that you can connect to called `raspi`. On the prototype, connecting to the `raspi` network requires no password.
-
-Note that you may **loose connection to the internet** when connecting to `raspi`. Generally it is an accepted risk to loose internet access while taking measurements. However, if you want internet access while connected to `raspi`, you can enable that by connecting the Raspberry PI controller to the internet by plugging in a USB Wi-Fi dongle to the USB hub connected to the Raspberry PI, and then accessing the PI through either `ssh` (See (connecting to the PI through SSH)[ssh-into-the-raspberry-pi-controller]) or through other means. And then connecting to Wi-Fi from a network utility such as `nmtui`.
-
-#### From localhost
-
-If the server is running from the same computer as the client, you can connect them via the localhost IP address `127.0.0.1`.
-
-#### From a local connection
-
-If both the client and the server are connected to the same local network, you can connect to the PI using it's local IP address.
-
-#### From a public connection
-
-Connecting to the Raspberry PI through a public connection can be more tricky. First, you have to know the public IP address of the router that the PI is connected to. Next, you have to make sure the port (default is port 7070) the server is using is exposed on the router. (The default on most routers is to firewall all ports).
+- Packaged alongside the `rfsweep` command are several interactive scripts to alw for less technical and more convenient use of `rfsweep`.
 
 
-### SSH into the Raspberry PI Controller
+    ### Connecting to the Rasperry PI controller
 
-The Raspberry PI is a headless controller. As a result, the easiest and most convenient way to access it is through SSH. Through SSH, you are able to access the PI directly through the command line.
-
-By default, the PI's wireless access point IP address is `10.42.0.1`. To SSH into the PI make sure you are connected to the `raspi` network broadcasted by the PI. (If you have only just turned on the PI, wait about 60 seconds for the device to boot up and configure the network). Then you can run `ssh user@10.42.0.1:/home/user` with password `pass`.
-
-For the prototype, both the Raspberry PI's root and user password has been set to `pass`.
-In the case of the PI's Access Point or Wi-Fi connection malfunctioning, you are able to take out it's SD memory card, and edit the `startup.sh` script in `/home/user/`. The startup script in the home user directory is ran whenever the PI boots up, and requires some technical competency in GNU/Linux command line and Bash scripting. This script is responsible for setting up Wi-Fi and autostarting the `rfsweep server`.
-
-If you wish to modify the Wi-Fi startup script, deleting the `key/` directory in the user home directory will trigger the Wi-Fi script to reconfigure the Access Point.
+    - Communication is managed wi
 
 
-### Using the interactive and fast scripts
 
-See (Script Dependancies)[script-dependancies-optional] for how to install the dependancies required to run these scripts.
+<divrelesstyle="page-break-after:salways;"></div>
 
-Provided with the `rfsweep` binary are four scripts. `run.bat`, `fastrun.bat`, `transmit.bat`, and `process.py` for Windows. Or `run.sh`, `fastrun.sh`, and `process.py` for Linux.
-
-For the interactive transmitter and receiver scripts: If the IP address is left blank, these scripts will test for the known default access point address, followed by the known default ethernet address, followed by the localhost address.
+---
 
 
-### Interactive Transmitter Script
 
-`transmit.bat` is an interactive script that will prompt you for the transmitter parameters. See (`rfsweep` Parameters)[rfsweep-parameters] for more information on the parameters.
 
-Killing or closing the transmit script will stop the transmission.
 
-For instance:
+r through ethernet. To communFSWEEP ctevent aner must have some way to communicate. The connection can Bs, or through ethernet. In order for communication neat to epch-ophern, the client has to know the IP address of the server.
+
+        #### From the PI's Access Point (intended)
+
+        - The Raspberry PI is configured to broireless access point that you can connect to`raspi`. On the prototype, connecting to the `raspi` network requires no password.
+
+        - Note that you may <u>**lose connection to the internet**</u> when connecting to `raspi`. Gene is an accepted risk to loose internet access while taking measurements. However, if you want internet access while connected to `raspi`, you can enable that by connecting the Raspberry PI controller to the internet by plugging in a USB Wi-Fi dongle to the USB hub connected to the Raspberry PI, and then accessing the PI through either `ssh` (See [connecting to the PI through SSH](#ssh-into-the-raspberry-pi-controller)) or through other means. And then connecting to Wi-Fi from a network utility such as `nmtui`.
+
+        #### From localhost
+
+        - If the server is running from the same computer as the client, youct them via the localaddress `127.0.0.1`.
+
+        #### From a local connection
+
+        - If both the client and the server are connected to the same lrk, you can connect to the PI 's local IP address.
+
+        #### From a public connection
+
+        - Connecting to the Raspberry PI through a public connection can bcky. First, you have to know th IP address of the router that the PI is connected to. Next, you have to make sure the port (default is port 7070) the server is using is exposed on the router. (The default on most routers is to firewall all ports).
+
+
+    ### SSH into the Raspberry PI Controller
+
+    - The Raspberry PI is a headless controller. As a result, the easies most convenient way to access it is througH. Through SSH, you are able to access the PI directly through the command line.
+
+    - By default, the PI's wireless access point IP address is `10.42.0.1`. To SSH into the PI make sure you are connectedthe `raspi` network broadcasted by the PI. (If you have only just turned on the PI, wait about 60 seconds for the device to boot up and configure the network). Then you can run `ssh user@10.42.0.1:/home/user` with password `pass`.
+
+    - For the prototype, both the Raspberry PI's root and user password has been set to `pass`.
+
+    - In the case of the PIccess Point or Wi-Fi connection malfunctioning, you are able to take out it's SD memory card, adit the `startup.sh` script in `/home/user/`. The startup script in the home user directory is ran whenever the PI boots up, and requires some technical competency in GNU/Linux command line and Bash scripting. This script is responsible for setting up Wi-Fi and autostarting the `rfsweep server`.
+
+    - If you wish to modify the Wi-Fi startup script, deleting the `key/` directory in the user home directory will trigger the i script to reconfigure the Access Point.
+
+
+    ### Using the interactive and fast scripts
+
+    - See [Script Dependancies](#script-dependancies-optional) for how to install t
+
+
+<divhe dstyle="page-break-after:ealways;"></div>
+
+---
+
+
+
+
+
+#pendancieHowsto Use Scripts
+
+required to run these scripts.
+
+    - Provided he `rfsweep` binary are four scripts. `run.bat`, `fastrun.bat`, `transmit.bat`, and `process.py` for Windows. Or `run.sh`, `fash`, and `process.py` for Linux.
+
+    - For the interactive transmitter and receiver scripts: If the IP address is left blank, these scripts will test for the known default access poiness, followed by the known default ethernet address, followed by the localhost address.
+
+
+    ### Interactive Transmitter Script
+
+    - `transmit.bat` is an interactive script that will prompt you for the transmitter parameters. See [`rfsweep`meters](#rfsweep-parameters) for moremation on the parameters.
+
+    - For instance:
 
 ```
-
-
 RF ANTENNA TRANSMIT TOOL
 ========================
 
-For the following options, enter a value and press enter.
-(leave blank and hit enter for default value)
-
-Connection Options
+For the fole and press enter.
+(For instancb:lank and hit valuon Options
 ------------------
 Enter Controller IP [multiple]:
 Enter Controller Port [7070]:
@@ -151,10 +185,11 @@ Press Enter or close window to stop transmitter...
 rfsweep transmit disable --ip=10.42.0.1 --port=7070
 ```
 
-
 ### Interactive Receiver Script
 
-`run.bat` and `run.sh` act as an interactive script that will prompt you for the receiver parameters. See (`rfsweep` Parameters)[rfsweep-parameters] for more information on the parameters.
+`run.bat` and `run.sh` act as an interactive script that will prompt you for the receiver parameters. See [`rfsweep` Parameters](#rfsweep-parameters) for more i</details>
+
+formation on the parameters.
 
 Once the script ends, it will run `process.py`, which will process and graph the data received.
 
@@ -169,8 +204,10 @@ For the following options, enter a value and press enter.
 (leave blank and hit enter for default value)
 
 Connection Options
-------------------
-Enter Controller IP [multiple]:
+--------
+<details>
+<summary>----------
+Ente</summary>r Contrler IP [multiple]:
 Enter Controller Port [7070]:
 
 HackRF Options
@@ -196,7 +233,8 @@ rfsweep measure --ip=10.42.0.1 --port=7070 --steps=360 --samps=5 --stepmode=1 --
 
 ### Fastrun Script
 
-The `fastrun.bat` and `fastrun.sh` scripts are non-interactive scripts that are meant to be edited. Inside they have variables that you can modify to allow for a quick, easy, and repeatable way to run tests without having to use the interactive scripts.
+The `fastrun.bat` and `fastrun.sh` scripts are non-interactive scripts that are meant to be edited. Inside they have variables that you can modify to allow for a quick, easy, and repeatable way to run tests without ha</details>vi
+g to use the interactive scripts.
 
 These scripts manage both the transmitter and receiver. When finished it runs `process.py`, which will process and graph the data received.
 
@@ -209,11 +247,12 @@ These are the variables intended to be modified within the script:
 :: Connection Settings
 :: It will try all three of these IPs
 SET "ipA=10.42.0.1" & REM - Wifi IP
-SET "ipB=10.42.0.1" & REM - Ethernet IP
+SET "ipB=10.42.0.1" & REM - Ethernet <details>
+<summary>IP
 SET "ipC=127.0.0.1" & REM - Localhost IP
 SET "port=7070"
 
-:: -----------------
+:: ---</summary>--------------
 :: Hackrf Settings
 SET "freq=2.4e9"    & REM - center frequency
 SET "srate=10e6"    & REM - sample rate (Hz)
@@ -242,7 +281,9 @@ SET "extflags=--binary" & REM - extra flags
 
 ### How to use `process.py`
 
-`process.py` is a python script packaged with the binaries by default. This script is an optional companion script to the `rfsweep` command, and provides for an easy way to process and visually plot the data received by running `rfsweep measure` or `rfsweep receive`. See (How to use `rfsweep`)[how-to-use-rfsweep] for more information on how to use `rfsweep`.
+`process.py` is a python script packaged with the binaries by default. This script is an optional companion script to the `rfsweep` command, and provides for an easy way to process and visually plot the data received by running `rfsweep measure` or `rfswee</details>
+p r
+ceive`. See [How to use `rfsweep`](#how-to-use-rfsweep) for more information on how to use `rfsweep`.
 
 The `process.py` help manual is available by running:
 
@@ -250,7 +291,7 @@ The `process.py` help manual is available by running:
 process.py -h
 ```
 
-To use `process.py`, append one or more file names for it to process. Files can be in binary format, as well as text format. `process.py` detects these formats via file extensions such as `.bin` and `.txt`. See (`rfsweep` Data Formats)[rfsweep-data-formats] for more information on the accepted formats.
+To use `process.py`, append one or more file names for it to process. Files can be in binary format, as well as text format. `process.py` detects these formats via file extensions such as `.bin` and `.txt`. See [`rfsweep` Data Formats](#rfsweep-data-formats) for more information on the accepted formats.
 
 Example usage:
 
@@ -275,7 +316,17 @@ Within the command line, you can get a help manual by running:
 rfsweep -h
 ```
 
-See (`rfsweep` Commands)[rfsweep-commands] or (`rfsweep` Parameters)[rfsweep-parameters] for more detailed usage.
+See [`rf
+sweep` 
+
+<div style="page-break-after: always;"></div>
+
+---
+
+
+
+
+mmands](#rfsweep-commands) or [`rfsweep` Parameters](rfsweep-parameters) for more detailed usage.
 
 
 
@@ -308,7 +359,7 @@ The commands are as listed below:
 ```
 COMMANDS:
         ping        Ping server.
-        server      Start server.
+        sert server.
         reset       Reset remote server.
         restart     Restart remote server system.
         getlogs     Return remote server error logs.
@@ -390,7 +441,7 @@ The `ping` command sends a probing signal to the server to determine if the serv
 
 If `ping` fails, check that the Raspberry PI is on, that you are connected to the `raspi` Wi-Fi SSID or through an Ethernet connection, and finally make sure that your IP address and PORT are correct.
 
-See (General Parameters)[general-parameters] for `rfsweep ping` parameters.
+See [General Parameters](#general-parameters) for `rfsweep ping` parameters.
 
 
 ### `rfsweep server` Parameters
@@ -444,21 +495,21 @@ The `--tserial` and `--rserial` flags are the serial number strings for identify
 
 The `rfsweep reset` command will tell the server to restart it's running process. If the `startup.sh` is not running `rfsweep server` on loop, then it will not restart, and will only kill the process.
 
-See (General Parameters)[general-parameters] for `rfsweep reset` parameters.
+See [General Parameters](#general-parameters) for `rfsweep reset` parameters.
 
 
 ### `rfsweep restart` Parameters
 
 The `rfsweep restart` command will tell the server to reboot the computer that is running on, which typically should be the Rasberry PI controller.
 
-See (General Parameters)[general-parameters] for `rfsweep restart` parameters.
+See [General Parameters](#general-parameters) for `rfsweep restart` parameters.
 
 
 ### `rfsweep getlogs` Parameters
 
 The `rfsweep getlogs` command will request the error logs from the server, and print it to stdout. 
 
-See (General Parameters)[general-parameters] for `rfsweep getlogs` parameters.
+See [General Parameters](#general-parameters) for `rfsweep getlogs` parameters.
 
 
 ### `rfsweep transmit` Parameters
@@ -655,14 +706,22 @@ git submodule update
 make
 
 # Once complete, the compiled output can be found in 'bin/'
-```
+`
 
-<!-- If you don't have git, you can install it like so: `sudo apt install git ca-certificates --no-install-recommends` -->
+<div style="page``
+break-after: always;"></div>
 
 
-### Compile for Windows CMD
+<!--- If you dn't have git, you can install it lik<div style="page-break-after: always;"></div>
 
-```cmd
+e so: `sudo apt install git ca-certificates --no-install-re<div style="page-break-after: always;"></div>
+
+commends` -->
+
+
+## Compile for Windows CMD
+
+```cm
 # Open the windows command line
 
 # Install git if not already installed
@@ -698,7 +757,7 @@ sudo apt update
 # Install wine
 sudo apt-get install wine
 
-# Clone the project repository
+# Clon the project repository
 git clone https://github.com/stephen010x/capstone-rfsweep.git --recurse-submodules
 cd capstone-rfsweep
 
@@ -723,8 +782,10 @@ wine install_cygwin.bat
 ## Resources and Documentation
 
 - https://pysdr.org/content/hackrf.html
-- https://github.com/greatscottgadgets/hackrf/
+- https://github.com/greatscottgadgets/hacrf/
 - https://hackrf.readthedocs.io/en/latest/
 - https://hackrf.readthedocs.io/en/latest/hackrf_one.html
 - https://github.com/cygwin/cygwin/
 - https://www.cygwin.com/
+<div style="page-break-after: always;"></div>
+

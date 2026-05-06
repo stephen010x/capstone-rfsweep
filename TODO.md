@@ -31,6 +31,7 @@
 - [x] Add to scripts to try for wlan first, then eth, then localhost
     - [ ] Find and add default eth IP address to scripts
 - [ ] Write the actual readme/documentation
+- [ ] Add version number to help prints
 
 ---
 
