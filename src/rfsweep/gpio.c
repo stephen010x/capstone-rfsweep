@@ -64,7 +64,7 @@ typedef __WCHAR_TYPE__ ___wchar_t; /* resolves a cygwin error in stdatomic.h for
 #ifndef MAX_STEPS_PER_SEC
 // this is the max steps per second for the base step
 // size. It is multipled by the microstep resolution
-#define MAX_STEPS_PER_SEC (100*9)
+#define MAX_STEPS_PER_SEC (100*5)
 #endif
 #define MIN_MICROS_PER_STEP ((int64_t)1e6/MAX_STEPS_PER_SEC)
 
