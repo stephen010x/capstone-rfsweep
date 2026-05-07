@@ -9,7 +9,7 @@
 :: Connection Settings
 :: It will try all three of these IPs
 SET "ipA=10.42.0.1" & REM - Wifi IP
-SET "ipB=10.42.0.1" & REM - Ethernet IP
+SET "ipB=10.42.1.1" & REM - Ethernet IP
 SET "ipC=127.0.0.1" & REM - Localhost IP
 SET "port=7070"
 
@@ -20,7 +20,7 @@ SET "srate=10e6"    & REM - sample rate (Hz)
 SET "band="         & REM - bandpass filter width. Leave blank to set to 75% of srate
 SET "lna_gain=16"   & REM - LNA Gain (amplifies small signals) (0-40 dB, step of 8 dB)
 SET "vga_gain=20"   & REM - VGA Gain (software amplifier) (0-62 dB, step of 2 dB)
-SET "is_amp=false"  & REM - enable amplifier
+SET "is_amp=false"  & REM - enable amplifier?
 SET "steps=360"     & REM - how many angles to take samples
 SET "samps=1"       & REM - how many samples to take at each angle
 SET "stepmode=1"    & REM - microstep mode (1/2/4/8/16)

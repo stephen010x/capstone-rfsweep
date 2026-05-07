@@ -196,6 +196,8 @@ globalstate_t global = {
     .vga_gain = DEFAULT_VGA,
     .tx_amp   = DEFAULT_TX_AMP,
     .stepmode = DEFAULT_STEPMODE,
+    .angle    = DEFAULT_ANGLE,
+    .is_angle = false,
 };
 
 

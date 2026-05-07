@@ -281,12 +281,13 @@ const char *str_help_defaults =
     //"        --snap="       STRINGIFY(DEFAULT_SNAP)       "\n"
     "        --steps="      STRINGIFY(DEFAULT_STEPS)      "\n"
     "        --freq="       STRINGIFY(DEFAULT_FREQ)       "\n"
-    "        --band="       STRINGIFY(DEFAULT_BAND)       "\n"
+    "        --band=<srate*0.75>"                         "\n"
     "        --srate="      STRINGIFY(DEFAULT_SRATE)      "\n"
     "        --lna-gain="   STRINGIFY(DEFAULT_LNA)        "\n"
     "        --vga-gain="   STRINGIFY(DEFAULT_VGA)        "\n"
     "        --tx-amp="     STRINGIFY(DEFAULT_TX_AMP)     "\n"
-    "        --stepmode="   STRINGIFY(DEFAULT_STEPMODE)   "\n";
+    "        --stepmode="   STRINGIFY(DEFAULT_STEPMODE)   "\n"
+    "        --angle="      STRINGIFY(DEFAULT_ANGLE)      "\n";
 
 
 

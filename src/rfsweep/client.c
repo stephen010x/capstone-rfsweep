@@ -227,10 +227,6 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
     net_t net;
     message_t *msg;
 
-    // connect to server
-    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
-    assert(!err, err);
-
     
 
     // create and populate message
@@ -266,20 +262,20 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
 
 
     // some bandwidth checks and defaults
-    if (state->band_hz == 0) {
+    if (state->band_hz == (typeof(state->band_hz))-1) {
         // we are doing this now ourselves so that we can check if aliasing happens
         msg->measure.band_hz = hackrf_real_bandwidth(state->srate_hz * 3 / 4);
         msgf("Selecting default baseband filter bandwidth of %d Hz.", 
                 (int)msg->measure.band_hz);
         
-    } else {
+    } else if (state->band_hz != 0)  {
         msg->measure.band_hz = hackrf_real_bandwidth(state->band_hz);
 
         if (msg->measure.band_hz != state->band_hz)
             warnf("Rounding filter bandwidth to %g Hz", (float)msg->measure.band_hz);
     }
 
-    if (state->band_hz > state->srate_hz) {
+    if (msg->measure.band_hz > msg->measure.srate_hz) {
         warnf("The baseband filter bandwidth (%g Hz) exceeds the sample rate (%g Hz)! "
               "This will result in aliasing!",
               (double)state->band_hz, (double)state->srate_hz);
@@ -287,7 +283,11 @@ static int _client_request_data(const globalstate_t *state, int msgtype) {
 
     // optional verbose print
     if (state->is_verbose) print_msg_verbose(state, msg);
-    
+
+
+    // connect to server
+    err = net_connect(&net, state->ip, state->port, CLIENT_TIMEOUT);
+    assert(!err, err);
 
 
     // send request to server

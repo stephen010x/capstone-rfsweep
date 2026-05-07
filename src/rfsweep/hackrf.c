@@ -238,7 +238,8 @@ void hparams_defaults(hparams_t *params) {
         .srate_hz = 10e6,
         .freq_hz  = 2.4e6,
         //.band_hz  = 10e6,
-        .band_hz  = 0, // 0 will just use the default of 0.75*srate
+        //.band_hz  = 0, // 0 will just use the default of 0.75*srate
+        .band_hz  = -1, // -1 is default
         .lna_gain = 16,
         .vga_gain = 20,
         .samps = 1,
@@ -453,7 +454,7 @@ static int hackrf_free_board(hackrf_device_t *device) {
 static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_transmit) {
     int err;
     //DEBUG(uint32_t real_band_hz;)
-    uint32_t real_band_hz;
+    //uint32_t real_band_hz;
     
     //uint8_t enable_amp = false;
     //uint8_t enable_ant = true;
@@ -470,11 +471,11 @@ static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_tran
     // will be forced to one of these: 1.75, 2.5, 3.5, 5, 5.5, 6, 7, 8, 
     //      9, 10, 12, 14, 15, 20, 24, 28MHz
     //DEBUG(
-    if ((!is_transmit) && (params->band_hz != 0)) {
-        real_band_hz = hackrf_compute_baseband_filter_bw(params->band_hz);
-        assert(("param bandwidth not an accepted bandwidth", 
-                real_band_hz == params->band_hz), -1);
-    }
+    // if ((!is_transmit) && (params->band_hz != (typeof(params->band_hz))-1)) {
+    //     real_band_hz = hackrf_compute_baseband_filter_bw(params->band_hz);
+    //     assert(("param bandwidth not an accepted bandwidth", 
+    //             real_band_hz == params->band_hz), -1);
+    // }
     //)
 
     // set clock_enable
@@ -518,8 +519,8 @@ static int setup_params(hackrf_device_t *device, hparams_t *params, bool is_tran
 
     // set baseband sampling bandwidth
     // resets after sample rate is set, so call this after sample rate
-    // if zero, then use default
-    if ((!is_transmit) && (params->band_hz != 0)) {
+    // if 1, then use default
+    if ((!is_transmit) && (params->band_hz != (typeof(params->band_hz))-1)) {
         err = hackrf_set_baseband_filter_bandwidth(device, params->band_hz);
         assert(!err, err);
     }
