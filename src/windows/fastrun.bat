@@ -57,8 +57,8 @@ SET "extflags=--binary" & REM - extra flags
 set "offset=0.1"    & REM - offsets our center frequency by offset*srate
 
 
-where python3 1>nul 2>nul
-if %ERRORLEVEL%==0 set py=python3
+:: where python3 1>nul 2>nul
+:: if %ERRORLEVEL%==0 set py=python3
 where python 1>nul 2>nul
 if %ERRORLEVEL%==0 set py=python
 if "%py%"=="" (
