@@ -7,11 +7,25 @@ https://learnbyexample.github.io/customizing-pandoc/
 
 
 
+<!--
+- [x] Link to cad readme or files
+- [x] Add table of contents
+- [ ] Add images, findings, etc etc
+- [ ] Add assembly and print instructions
+-->
+
+
+
 # Open Source RF Measurement System
 
 A senior capstone project by Stephen Harris and Jared Bell.
 
-Sponsored by Utah Tech University.
+Sponsored by Dr. Sai Radavaram at Utah Tech University.
+
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/media/plots/fig1.png" width="200"/>
+
+The Open Source RF Measurement System is an open source project to measure, record, and plot the gain of an antenna over a radial access. Provided in the github repository (located here: https://github.com/stephen010x/capstone-rfsweep/tree/main) are the 3D printed cad models, the PCB design, and all of the software used for this project.
+
 
 
 
@@ -42,18 +56,18 @@ Sponsored by Utah Tech University.
     - [`rfsweep rotate` Parameters](#rfsweep-rotate-parameters)
     - [Supported baseband filters](#supported-baseband-filters)
 - [`rfsweep` Data Formats](#rfsweep-data-formats)
-- [Hardware Notices](#hardware-notices)
-- [Cad Models](#cad-models)
+- [Hardware Notes](#hardware-notes)
+- [CAD Models](#cad-models)
 - [Building `rfsweep`](#building-rfsweep)
     - [Compile for Debian/Ubuntu](#compile-for-debianubuntu)
     - [Compile on Windows CMD](#compile-on-windows-cmd)
     - [Compile on Windows Desktop](#compile-on-windows-desktop)
     - [Cross-Compile for Windows from Debian/Ubuntu](#cross-compile-for-windows-from-debianubuntu)
 - [Installing Script Dependancies (optional)](#installing-script-dependancies-optional)
-    - [Debian/Ubuntu Script Dependancies (optional)](#debianubuntu-script-depenancies-optional)
-    - [Windows CMD Script Dependancies (optional)](#windows-cmd-script-dependancies-optional)
-    - [Windows Desktop Script Dependancies (optional)](#windows-desktop-script-dependancies-optional)
-- [Setting up the Raspberry PI](#setting-up-the-raspberry-pi)
+    - [Debian/Ubuntu Script Dependancies](#debianubuntu-script-depenancies)
+    - [Windows CMD Script Dependancies](#windows-cmd-script-dependancies)
+    - [Windows Desktop Script Dependancies](#windows-desktop-script-dependancies)
+<!-- - [Setting up the Raspberry PI](#setting-up-the-raspberry-pi) -->
 - [Resources and Documentation](#resources-and-documentation)
 
 
@@ -82,7 +96,7 @@ You can download the binaries and scripts neccessary for using `rfsweep` for bot
 
 Communication is managed wirelessly or through ethernet. Both the client and server must have some way to connect to each-other. The connection can either be wireless, or through ethernet. In order for communication to happen, the client has to know the IP address of the server.
 
-On the prototype, the default Wi-Fi IP address is `10.42.0.1`, and for Ethernet it is `10.42.1.1`, and the default port is `7070`
+On the prototype, the default Wi-Fi and Ethernet IP address is often either `10.42.0.1`, `10.42.1.1`, or `10.42.x.1`, and the default port is `7070`
 
 
 ### From the PI's Access Point (intended)
@@ -266,6 +280,12 @@ python3 process.py data.bin --freq 2.41e9
 **__WARNING__:** Be wary of using `process.py` for large data files. `process.py` uses a substantial amount of memory to process large data files. Data output from `rfsweep` can range from tens of Megabates, to __hundreds of Megabytes__. And this gets multiplied by Python's memory usage. Processing data files larger than 200 MB can result in `process.py` memory usage of 5 GB or more!
 
 
+Here are examples of data that was processed using `process.py`
+
+![](https://github.com/stephen010x/capstone-rfsweep/raw/main/media/plots/plots.png)
+
+
+
 
 <div style="page-break-after: always;"></div>
 
@@ -280,7 +300,9 @@ python3 process.py data.bin --freq 2.41e9
 
 # How to use `rfsweep`
 
-`rfsweep` is the core command line executable that allows us to communicate with the server, (as well as acting as the core executable running the server on the Raspbery PI controller).
+<!-- `rfsweep` is the core command line executable that allows us to communicate with the server, (as well as acting as the core executable running the server on the Raspbery PI controller). -->
+
+`rfsweep` is a command line tool with various options that allows the user to wirelessly send commands to the Raspberry PI controller that manages the motor and antennas. The communication is server/client based over TCP. Both the client and the server must be connected via Wi-Fi or Ethernet.
 
 Within the command line, you can get a help manual by running:
 
@@ -521,7 +543,7 @@ A typical use of this command would look like this:
 rfsweep transmit enable -v --binary --file="data.bin" --freq=2.41e9 --vga-gain=20
 ```
 
-Don't forget to disable after
+Don't forget to disable when measurements are complete:
 
 ```bash
 rfsweep transmit disable
@@ -652,8 +674,12 @@ https://en.wikipedia.org/wiki/Variable-gain_amplifier \
 
 **__WARNING__:** A caution with the `--samps` parameter. Each sample is approximately 64 KiB each. The size of the data in bytes can be calculated as such: `65584 * samps * steps`, which can grow fast. If you are taking 10 samples at 360 steps per revolution, the output data will be around 225 MiB, which is a rather substantial file size. And that is only with a binary file. If you are outputting ASCII by omitting the `--binary` flag, the file size can be multiplied by 3-5 times in size! Furthermore, if you are passing data to `process.py`, `process.py` consumes a lot of memory. Sometimes upwards of 5 GB or more depending on the size of your data file. So be cautious of taking too many samples. In many cases 1 to 3 samples is enough. By default it is set to 1.
 
+Finally, make sure to either specify an output file with `--file`, or redirect the output to a file like so: `rfsweep measure >> data.txt`. Otherwise huge amounts of data will be dumped to your stdout.
+
 
 ## `rfsweep rotate` Parameters
+
+`rfsweep rotate` allows us to send rotation commands to the controller. It can be useful in conjunction with `rfsweep receive` or for other tests.
 
 ```
 DESCRIPTION
@@ -686,6 +712,13 @@ USAGE:
         rfsweep rotate [options]
 ```
 
+#### NOTE:
+
+Either specify `--angle` or specify `--steps`. Not both. They both indicate where the motor should rotate to. `--angle` is often only approximate, but will get the motor as close as possible to that angle, whereas `--steps` is exactly how many steps from origin the motor should rotate to.
+
+A direct conversion looks like this: $\theta_{deg}= \frac{33}{95\cdot S_{tepmode}}\cdot S_{teps}$
+
+**__WARNING__:** Take care to not rotate too far or the coaxial cable to the antenna may get twisted.
 
 
 
@@ -694,9 +727,6 @@ USAGE:
 Here is a list of supported baseband filters:
 
 ```
-SUPPORTED BASEBAND FILTER FREQUENCIES:
-
-     0.00 MHz (disabled)
      1.75 MHz
      2.50 MHz
      3.50 MHz
@@ -728,17 +758,298 @@ SUPPORTED BASEBAND FILTER FREQUENCIES:
 
 
 
-- [`rfsweep` Data Formats](#rfsweep-data-formats)
-- [Hardware Notices](#hardware-notices)
-- [Cad Models](#cad-models)
-- [Building `rfsweep`](#building-rfsweep)
-    - [Compile for Debian/Ubuntu](#compile-for-debianubuntu)
-    - [Compile on Windows CMD](#compile-on-windows-cmd)
-    - [Compile on Windows Desktop](#compile-on-windows-desktop)
-    - [Cross-Compile for Windows from Debian/Ubuntu](#cross-compile-for-windows-from-debianubuntu)
-- [Installing Script Dependancies (optional)](#installing-script-dependancies-optional)
-    - [Debian/Ubuntu Script Dependancies (optional)](#debianubuntu-script-depenancies-optional)
-    - [Windows CMD Script Dependancies (optional)](#windows-cmd-script-dependancies-optional)
-    - [Windows Desktop Script Dependancies (optional)](#windows-desktop-script-dependancies-optional)
-- [Setting up the Raspberry PI](#setting-up-the-raspberry-pi)
-- [Resources and Documentation](#resources-and-documentation)
+# `rfsweep` Data Formats
+
+`rfsweep` has two primary data formats. Binary, and ASCII. They both follow a similar structure. However the binary format is much more compact and generally faster to process, whereas the ASCII is more human readable and potentially easier to process.
+
+By default `rfsweep` outputs ASCII to stdout. However you can have it output binary instead with the `--binary` flag.
+
+
+#### ASCII FORMAT:
+
+When outputting to ASCII, the very first line will be a format guide, and should be ignored when processing.
+
+The ASCII output format are space separated values, or SSV. And then each new line is a different sample taken. Each sample is began with 6 metadata values, followed by data that is typically 65,536 items long,
+
+Each data value is interleaved real/imaginary bytes. The first byte is real, the second is imaginary, the third is real, etc.
+
+For instance, 
+
+```
+timestamp(us) angle(degrees) freq(Hz) bandwidth(Hz) samplerate(Hz) bincount [real imag ...]
+9116512597 36.1263 2.4e+09 7e+06 1e+07 65536 37 74 190 41 192 191 35 163 97 249 31 74 189 37 195 187 40 162 95 254 26 75 188 32 197 186 43 163 95 255 25 78 188...
+```
+
+The first six values of each sample is the timestamp in microseconds, the angle in degrees, the frequency in hertz, the bandwidth filter in hertz, and the number of data items, followed by the data. 
+
+For the ASCII format, the bincount is typically uneccessary, as each sample is separated by a newline. (though it can be used to detect if there was a data mismatch, or data cut off too early)
+
+
+#### BINARY FORMAT:
+
+The binary format follows just like the ASCII format, only more compact. And interpreting it can be tricky without the right tools.
+
+Here is an example of the first 80 bytes:
+
+```
+00 00 00 8B CF 7C B8 41 00 00 00 E0 1A CA 0B 40 00 00 00 40
+E5 F0 E1 41 00 00 00 00 F0 B3 5A 41 00 00 00 00 D0 12 63 41
+00 00 01 00 00 00 00 00 5F F1 27 4A C2 2A BE C2 20 A1 61 F4
+25 4A BE 29 C0 BF 23 A3 61 F9 1F 4A BD 25 C3 BB 28 A2 5F FE
+```
+
+These can be broken down like so:
+
+```
+[ 00 00 00 8B CF 7C B8 41 ]     timestamp   - 64 bit float
+[ 00 00 00 E0 1A CA 0B 40 ]     angle       - 64 bit float
+[ 00 00 00 40 E5 F0 E1 41 ]     frequency   - 64 bit float
+[ 00 00 00 00 F0 B3 5A 41 ]     bandwidth   - 64 bit float
+[ 00 00 00 00 D0 12 63 41 ]     samplerate  - 64 bit float
+[ 00 00 01 00 00 00 00 00 ]     bincount    - 64 bit signed integer
+[ 5F ]      real  - 8 bit signed integer
+[ F1 ]      imag  - 8 bit signed integer
+[ 27 ]      real  - 8 bit signed integer
+[ 4A ]      imag  - 8 bit signed integer
+  ...
+```
+
+It is important to note that all of this data is Little Endian. Which basically means the bytes are reversed. Visit here for more on Endianness: https://en.wikipedia.org/wiki/Endianness
+
+Unlike the ASCII format, there is no newline to tell you where the sample ends. As such, you will need to use the bincount to tell when the data ends. Otherwise, it will completely mess up your interpreter for all bytes after.
+
+
+
+<div style="page-break-after: always;"></div>
+
+---
+
+
+
+
+
+
+
+
+# Hardware Notes
+
+1. DC blocks need to be installed between each HackRF and Antenna. If you get a “USB Error,” this is likely the cause.
+    1. If the amplifier is connected, it acts as a dc block, even if it is turned off.
+    1. If the amplifier is turned off but connected in place of dc block, it will still pass rf signals, though less effectively than the dc blocks.
+1. When feeding coaxial cables through the receiver antenna stand, it is set up to be able to easily disconnect the physical parts for feeding the cable.
+1. If the rotation assembly seems noisier than usual, the set screw for the pulley on top of the motor is likely loose.
+    1. Removable loctite was used to try and retain the set screw.  The loctite may need to be reapplied.
+    1. If the graph of the signal looks significantly different than expected, also check the set screw.
+1. While most of the antennas used have an sma connector, the monopoles are rp-sma.  Rp-sma is threaded opposite the sma connectors, so it will appear to fit, but have no internal connection.
+1. 3d printed antenna holders are designed such that the slit in the bottom is for feeding the coaxial cable through for strain relief
+
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/media/image3.jpg" width="100"/>
+
+1. Transmitter and receiver HackRF’s are noted as such on their cases.  The software program built for this specific project requires the same HackRF’s to be connected to transmitter and receiver every time (unless the `--rserial` or `--tserial` flags are used).  If using any external software, the receiver and transmitter requirements do not apply.
+1. GNU Radio, part of radioconda, is one of the only external tools that supports HackRF transmission, should you elect to transmit with software outside of our custom built application
+    1. Two blocks were used by us to transmit:
+        1. Constant Source block as the signal source
+        1. Soapy HackRF Sink to take the input from the constant source
+    1. Apart from GNU Radio and our custom software, using the command line yourself is the other way to directly transmit with the HackRF.
+1. SDR Console is an external program that easily connects to the HackRF to observe current ambient rf signals.  It does not have support for HackRF transmission.
+1. All 3d prints were made with grey petg using 15% infill
+1. Direct carbon fiber fabric was the only non-metal found to be able to block RF radiation.
+
+
+<div style="page-break-after: always;"></div>
+
+---
+
+
+
+
+
+
+
+
+
+- CAD Models
+
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/onshape.png" width="100"/>
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/pcbback.png" width="100"/>
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/pcb3d_2.png" width="100"/>
+
+The CAD models for the PCB board and the 3D printed parts can be found here: https://github.com/stephen010x/capstone-rfsweep/tree/main/cad/
+
+
+<div style="page-break-after: always;"></div>
+
+---
+
+
+
+
+
+
+
+
+
+
+# Building `rfsweep`
+
+## Compile for Debian/Ubuntu
+
+Tested on Debian (Trixie) and Ubuntu (Noble Numbat)
+
+```bash
+# Update apt
+sudo apt update
+
+# Install dependancies
+sudo apt-get install git gcc make libusb-1.0-0 libusb-1.0-0-dev
+
+# Clone the project repository
+git clone https://github.com/stephen010x/capstone-rfsweep.git --recurse-submodules
+cd capstone-rfsweep
+
+# If cloned without submodules, you can update the submodules like so:
+git submodule init
+git submodule update
+
+# Build project
+make
+
+# Once complete, the compiled output can be found in 'bin/'
+```
+
+
+## Compile on Windows CMD
+
+```bash
+# Open the windows command line
+
+# Install git if not already installed
+winget install Git.Git
+
+# Clone the project repository
+git clone https://github.com/stephen010x/capstone-rfsweep.git
+cd capstone-rfsweep
+
+# Install cygwin
+call install_cygwin.bat
+
+# Build project
+make
+
+# Once complete, the compiled output can be found in 'bin\'
+```
+
+
+## Compile on Windows Desktop
+
+
+1. Download repository from https://github.com/stephen010x/capstone-rfsweep
+1. Run install_cygwin.bat to install Cygwin.
+1. From the CMD, run make
+1. The binaries can found in bin\
+
+
+## Cross-Compile for Windows from Debian/Ubuntu
+
+```bash
+# Update apt
+sudo apt update
+
+# Install wine
+sudo apt-get install wine
+
+# Clone the project repository
+git clone https://github.com/stephen010x/capstone-rfsweep.git --recurse-submodules
+cd capstone-rfsweep
+
+# Install Cygwin
+wine install_cygwin.bat
+
+# Build project
+./winebuild.sh
+
+# Once complete, the compiled output can be found in 'bin/'
+```
+
+
+<div style="page-break-after: always;"></div>
+
+---
+
+
+
+
+
+
+
+
+# Installing Script Dependancies (optional)
+
+To use the scripts, you must install the script dependancies
+
+## Debian/Ubuntu Script Dependancies
+
+```bash
+# Update apt
+sudo apt update
+
+# Install python3 and pip
+sudo apt-get install python3 pip --no-install-recommends
+
+# Install python dependancies
+sudo apt-get install python3-numpy python3-scipy python3-matplotlib --no-install-recommends
+```
+
+
+## Windows CMD Script Dependancies
+
+```bash
+# Install python3
+winget install Python.Python.3.14
+
+# Install neccessary python libs
+pip install numpy scipy matplotlib
+```
+
+
+## Windows Desktop Script Dependancies
+
+1. Install python from https://www.python.org/downloads/
+2. Install neccessary python libs `pip install numpy scipy matplotlib`
+
+
+
+<div style="page-break-after: always;"></div>
+
+---
+
+
+
+
+
+
+<!-- # Setting up the Raspberry PI -->
+
+
+
+
+
+
+
+# Resources and Documentation
+
+#### HackRF Documentation:
+- https://pysdr.org/content/hackrf.html
+- https://github.com/greatscottgadgets/hackrf/
+- https://hackrf.readthedocs.io/en/latest/
+- https://hackrf.readthedocs.io/en/latest/hackrf_one.html
+
+#### Cygin Documentation:
+- https://github.com/cygwin/cygwin/
+- https://www.cygwin.com/
+
+#### PCB Components Datesheets:
+- https://www.pololu.com/file/0j450/a4988_dmos_microstepping_driver_with_translator.pdf
+- https://pip.raspberrypi.com/documents/RP-008359-DS-raspberry-pi-zero-2-w-product-brief.pdf
+- https://cdn-shop.adafruit.com/product-files/4115/4115_Zero4U_UserManual.pdf
+- https://www.monolithicpower.com/en/documentview/productdocument/index/version/2/document_type/Datasheet/lang/en/sku/MP1584EN-LF-Z/document_id/204/?srsltid=AfmBOopY3mzal62NjcqQxcoeqAYdpTdsOmvjpPj1Y_Lt60M21O9yUpuI

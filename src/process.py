@@ -195,20 +195,15 @@ def main():
         plot_spect.deepcopy().save(  outfiledir, "fig3.png")
         rootplot.deepcopy().save(    outfiledir, "plots.png", size=(16,9))
 
-    # t1 = thread.Thread(target=save_graphs, args=[])
-    # t1.start()
+    t1 = thread.Thread(target=save_graphs, args=[])
+    t1.start()
 
     # display plots
     print("Plotting Graphs...")
     rootplot.show()
 
     print("Saving Graphs...")
-    # t1.join()
-
-    plot_polar.save(  outfiledir, "fig1.png")
-    plot_linear.save( outfiledir, "fig2.png")
-    plot_spect.save(  outfiledir, "fig3.png")
-    rootplot.save(    outfiledir, "plots.png", size=(16,9))
+    t1.join()
 
     # rootplot.save(    outfiledir, "plots.png", size=(16,9))
     # plot_polar.save(  outfiledir, "fig1.png")

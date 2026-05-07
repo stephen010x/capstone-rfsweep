@@ -8,6 +8,8 @@
 - [x] Fine tune motor delay
 - [x] Make file output replace rather than append
 - [x] Fix process.py plots.png output
+- [ ] Fix broken bat files, or replace with python files
+- [ ] Fix process.py broken copy in makefile
 
 ## TESTS
 - [x] Test text file with process.py
@@ -33,8 +35,9 @@
 - [x] Add to scripts to try for wlan first, then eth, then localhost
     - [x] Find and add default eth IP address to scripts
 - [x] Add version number to help prints
-- [ ] Write the actual readme/documentation
+- [x] Write the actual readme/documentation
 - [ ] Add Q&A or Troubleshooting section to the README
+- [ ] Add "Setting up the Raspberry PI" section to the README
 
 ---
 
