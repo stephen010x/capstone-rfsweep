@@ -18,7 +18,7 @@
 #ifdef __DEBUG__
 #define CLIENT_TIMEOUT -1
 #else
-#define CLIENT_TIMEOUT 1000     /* one second */
+#define CLIENT_TIMEOUT 1000     /* one seconds */
 #endif
 
 

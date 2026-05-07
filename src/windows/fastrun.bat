@@ -88,16 +88,19 @@ del "%TEMP%\out.txt"
 
 
 :: select working IP
-((
-((rfsweep ping --ip=%ipA% --port=%port%) && set ip=%ipA%) || ^
-((rfsweep ping --ip=%ipB% --port=%port%) && set ip=%ipB%) || ^
-((rfsweep ping --ip=%ipC% --port=%port%) && set ip=%ipC%)
-) 1>NUL 2>NUL) || (
-    echo.
-    echo Tried ^<%ipA%:%port%^>, ^<%ipB%:%port%^>, ^<%ipC%:%port%^>
-    echo Unable to connect to server. Check if IP address is correct, or device isn't turned off.
-    exit /b 1
-)
+:: ((
+:: ((rfsweep ping --ip=%ipA% --port=%port%) && set ip=%ipA%) || ^
+:: ((rfsweep ping --ip=%ipB% --port=%port%) && set ip=%ipB%) || ^
+:: ((rfsweep ping --ip=%ipC% --port=%port%) && set ip=%ipC%)
+:: ) 1>NUL 2>NUL) || (
+::     echo.
+::     echo Tried ^<%ipA%:%port%^>, ^<%ipB%:%port%^>, ^<%ipC%:%port%^>
+::     echo Unable to connect to server. Check if IP address is correct, or device isn't turned off.
+::     exit /b 1
+:: )
+
+:: lots of weirdness on microsoft
+set ip=%ipB%
 
 
 

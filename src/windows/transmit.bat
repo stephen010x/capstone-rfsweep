@@ -40,16 +40,19 @@ set /p "port=Enter Controller Port [%def_port%]: "
 
 
 if "%port%"=="" set port=%def_port%
-if "%ip%"=="" (
-  ((((rfsweep ping --ip=%def_ipA% --port=%port%) && set ip=%def_ipA%) || ^
-    ((rfsweep ping --ip=%def_ipB% --port=%port%) && set ip=%def_ipB%) || ^
-    ((rfsweep ping --ip=%def_ipC% --port=%port%) && set ip=%def_ipC%)) 1>NUL 2>NUL) || (
-        echo.
-        echo Tried ^<%def_ipA%:%port%^>, ^<%def_ipB%:%port%^>, ^<%def_ipC%:%port%^>
-        echo Unable to connect to server. Check if IP address is correct, and device is not turned off.
-        exit /b 1
-    )
-)
+:: if "%ip%"=="" (
+::   ((((rfsweep ping --ip=%def_ipA% --port=%port%) && set ip=%def_ipA%) || ^
+::     ((rfsweep ping --ip=%def_ipB% --port=%port%) && set ip=%def_ipB%) || ^
+::     ((rfsweep ping --ip=%def_ipC% --port=%port%) && set ip=%def_ipC%)) 1>NUL 2>NUL) || (
+::         echo.
+::         echo Tried ^<%def_ipA%:%port%^>, ^<%def_ipB%:%port%^>, ^<%def_ipC%:%port%^>
+::         echo Unable to connect to server. Check if IP address is correct, and device is not turned off.
+::         exit /b 1
+::     )
+:: )
+
+:: lots of weirdness on microsoft
+set ip=%def_ipB%
 
 
 rfsweep ping --ip=%ip% --port=%port% 1>nul 2>nul
