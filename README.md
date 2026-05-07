@@ -22,17 +22,22 @@ A senior capstone project by Stephen Harris and Jared Bell.
 
 Sponsored by Dr. Sai Radavaram at Utah Tech University.
 
-<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/media/plots/fig1.png" width="200"/>
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/media/plots/fig1.png" width="600"/>
 
 The Open Source RF Measurement System is an open source project to measure, record, and plot the gain of an antenna over a radial access. Provided in the github repository (located here: https://github.com/stephen010x/capstone-rfsweep/tree/main) are the 3D printed cad models, the PCB design, and all of the software used for this project.
 
 
 
+<div style="page-break-after: always;"></div>
+
+---
+
+
 
 ## Table of Contents
-- [How to download](#how-to-download)
+- [How to Download](#how-to-download)
 - [Connecting to the RFSWEEP server](#connecting-to-the-rfsweep-server)
-    - [From the PI's Access Point (intended)](#from-the-pis-access-point)
+    - [From the PI's Access Point (intended)](#from-the-pis-access-point-intended)
     - [From `localhost`](#from-localhost)
     - [From a Local Connection](#from-a-local-connection)
     - [From a Public Connection](#from-a-public-connection)
@@ -67,8 +72,8 @@ The Open Source RF Measurement System is an open source project to measure, reco
     - [Debian/Ubuntu Script Dependancies](#debianubuntu-script-depenancies)
     - [Windows CMD Script Dependancies](#windows-cmd-script-dependancies)
     - [Windows Desktop Script Dependancies](#windows-desktop-script-dependancies)
-<!-- - [Setting up the Raspberry PI](#setting-up-the-raspberry-pi) -->
 - [Resources and Documentation](#resources-and-documentation)
+<!-- - [Setting up the Raspberry PI](#setting-up-the-raspberry-pi) -->
 
 
 
@@ -76,7 +81,7 @@ The Open Source RF Measurement System is an open source project to measure, reco
 
 
 
-# How to download
+# How to Download
 
 You can download the binaries and scripts neccessary for using `rfsweep` for both Windows and Debian/Ubuntu in the [releases](https://github.com/stephen010x/capstone-rfsweep/releases) page here.
 
@@ -843,7 +848,7 @@ Unlike the ASCII format, there is no newline to tell you where the sample ends. 
 1. While most of the antennas used have an sma connector, the monopoles are rp-sma.  Rp-sma is threaded opposite the sma connectors, so it will appear to fit, but have no internal connection.
 1. 3d printed antenna holders are designed such that the slit in the bottom is for feeding the coaxial cable through for strain relief
 
-<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/media/image3.jpg" width="100"/>
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/media/image3.jpg" width="300"/>
 
 1. Transmitter and receiver HackRF’s are noted as such on their cases.  The software program built for this specific project requires the same HackRF’s to be connected to transmitter and receiver every time (unless the `--rserial` or `--tserial` flags are used).  If using any external software, the receiver and transmitter requirements do not apply.
 1. GNU Radio, part of radioconda, is one of the only external tools that supports HackRF transmission, should you elect to transmit with software outside of our custom built application
@@ -870,9 +875,7 @@ Unlike the ASCII format, there is no newline to tell you where the sample ends. 
 
 - CAD Models
 
-<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/onshape.png" width="100"/>
-<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/pcbback.png" width="100"/>
-<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/pcb3d_2.png" width="100"/>
+<img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/onshape.png" width="250"/> <img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/pcbback.png" width="250"/> <img src="https://github.com/stephen010x/capstone-rfsweep/raw/main/cad/media/pcb3d_2.png" height="250"/>
 
 The CAD models for the PCB board and the 3D printed parts can be found here: https://github.com/stephen010x/capstone-rfsweep/tree/main/cad/
 
