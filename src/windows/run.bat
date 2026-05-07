@@ -6,8 +6,8 @@ set "extflags=--binary"
 
 set offset=0.1
 
-set def_ipA=10.42.0.1
-set def_ipB=10.42.1.1
+set def_ipA=10.42.1.1
+set def_ipB=10.42.0.1
 set def_ipC=127.0.0.1
 set def_port=7070
 set def_freq=2.4e9

@@ -6,6 +6,7 @@ https://learnbyexample.github.io/customizing-pandoc/
 -->
 
 
+
 # Open Source RF Measurement System
 
 A senior capstone project by Stephen Harris and Jared Bell.
@@ -14,61 +15,58 @@ Sponsored by Utah Tech University.
 
 
 
-
-## TODO:
-These are the things that need to get done for this makefile
-- [ ] (optional) add assembly and print instructions
-- [ ] Link to cad readme or files
-- [ ] Add images, findings, etc etc
-- [ ] Add table of contents
-
-
-
-Mention the goal of the project, and that the command line tool is only meant to collect data, while you can use whatever you want to process the data. But that a python file is provided by default. (also mention data format)
-
-
-
----
-
-
-
-## Script Dependancoptional)
-
-- To use the scripts, you must install the script dependancies
-
-### Debian Script Dependancies (optional)
-
-```bash
-# Update apt
-sudo apt update
-
-# Install python3 and pip
-sudo apt-get install python3 pip --no-install-recommends
-
-# Install python dependancies
-sudo apt-get install python3-numpy python3-scipy python3-matplotlib --no-install-recommends
-```
-
-<!-- pip install numpy scipy matplotlib --break-system-packages -->
-
-### Windows CMD Script Dependancies (optional)
-
-```cmd
-# Install python3
-winget install Python.Python.3.14
-
-# Install neccessary python libs
-pip install numpy scipy matplotlib
-```
-
-### Windows Desktop Script Dependancies (optional)
-
-1. Install python from https://www.python.org/downloads/
-2. Install neccessary python libs `pip install numpy scipy matplotlib`
+## Table of Contents
+- [How to download](#how-to-download)
+- [Connecting to the RFSWEEP server](#connecting-to-the-rfsweep-server)
+    - [From the PI's Access Point (intended)](#from-the-pis-access-point)
+    - [From `localhost`](#from-localhost)
+    - [From a Local Connection](#from-a-local-connection)
+    - [From a Public Connection](#from-a-public-connection)
+    - [SSH into the Raspberry PI Controller](#ssh-into-the-raspberry-pi-controller)
+- [How to Use Scripts](#how-to-use-scripts)
+    - [Interactive Receiver Script](#interactive-receiver-script)
+    - [Interactive Transmitter Script](#interactive-transmitter-script)
+    - [Fastrun Script](#fastrun-script)
+    - [How to use `process.py`](#how-to-use-processpy)
+- [How to use `rfsweep`](#how-to-use-rfsweep)
+    - [`rfsweep` Commands](#rfsweep-commands)
+    - [`rfsweep` Parameters](#rfsweep-parameters)
+    - [`rfsweep` General Parameters](#rfsweep-general-parameters)
+    - [`rfsweep ping` Parameters](#rfsweep-ping-parameters)
+    - [`rfsweep server` Parameters](#rfsweep-server-parameters)
+    - [`rfsweep reset` Parameters](#rfsweep-reset-parameters)
+    - [`rfsweep restart` Parameters](#rfsweep-restart-parameters)
+    - [`rfsweep getlogs` Parameters](#rfsweep-getlogs-parameters)
+    - [`rfsweep transmit` Parameters](#rfsweep-transmit-parameters)
+    - [`rfsweep measure` and `rfsweep receive` Parameters](#rfsweep-measure-and-rfsweep-receive-parameters)
+    - [`rfsweep rotate` Parameters](#rfsweep-rotate-parameters)
+    - [Supported baseband filters](#supported-baseband-filters)
+- [`rfsweep` Data Formats](#rfsweep-data-formats)
+- [Hardware Notices](#hardware-notices)
+- [Cad Models](#cad-models)
+- [Building `rfsweep`](#building-rfsweep)
+    - [Compile for Debian/Ubuntu](#compile-for-debianubuntu)
+    - [Compile on Windows CMD](#compile-on-windows-cmd)
+    - [Compile on Windows Desktop](#compile-on-windows-desktop)
+    - [Cross-Compile for Windows from Debian/Ubuntu](#cross-compile-for-windows-from-debianubuntu)
+- [Installing Script Dependancies (optional)](#installing-script-dependancies-optional)
+    - [Debian/Ubuntu Script Dependancies (optional)](#debianubuntu-script-depenancies-optional)
+    - [Windows CMD Script Dependancies (optional)](#windows-cmd-script-dependancies-optional)
+    - [Windows Desktop Script Dependancies (optional)](#windows-desktop-script-dependancies-optional)
+- [Setting up the Raspberry PI](#setting-up-the-raspberry-pi)
+- [Resources and Documentation](#resources-and-documentation)
 
 
 
 
+
+
+
+# How to download
+
+You can download the binaries and scripts neccessary for using `rfsweep` for both Windows and Debian/Ubuntu in the [releases](https://github.com/stephen010x/capstone-rfsweep/releases) page here.
+
+<div style="page-break-after: always;"></div>
 
 ---
 
@@ -76,67 +74,54 @@ pip install numpy scipy matplotlib
 
 
 
-## How to Use
-
-- `rfsweep` is a command line tool with variouptiowirelessly send commands to the Raspberry PI controller that manages the motor and antennas. The communication is server/client based over TCP. Both the client and the server must be connected to Wi-Fi.
-
-- Packaged alongside the `rfsweep` command are several interactive scripts to alw for less technical and more convenient use of `rfsweep`.
-
-
-    ### Connecting to the Rasperry PI controller
-
-    - Communication is managed wi
-
-
-
-<divrelesstyle="page-break-after:salways;"></div>
-
----
 
 
 
 
+# Connecting to the RFSWEEP server
 
-r through ethernet. To communFSWEEP ctevent aner must have some way to communicate. The connection can Bs, or through ethernet. In order for communication neat to epch-ophern, the client has to know the IP address of the server.
+Communication is managed wirelessly or through ethernet. Both the client and server must have some way to connect to each-other. The connection can either be wireless, or through ethernet. In order for communication to happen, the client has to know the IP address of the server.
 
-        #### From the PI's Access Point (intended)
-
-        - The Raspberry PI is configured to broireless access point that you can connect to`raspi`. On the prototype, connecting to the `raspi` network requires no password.
-
-        - Note that you may <u>**lose connection to the internet**</u> when connecting to `raspi`. Gene is an accepted risk to loose internet access while taking measurements. However, if you want internet access while connected to `raspi`, you can enable that by connecting the Raspberry PI controller to the internet by plugging in a USB Wi-Fi dongle to the USB hub connected to the Raspberry PI, and then accessing the PI through either `ssh` (See [connecting to the PI through SSH](#ssh-into-the-raspberry-pi-controller)) or through other means. And then connecting to Wi-Fi from a network utility such as `nmtui`.
-
-        #### From localhost
-
-        - If the server is running from the same computer as the client, youct them via the localaddress `127.0.0.1`.
-
-        #### From a local connection
-
-        - If both the client and the server are connected to the same lrk, you can connect to the PI 's local IP address.
-
-        #### From a public connection
-
-        - Connecting to the Raspberry PI through a public connection can bcky. First, you have to know th IP address of the router that the PI is connected to. Next, you have to make sure the port (default is port 7070) the server is using is exposed on the router. (The default on most routers is to firewall all ports).
+On the prototype, the default Wi-Fi IP address is `10.42.0.1`, and for Ethernet it is `10.42.1.1`, and the default port is `7070`
 
 
-    ### SSH into the Raspberry PI Controller
+### From the PI's Access Point (intended)
 
-    - The Raspberry PI is a headless controller. As a result, the easies most convenient way to access it is througH. Through SSH, you are able to access the PI directly through the command line.
+- The Raspberry PI is configured to broadcast a wireless access point that you can connect to called raspi. On the prototype, connecting to the `raspi` network requires no password.
 
-    - By default, the PI's wireless access point IP address is `10.42.0.1`. To SSH into the PI make sure you are connectedthe `raspi` network broadcasted by the PI. (If you have only just turned on the PI, wait about 60 seconds for the device to boot up and configure the network). Then you can run `ssh user@10.42.0.1:/home/user` with password `pass`.
-
-    - For the prototype, both the Raspberry PI's root and user password has been set to `pass`.
-
-    - In the case of the PIccess Point or Wi-Fi connection malfunctioning, you are able to take out it's SD memory card, adit the `startup.sh` script in `/home/user/`. The startup script in the home user directory is ran whenever the PI boots up, and requires some technical competency in GNU/Linux command line and Bash scripting. This script is responsible for setting up Wi-Fi and autostarting the `rfsweep server`.
-
-    - If you wish to modify the Wi-Fi startup script, deleting the `key/` directory in the user home directory will trigger the i script to reconfigure the Access Point.
+- Note that you may **__lose connection to the internet when connecting to the Raspberry PI__**. Generally it is an accepted risk to loose internet access while taking measurements. However, if you want internet access while connected to raspi, you can enable that by connecting the Raspberry PI controller to the internet by plugging in a USB Wi-Fi dongle to the USB hub connected to the Raspberry PI, and then accessing the PI through either `ssh` (See [SSH into the Raspberry PI Controller](#ssh-into-the-raspberry-pi-controller)) or through other means. And then connecting the PI to Wi-Fi from a network utility such as `nmtui`.
 
 
-    ### Using the interactive and fast scripts
+### From `localhost`
 
-    - See [Script Dependancies](#script-dependancies-optional) for how to install t
+- If the server is running from the same computer as the client, you can connect them via the localhost IP address `127.0.0.1`.
 
 
-<divhe dstyle="page-break-after:ealways;"></div>
+### From a Local Connection
+
+- If both the client and the server are connected to the same local network, you can connect to the PI using it's local IP address.
+
+
+### From a Public Connection
+
+- Connecting to the Raspberry PI through a public connection can be more tricky. First, you have to know the public IP address of the router that the PI is connected to. Next, you have to make sure the port (default is port `7070`) the server is using is exposed on the router. (The default on most routers is to firewall all ports).
+
+
+## SSH into the Raspberry PI Controller
+
+- The Raspberry PI is a headless controller. As a result, the easiest and most convenient way to access it is through SSH. Through SSH, you are able to access the PI directly through the command line.
+
+- By default, the PI's wireless access point IP address is `10.42.0.1`. To SSH into the PI make sure you are connected to the raspi network broadcasted by the PI. (If you have only just turned on the PI, wait about 60 seconds for the device to boot up and configure the network). Then you can run `ssh user@10.42.0.1:/home/user` with password `pass`.
+
+- For the prototype, both the Raspberry PI's `root` and `user` password has been set to `pass`.
+
+- In the case of the PI's Access Point or Wi-Fi connection malfunctioning, you are able to take out it's SD memory card, and edit the `startup.sh` script in `/home/user/`. The startup script in the home user directory is ran whenever the PI boots up, and requires some technical competency in GNU/Linux command line and Bash scripting. This script is responsible for setting up Wi-Fi and autostarting the `rfsweep` server.
+
+- If you wish to modify the Wi-Fi startup script, deleting the `key/` directory in the `user` home directory will trigger the Wi-Fi script to reconfigure the Access Point.
+
+
+
+<div style="page-break-after: always;"></div>
 
 ---
 
@@ -144,27 +129,43 @@ r through ethernet. To communFSWEEP ctevent aner must have some way to communica
 
 
 
-#pendancieHowsto Use Scripts
-
-required to run these scripts.
-
-    - Provided he `rfsweep` binary are four scripts. `run.bat`, `fastrun.bat`, `transmit.bat`, and `process.py` for Windows. Or `run.sh`, `fash`, and `process.py` for Linux.
-
-    - For the interactive transmitter and receiver scripts: If the IP address is left blank, these scripts will test for the known default access poiness, followed by the known default ethernet address, followed by the localhost address.
 
 
-    ### Interactive Transmitter Script
 
-    - `transmit.bat` is an interactive script that will prompt you for the transmitter parameters. See [`rfsweep`meters](#rfsweep-parameters) for moremation on the parameters.
+# How to Use Scripts
 
-    - For instance:
+See [Installing Script Dependancies (optional)](#installing-script-dependancies-optional) for how to install the dependancies required to run these scripts.
+
+Provided with the rfsweep binary are four scripts. `run.bat`, `fastrun.bat`, `transmit.bat`, and `process.py` for Windows. Or `run.sh`, `fastrun.sh`, and `process.py` for Linux.
+
+For the interactive transmitter and receiver scripts: If the IP address is left blank, these scripts will test for the known default access point address, followed by the known default ethernet address, followed by the localhost address.
+
+Also provided is the `process.py` script, which is the default script used to process and graph the data returned from `rfsweep`.
+
+
+## Interactive Receiver Script
+
+`run.bat` and `run.sh` act as an interactive script that will prompt you for the receiver parameters. See [`rfsweep measure` and `rfsweep receive` Parameters](#rfsweep-measure-and-rfsweep-receive-parameters) for more information on the measurement parameters.
+
+Once the script ends, it will run process.py, which will process and graph the data received.
+
+
+## Interactive Transmitter Script
+
+`transmit.bat` is an interactive script that will prompt you for the transmitter parameters. See [`rfsweep transmit` Parameters](#rfsweep-transmit-parameters) for more information on the transmitter parameters.
+
+<details>
+
+<summary>For instance:</summary>
 
 ```
 RF ANTENNA TRANSMIT TOOL
 ========================
 
-For the fole and press enter.
-(For instancb:lank and hit valuon Options
+For the following options, enter a value and press enter.
+(leave blank and hit enter for default value)
+
+Connection Options
 ------------------
 Enter Controller IP [multiple]:
 Enter Controller Port [7070]:
@@ -185,60 +186,18 @@ Press Enter or close window to stop transmitter...
 rfsweep transmit disable --ip=10.42.0.1 --port=7070
 ```
 
-### Interactive Receiver Script
+</details>
 
-`run.bat` and `run.sh` act as an interactive script that will prompt you for the receiver parameters. See [`rfsweep` Parameters](#rfsweep-parameters) for more i</details>
 
-formation on the parameters.
+## Fastrun Script
 
-Once the script ends, it will run `process.py`, which will process and graph the data received.
-
-For instance:
-
-```
-
-RF ANTENNA MEASURE TOOL
-=======================
-
-For the following options, enter a value and press enter.
-(leave blank and hit enter for default value)
-
-Connection Options
---------
-<details>
-<summary>----------
-Ente</summary>r Contrler IP [multiple]:
-Enter Controller Port [7070]:
-
-HackRF Options
---------------
-Enter Center Freq (Hz) [2.4e9]: 5.1e9
-Enter Sample Rate (Hz) [10e6]:
-Enter Band Filter (Hz) [srate*0.75]:
-Enter LNA-Gain (0-40 dB) [16]: 20
-Rounding LNA-Gain to 24 dB.
-Enter VGA-Gain (0-62 dB) [20]: 16
-Enable Amplifier? (y/n) [n]: y
-
-Data Options
-------------
-Enter Total Sample Steps [360]:
-Enter Samples per Step [1]: 5
-Enter Microstep Mode (1/2/4/8/16) [1]:
-
-Press Enter to run test...
-
-rfsweep measure --ip=10.42.0.1 --port=7070 --steps=360 --samps=5 --stepmode=1 --file=data\\data-1777676846.bin --freq=5.099e+09 --band= --srate=10e6 --lna-gain=24 --vga-gain=16 --samps=5 --binary --amplify && python process.py --freq 5.1e9 data\\data-1777676846.bin
-```
-
-### Fastrun Script
-
-The `fastrun.bat` and `fastrun.sh` scripts are non-interactive scripts that are meant to be edited. Inside they have variables that you can modify to allow for a quick, easy, and repeatable way to run tests without ha</details>vi
-g to use the interactive scripts.
+The `fastrun.bat` and `fastrun.sh` scripts are non-interactive scripts that are meant to be edited. Inside they have variables that you can modify to allow for a quick, easy, and repeatable way to run tests without having to use the interactive scripts.
 
 These scripts manage both the transmitter and receiver. When finished it runs `process.py`, which will process and graph the data received.
 
-These are the variables intended to be modified within the script:
+<details>
+
+<summary>Variables Intended to be Modified:</summary>
 
 ```bat
 :: fastrun.bat
@@ -247,19 +206,18 @@ These are the variables intended to be modified within the script:
 :: Connection Settings
 :: It will try all three of these IPs
 SET "ipA=10.42.0.1" & REM - Wifi IP
-SET "ipB=10.42.0.1" & REM - Ethernet <details>
-<summary>IP
+SET "ipB=10.42.1.1" & REM - Ethernet IP
 SET "ipC=127.0.0.1" & REM - Localhost IP
 SET "port=7070"
 
-:: ---</summary>--------------
+:: -----------------
 :: Hackrf Settings
 SET "freq=2.4e9"    & REM - center frequency
 SET "srate=10e6"    & REM - sample rate (Hz)
 SET "band="         & REM - bandpass filter width. Leave blank to set to 75% of srate
 SET "lna_gain=16"   & REM - LNA Gain (amplifies small signals) (0-40 dB, step of 8 dB)
 SET "vga_gain=20"   & REM - VGA Gain (software amplifier) (0-62 dB, step of 2 dB)
-SET "is_amp=false"  & REM - enable amplifier
+SET "is_amp=false"  & REM - enable amplifier?
 SET "steps=360"     & REM - how many angles to take samples
 SET "samps=1"       & REM - how many samples to take at each angle
 SET "stepmode=1"    & REM - microstep mode (1/2/4/8/16)
@@ -278,46 +236,36 @@ SET "outdir=data\"      & REM - output directory
 SET "extflags=--binary" & REM - extra flags
 ```
 
+</details>
 
-### How to use `process.py`
 
-`process.py` is a python script packaged with the binaries by default. This script is an optional companion script to the `rfsweep` command, and provides for an easy way to process and visually plot the data received by running `rfsweep measure` or `rfswee</details>
-p r
-ceive`. See [How to use `rfsweep`](#how-to-use-rfsweep) for more information on how to use `rfsweep`.
+## How to use `process.py`
+
+`process.py` is a python script that is packaged alongside the binaries by default. This script is an optional companion script to the `rfsweep` command, and provides for an easy way to process and visually plot the data received by running `rfsweep measure` or `rfsweep receive`. See [How to use `rfsweep`](#how-to-use-rfsweep) for more information on how to use `rfsweep`.
 
 The `process.py` help manual is available by running:
 
-```cmd
-process.py -h
+```bash
+python3 process.py -h
 ```
 
 To use `process.py`, append one or more file names for it to process. Files can be in binary format, as well as text format. `process.py` detects these formats via file extensions such as `.bin` and `.txt`. See [`rfsweep` Data Formats](#rfsweep-data-formats) for more information on the accepted formats.
 
 Example usage:
 
-```cmd
-process.py data1.bin data2.txt
+```bash
+python3 process.py data1.bin data2.txt
 ```
 
 `process.py` is able to automatically determine the bandpass filter frequency by looking for the peak signal across all of the data points. However, this may be unreliable with messier signals. If you wish to manually specify a filter frequency, use the `--freq <value>` flag.
 
-```cmd
-process.py data.bin --freq 2.41e9
+```bash
+python3 process.py data.bin --freq 2.41e9
 ```
 
+**__WARNING__:** Be wary of using `process.py` for large data files. `process.py` uses a substantial amount of memory to process large data files. Data output from `rfsweep` can range from tens of Megabates, to __hundreds of Megabytes__. And this gets multiplied by Python's memory usage. Processing data files larger than 200 MB can result in `process.py` memory usage of 5 GB or more!
 
-### How to use `rfsweep`
 
-`rfsweep` is the core command line executable that allows us to communicate with the server, (as well as acting as the core executable running the server on the Raspbery PI controller).
-
-Within the command line, you can get a help manual by running:
-
-```cmd
-rfsweep -h
-```
-
-See [`rf
-sweep` 
 
 <div style="page-break-after: always;"></div>
 
@@ -326,31 +274,34 @@ sweep`
 
 
 
-mmands](#rfsweep-commands) or [`rfsweep` Parameters](rfsweep-parameters) for more detailed usage.
 
 
 
 
+# How to use `rfsweep`
 
+`rfsweep` is the core command line executable that allows us to communicate with the server, (as well as acting as the core executable running the server on the Raspbery PI controller).
 
----
+Within the command line, you can get a help manual by running:
 
+```bash
+rfsweep -h
+```
 
-
-
+See the following [`rfsweep` Commands](#rfsweep-commands) or [`rfsweep` Parameters](#rfsweep-parameters) for more detailed usage.
 
 
 ## `rfsweep` Commands
 
 `rfsweep` has several commands that can be sent to the server. You can view these commands by running:
 
-```cmd
+```bash
 rfsweep -h
 ```
 
 Each command also has their own help manual:
 
-```cmd
+```bash
 rfsweep <command> -h
 ```
 
@@ -359,7 +310,7 @@ The commands are as listed below:
 ```
 COMMANDS:
         ping        Ping server.
-        sert server.
+        server      Start server.
         reset       Reset remote server.
         restart     Restart remote server system.
         getlogs     Return remote server error logs.
@@ -375,35 +326,34 @@ USAGE:
 ```
 
 
-
 ## `rfsweep` Parameters
 
 Parameters are flags that typically follow after a command, that allows us to configure the behavior when the server receives the command. They typically follow the format `--<param>=<value>`
 
-For instance, 
+For instance,
 
-```cmd
+```bash
 rfsweep rotate --angle=360
 ```
 
 All parameters have a default value. All You can query for the default parameters by running:
 
-```cmd
+```bash
 rfsweep --defaults
 ```
 
 Note that leaving parameters blank will result in them using their default value. Like so:
 
-```cmd
+```bash
 rfsweep ping --ip= --port=
 ```
 
-Most parameters are specific to certain commands, as will be explained in the following subsections.
+Most parameters are specific to certain commands, as will be explained in the following sections.
 
 
-### General Parameters
+## `rfsweep` General Parameters
 
-These are parameters that apply to every command except the `server` command.
+These are parameters that apply to every command except the server command.
 
 ```
 OPTIONS
@@ -435,16 +385,16 @@ The `-v` flag prints out the parameters being used. This tells us exactly what p
 The `--ip` and `--port` flags set the IP address and PORT that points to the server. If these are wrong, then the client will fail to send any messages to the server.
 
 
-### `rfsweep ping` Parameters
+## `rfsweep ping` Parameters
 
 The `ping` command sends a probing signal to the server to determine if the server is reachable. If this command fails, it means that either A) The server is inactive, or B) The server is unreachable, which typically occurs when the server host computer or controller is off, or if your IP or PORT are wrong.
 
-If `ping` fails, check that the Raspberry PI is on, that you are connected to the `raspi` Wi-Fi SSID or through an Ethernet connection, and finally make sure that your IP address and PORT are correct.
+If `ping` fails, check that the Raspberry PI is on, that you are connected to the raspi Wi-Fi SSID or through an Ethernet connection, and finally make sure that your IP address and PORT are correct.
 
-See [General Parameters](#general-parameters) for `rfsweep ping` parameters.
+See [`rfsweep` General Parameters](#rfsweep-general-parameters) for rfsweep ping parameters.
 
 
-### `rfsweep server` Parameters
+## `rfsweep server` Parameters
 
 The `server` command is a special mode that behaves unlike any of the other commands. The other commands are clientside commands being sent to the server. Running `rfsweep server` will start a server instance that is able to receive any commands sent by `rfsweep` client commands.
 
@@ -488,35 +438,40 @@ USAGE:
 
 The `--log` flag sets the path to the log file that the server will return when the client calls `rfsweep getlogs`.
 
-The `--tserial` and `--rserial` flags are the serial number strings for identifying the transmitter HackRF, and the receiver HackRF. These serial numbers are unique to each HackRF, and are how the server indentifies which HackRF is the receiver, and which is the transmitter. As a consiquence, using different HackRFs will require you to obtain the serial number, and specifying it in the flags. You can obtain the serial number by running `hackrf_info` from the HackRF Tools library, which can be found in the `hackrf-tools\` directory of the Windows build. Otherwise `hackrf_info` can be obtained through Debian `apt` or by following the instructions on the HackRF Docs: https://hackrf.readthedocs.io/en/latest/installing_hackrf_software.html.
+The `--tserial` and `--rserial` flags are the serial number strings for identifying the transmitter HackRF, and the receiver HackRF. These serial numbers are unique to each HackRF, and are how the server indentifies which HackRF is the receiver, and which is the transmitter. As a consiquence, using different HackRFs will require you to obtain the serial number, and specifying it in the flags. You can obtain the serial number by running `hackrf_info` from the HackRF Tools library, which can be found in the `hackrf-tools\` directory of the Windows build. Otherwise `hackrf_info` can be obtained through Debian/Ubuntu's `apt` or by following the instructions on the HackRF Docs: https://hackrf.readthedocs.io/en/latest/installing_hackrf_software.html.
 
 
-### `rfsweep reset` Parameters
+## `rfsweep reset` Parameters
 
-The `rfsweep reset` command will tell the server to restart it's running process. If the `startup.sh` is not running `rfsweep server` on loop, then it will not restart, and will only kill the process.
+The `rfsweep reset` command will tell the server to restart it's running process. If the `startup.sh` is not running `rfsweep` server on loop, then it will not restart, and will only kill the process.
 
-See [General Parameters](#general-parameters) for `rfsweep reset` parameters.
-
-
-### `rfsweep restart` Parameters
-
-The `rfsweep restart` command will tell the server to reboot the computer that is running on, which typically should be the Rasberry PI controller.
-
-See [General Parameters](#general-parameters) for `rfsweep restart` parameters.
+See [`rfsweep` General Parameters](#rfsweep-general-parameters) for rfsweep ping parameters.
 
 
-### `rfsweep getlogs` Parameters
+## `rfsweep restart` Parameters
 
-The `rfsweep getlogs` command will request the error logs from the server, and print it to stdout. 
+The `rfsweep restart` command will tell the server to reboot the computer that it is running on, which typically should be the Rasberry PI controller.
 
-See [General Parameters](#general-parameters) for `rfsweep getlogs` parameters.
+See [`rfsweep` General Parameters](#rfsweep-general-parameters) for rfsweep ping parameters.
 
 
-### `rfsweep transmit` Parameters
+## `rfsweep getlogs` Parameters
+
+The `rfsweep getlogs` command will request the error logs from the server, and print it to stdout.
+
+See [`rfsweep` General Parameters](#rfsweep-general-parameters) for rfsweep ping parameters.
+
+
+## `rfsweep transmit` Parameters
 
 The `rfsweep transmit enable` and `rfsweep transmit disable` command allows you to enable or disable the transmitter. When enabled, the transmitter will generate a sinusoidal wave on the specified frequency.
 
 ```
+DESCRIPTION
+        Enables or disables the transmitting HackRF controlled
+        by the server. Emits a constant frequency across the
+        specified bandwidth.
+
 OPTIONS
         -h
             Print help message.
@@ -560,13 +515,45 @@ USAGE:
         rfsweep transmit disable [options]
 ```
 
-### `rfsweep measure` and `rfsweep receive` Parameters
+A typical use of this command would look like this:
+
+```bash
+rfsweep transmit enable -v --binary --file="data.bin" --freq=2.41e9 --vga-gain=20
+```
+
+Don't forget to disable after
+
+```bash
+rfsweep transmit disable
+```
+
+#### NOTES:
+
+The HackRF has a "clock in" and a "clock out" coaxial port on it's body. Hooking the "clock out" of one HackRF to the "clock in" of another HackRF, and enabling the clock with the `--clock` flag will syncronize the receiver and transmitter.
+
+The HackRF will automatically detect if it receives a clock signal on the "clock in" coaxial port. Therefore, you only need to enable the clock on for one of the HackRF boards. (in this case the transmitter is recommended).
+
+For more information on the HackRF One External Clock Interface, see these: \
+https://hackrf.readthedocs.io/en/latest/external_clock_interface.html \
+https://hackrf.readthedocs.io/en/latest/hardware_triggering.html
+
+
+## `rfsweep measure` and `rfsweep receive` Parameters
 
 The `rfsweep measure` and `rfsweep receive` are the core commands of `rfsweep` that allows us to record measurements to later be processed.
 
-These commands are nearly identical. They both request the server to perform measurements, and return the data back to the client. The only difference between the two is that `rfsweep measure` will take measurements while rotating, whereas `rfsweep receive` will take measurements while remaining stationary.
+These commands are nearly identical. They both request the server to perform measurements, and return the data back to the client. The only difference between the two is that `rfsweep measure` will take measurements while __rotating__, whereas `rfsweep receive` will take measurements while remaining __stationary__.
 
 ```
+DESCRIPTION
+        Request to server to run measurements, returning them
+        to stdout or to a specified file.
+
+        Data is formatted like so:
+        <timestamp_micro:f64> <angle:f64> <freq_hz:f64>
+        <band_hz:f64> <samplerate_hz:f64> <bytecount:i64> [
+        <real:i8> <imaginary:i8> ...]
+
 OPTIONS
         -h
             Print help message.
@@ -634,7 +621,6 @@ DEFAULTS
         --band=<srate*0.75>
         --lna-gain=16
         --vga-gain=20
-        --tx-amp=127
         --stepmode=1
 
 USAGE:
@@ -642,150 +628,117 @@ USAGE:
         rfsweep receive [options]
 ```
 
+A typical use of this command would look like this:
+
+```bash
+rfsweep measure -v --binary --file="data.bin" --freq=2.41e9 --lna-gain=16 --vga-gain=20
+```
+
 #### NOTES:
 
-If `--band=0`, then 
+You can set the baseband filter frequency with the `--band` flag. The baseband filter frequency will be rounded down to the nearest supported baseband frequencies. To see supported baseband filter frequencies, see [Supported baseband filters](#supported-baseband-filters) for more information.
+
+If `--band=` is left blank, then the bandwidth will be set to `0.75 * srate` by default. To disable the baseband filter, simply set it to either zero `--band=0` or any number larger than `28 MHz` e.g. `--band=30e6`.
+
+**__WARNING__:** Setting the baseband filter `--band` higher than the sample rate `--srate` will result in aliasing!
+
+Note that you will often have to tune the `--lna-gain` and the `--vga-gain` in order to maximize the accuracy of your measurements, while also minimizing saturation. The LNA gain is the Low-Noise Amplifier, which amplifiees low-power signals without degrading its signal-to-noise ratio. On the other hand the VGA gain is the Variable-Gain amplifier, which will amplify both your signal and your noise. However, it is useful to prevent your signal from saturating, as the signal must fit within a signed 8 bits (-128 to 127).
+
+When running `process.py` on a sample, it will output a count of how many likely signal saturations there are in your data, and print it to stdout. Using this can help you tune your VGA and LNA gain.
+
+More information on the LNA gain and the VGA gain here: \
+https://en.wikipedia.org/wiki/Low-noise_amplifier \
+https://en.wikipedia.org/wiki/Variable-gain_amplifier \
+
+**__WARNING__:** A caution with the `--samps` parameter. Each sample is approximately 64 KiB each. The size of the data in bytes can be calculated as such: `65584 * samps * steps`, which can grow fast. If you are taking 10 samples at 360 steps per revolution, the output data will be around 225 MiB, which is a rather substantial file size. And that is only with a binary file. If you are outputting ASCII by omitting the `--binary` flag, the file size can be multiplied by 3-5 times in size! Furthermore, if you are passing data to `process.py`, `process.py` consumes a lot of memory. Sometimes upwards of 5 GB or more depending on the size of your data file. So be cautious of taking too many samples. In many cases 1 to 3 samples is enough. By default it is set to 1.
 
 
-#### Data Formatting:
-See something about data formatting
-
-
----
-
-
-
-
-## `rfsweep` Data Formats
-
-
-
-
-
----
-
-
-
-
-
-## Setting up the Raspberry PI
-
-
-
-
-
----
-
-
-
-
-
-## How to compile `rfsweep`
-
-
-### Compile for Debian/Ubuntu
-
-Tested on Debian (Trixie) and Ubuntu (Noble Numbat)
+## `rfsweep rotate` Parameters
 
 ```
-# Update apt
-sudo apt update
+DESCRIPTION
+        Move motor to indicated angle.
 
-# Install dependancies
-sudo apt-get install git gcc make libusb-1.0-0 libusb-1.0-0-dev
+OPTIONS
+        -h
+            Print help message.
 
-# Clone the project repository
-git clone https://github.com/stephen010x/capstone-rfsweep.git --recurse-submodules
-cd capstone-rfsweep
+        -v
+            Verbose. Echos parameters.
 
-# If cloned without submodules, you can update the submodules like so:
-git submodule init
-git submodule update
+        --angle=<degrees>
+            Set motor angle in terms of degrees
 
-# Build project
-make
+        --steps=<degrees>
+            Set motor angle in terms of steps
 
-# Once complete, the compiled output can be found in 'bin/'
-`
+        --stepmode=<1/2/4/8/16>
+            Set motor microstep resolution.
 
-<div style="page``
-break-after: always;"></div>
+DEFAULTS (--defaults)
+        --ip="10.42.0.1"
+        --port=7070
+        --steps=360
+        --angle=0
+        --stepmode=1
 
-
-<!--- If you dn't have git, you can install it lik<div style="page-break-after: always;"></div>
-
-e so: `sudo apt install git ca-certificates --no-install-re<div style="page-break-after: always;"></div>
-
-commends` -->
-
-
-## Compile for Windows CMD
-
-```cm
-# Open the windows command line
-
-# Install git if not already installed
-winget install Git.Git
-
-# Clone the project repository
-git clone https://github.com/stephen010x/capstone-rfsweep.git
-cd capstone-rfsweep
-
-# Install cygwin
-call install_cygwin.bat
-
-# Build project
-make
-
-# Once complete, the compiled output can be found in 'bin\'
-```
-
-### Compile for Windows Desktop
-1. Download repository from https://github.com/stephen010x/capstone-rfsweep
-2. Run `install_cygwin.bat` to install Cygwin.
-3. From the CMD, run `make`
-4. The binaries can found in `bin\`
-
-
-
-### Cross-Compile for Windows from Debian/Ubuntu
-
-```
-# Update apt
-sudo apt update
-
-# Install wine
-sudo apt-get install wine
-
-# Clon the project repository
-git clone https://github.com/stephen010x/capstone-rfsweep.git --recurse-submodules
-cd capstone-rfsweep
-
-# Install Cygwin
-wine install_cygwin.bat
-
-# Build project
-./winebuild.sh
-
-# Once complete, the compiled output can be found in 'bin/'
+USAGE:
+        rfsweep rotate [options]
 ```
 
 
 
 
----
+## Supported baseband filters
+
+Here is a list of supported baseband filters:
+
+```
+SUPPORTED BASEBAND FILTER FREQUENCIES:
+
+     0.00 MHz (disabled)
+     1.75 MHz
+     2.50 MHz
+     3.50 MHz
+     5.00 MHz
+     5.50 MHz
+     6.00 MHz
+     7.00 MHz
+     8.00 MHz
+     9.00 MHz
+    10.00 MHz
+    12.00 MHz
+    14.00 MHz
+    15.00 MHz
+    20.00 MHz
+    24.00 MHz
+    28.00 MHz
+```
 
 
 
-
-
-## Resources and Documentation
-
-- https://pysdr.org/content/hackrf.html
-- https://github.com/greatscottgadgets/hacrf/
-- https://hackrf.readthedocs.io/en/latest/
-- https://hackrf.readthedocs.io/en/latest/hackrf_one.html
-- https://github.com/cygwin/cygwin/
-- https://www.cygwin.com/
 <div style="page-break-after: always;"></div>
 
+---
+
+
+
+
+
+
+
+
+- [`rfsweep` Data Formats](#rfsweep-data-formats)
+- [Hardware Notices](#hardware-notices)
+- [Cad Models](#cad-models)
+- [Building `rfsweep`](#building-rfsweep)
+    - [Compile for Debian/Ubuntu](#compile-for-debianubuntu)
+    - [Compile on Windows CMD](#compile-on-windows-cmd)
+    - [Compile on Windows Desktop](#compile-on-windows-desktop)
+    - [Cross-Compile for Windows from Debian/Ubuntu](#cross-compile-for-windows-from-debianubuntu)
+- [Installing Script Dependancies (optional)](#installing-script-dependancies-optional)
+    - [Debian/Ubuntu Script Dependancies (optional)](#debianubuntu-script-depenancies-optional)
+    - [Windows CMD Script Dependancies (optional)](#windows-cmd-script-dependancies-optional)
+    - [Windows Desktop Script Dependancies (optional)](#windows-desktop-script-dependancies-optional)
+- [Setting up the Raspberry PI](#setting-up-the-raspberry-pi)
+- [Resources and Documentation](#resources-and-documentation)

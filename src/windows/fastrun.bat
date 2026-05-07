@@ -8,8 +8,8 @@
 :: -----------------
 :: Connection Settings
 :: It will try all three of these IPs
-SET "ipA=10.42.0.1" & REM - Wifi IP
-SET "ipB=10.42.1.1" & REM - Ethernet IP
+SET "ipA=10.42.1.1" & REM - Ethernet IP
+SET "ipB=10.42.0.1" & REM - Wifi IP
 SET "ipC=127.0.0.1" & REM - Localhost IP
 SET "port=7070"
 

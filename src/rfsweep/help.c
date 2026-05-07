@@ -8,7 +8,10 @@
 /*          8      16      24      32      40      48      56      64
      xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-   */
 
-const char *str_help =
+const char *str_help =                                                  "\n"
+    "RFSWEEP VERSION " RFSWEEP_VERSION                                  "\n"
+    "==================="                                               "\n"
+    ""                                                                  "\n"
     "USAGE:"                                                            "\n"
     "        rfsweep -h"                                                "\n"
     "        rfsweep --defaults"                                        "\n"
@@ -47,7 +50,10 @@ const char *str_help =
 /*          8      16      24      32      40      48      56      64
      xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-   */
 
-const char *str_help_server =
+const char *str_help_server =                                           "\n"
+    "RFSWEEP VERSION " RFSWEEP_VERSION                                  "\n"
+    "==================="                                               "\n"
+    ""                                                                  "\n"
     "USAGE:"                                                            "\n"
     "        rfsweep server -h"                                         "\n"
     "        rfsweep server [options]"                                  "\n"
@@ -80,7 +86,10 @@ const char *str_help_server =
 /*          8      16      24      32      40      48      56      64
      xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-   */
 
-const char *str_help_misc =
+const char *str_help_misc =                                             "\n"
+    "RFSWEEP VERSION " RFSWEEP_VERSION                                  "\n"
+    "==================="                                               "\n"
+    ""                                                                  "\n"
     "USAGE:"                                                            "\n"
     "        rfsweep <command> -h"                                      "\n"
     "        rfsweep reset   [options]"                                 "\n"
@@ -112,7 +121,10 @@ const char *str_help_misc =
 /*          8      16      24      32      40      48      56      64
      xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-   */
 
-const char *str_help_transmit =
+const char *str_help_transmit =                                         "\n"
+    "RFSWEEP VERSION " RFSWEEP_VERSION                                  "\n"
+    "==================="                                               "\n"
+    ""                                                                  "\n"
     "USAGE:"                                                            "\n"
     "        rfsweep transmit enable  [options]"                        "\n"
     "        rfsweep transmit disable [options]"                        "\n"
@@ -160,7 +172,10 @@ const char *str_help_transmit =
 /*          8      16      24      32      40      48      56      64
      xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-xxxxxxx-   */
 
-const char *str_help_measure =
+const char *str_help_measure =                                          "\n"
+    "RFSWEEP VERSION " RFSWEEP_VERSION                                  "\n"
+    "==================="                                               "\n"
+    ""                                                                  "\n"
     "USAGE:"                                                            "\n"
     "        rfsweep measure [options]"                                 "\n"
     "        rfsweep receive [options]"                                 "\n"
@@ -238,7 +253,10 @@ const char *str_help_measure =
 
 
 
-const char *str_help_rotate =
+const char *str_help_rotate =                                           "\n"
+    "RFSWEEP VERSION " RFSWEEP_VERSION                                  "\n"
+    "==================="                                               "\n"
+    ""                                                                  "\n"
     "USAGE:"                                                            "\n"
     "        rfsweep rotate [options]"                                  "\n"
     ""                                                                  "\n"
@@ -285,7 +303,7 @@ const char *str_help_defaults =
     "        --srate="      STRINGIFY(DEFAULT_SRATE)      "\n"
     "        --lna-gain="   STRINGIFY(DEFAULT_LNA)        "\n"
     "        --vga-gain="   STRINGIFY(DEFAULT_VGA)        "\n"
-    "        --tx-amp="     STRINGIFY(DEFAULT_TX_AMP)     "\n"
+    "        --tx-ampl="     STRINGIFY(DEFAULT_TX_AMP)     "\n"
     "        --stepmode="   STRINGIFY(DEFAULT_STEPMODE)   "\n"
     "        --angle="      STRINGIFY(DEFAULT_ANGLE)      "\n";
 

@@ -74,9 +74,9 @@ realfreq=$($py -c "print(f\"{int($freq - $srate*$offset):g}\")")
 mkdir -p $outdir
 outfile=$outdir/data-$(printf '%x' $(date +%s)).bin
 
-transon="./rfsweep transmit enable  --ip=$ip --port=$port --freq=$freq --vga-gain=$tx_vga_gain --tx-amp=$tx_amp $textflags"
+transon="./rfsweep transmit enable  --ip=$ip --port=$port --freq=$freq --vga-gain=$tx_vga_gain --tx-ampl=$tx_amp $textflags"
 
-transoff="./rfsweep transmit disable  --ip=$ip --port=$port --freq=$freq --vga-gain=$tx_vga_gain --tx-amp=$tx_amp $textflags"
+transoff="./rfsweep transmit disable  --ip=$ip --port=$port --freq=$freq --vga-gain=$tx_vga_gain --tx-ampl=$tx_amp $textflags"
 
 runstr="./rfsweep measure --ip=$ip --port=$port --steps=$steps --samps=$samps --stepmode=$stepmode --file=$outfile --freq=$realfreq --band=$band --srate=$srate --lna-gain=$lna_gain --vga-gain=$vga_gain --samps=$samps $extflags"
 

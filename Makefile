@@ -283,7 +283,7 @@ endif
 $(BINTARG): $(OBJS) FORCE Makefile
 	@mkdir -p $(dir $@)
 	$(CC) $(BFLAGS) -o $@ $(OBJS) -L$(LIBDIR) $(LFLAGS)
-	cp -Lr --preserve=mode $(COPYOVER) bin/
+	\cp -Lr --preserve=mode $(COPYOVER) bin/
 
 # $(LIBBINTARG).a: $(OBJS)
 # 	@mkdir -p $(dir $@)

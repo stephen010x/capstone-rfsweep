@@ -11,11 +11,11 @@
 
 ## TESTS
 - [x] Test text file with process.py
-- [ ] Test various transmitter script and rfsweep transmitter signal amplitude values
+- [x] Test various transmitter script and rfsweep transmitter signal amplitude values
+- [x] Make sure that running `rfsweep receive` won't return back to origin
+- [x] Text parameter flag value overflows
+- [x] Test `--band` high values (zero), blank (default), and zero (zero)
 - [ ] Test all 4 run scripts with new transmit and error log features
-- [ ] Make sure that running `rfsweep receive` won't return back to origin
-- [ ] Test `--band` high values (zero), blank (default), and zero (zero)
-- [ ] Text parameter flag value overflows
 
 ## FEATURES
 - [x] Remove --snap flag and features. Replace with --stepmode
@@ -32,8 +32,8 @@
 - [x] Add cad models to a dir on the git repo (cleanup the kicad files)
 - [x] Add to scripts to try for wlan first, then eth, then localhost
     - [x] Find and add default eth IP address to scripts
+- [x] Add version number to help prints
 - [ ] Write the actual readme/documentation
-- [ ] Add version number to help prints
 - [ ] Add Q&A or Troubleshooting section to the README
 
 ---

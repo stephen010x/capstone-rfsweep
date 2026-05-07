@@ -23,6 +23,9 @@ _Static_assert(sizeof(float64_t) == sizeof(int64_t));
 
 
 
+#define RFSWEEP_VERSION  "0.9"
+
+
 
 #define STEP_MODE_1_1   0b000
 #define STEP_MODE_1_2   0b001
