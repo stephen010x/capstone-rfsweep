@@ -13,10 +13,10 @@ set def_clock=y
 set def_ampl=127
 
 
-where python 1>nul 2>nul
-if %ERRORLEVEL%==0 set py=python
 where python3 1>nul 2>nul
 if %ERRORLEVEL%==0 set py=python3
+where python 1>nul 2>nul
+if %ERRORLEVEL%==0 set py=python
 if "%py%"=="" (
     echo Could not find 'python' command. Check if python3 is installed.
     exit /b 1
