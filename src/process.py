@@ -82,8 +82,12 @@ def main():
     # free memory
     frames = None
     satcount = 0
+    robustmax = 0
+    rms = []
     for f in fsplit:
         satcount += f.satcount()
+        robustmax = max(f.robust_absmax(), robustmax)
+        rms.append(f.rms_mean())
         # apply window
         f.window()
         # apply fft
@@ -91,11 +95,23 @@ def main():
         # hide dc line (for graph aesthetics)
         f.squash_dc()
 
+    rmsmean = np.sqrt(np.mean(np.array(rms)**2))
+
+
+    print("========================")
+
+    if (robustmax < 127):
+        print(f"{robustmax/1.28:.3g}% of range used with rms mean at {rmsmean/1.28:.3g}% of range.")
 
     # check for any saturated samples
     if satcount > 0:
-        print(f"WARNING: {satcount} counts of saturation detected")
+        print(f"WARNING: {satcount} counts of oversaturation detected")
 
+    if (robustmax < 128/8):
+        print(f"WARNING: undersaturation detected")
+
+    print("========================")
+    
 
     favg = np.array([])
     frms = np.array([])
@@ -377,6 +393,15 @@ class Frame:
 
     def satcount(self):
         return sum([1 if (n == 127 or n == -128) else 0 for n in self.bins])
+
+
+    def robust_absmax(self):
+        # n represents the largest value index at 99.9%
+        n = int(np.ceil(len(self.bins)*0.001))
+        return np.partition(np.abs(self.bins), -n)[-n]  # returns nth largest item
+
+    def rms_mean(self):
+        return np.sqrt(np.mean(np.abs(self.bins)**2))
 
 
     # def freq_to_index(self, freq):
