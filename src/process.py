@@ -99,16 +99,20 @@ def main():
 
 
     print("========================")
-
-    if (robustmax < 127):
-        print(f"{robustmax/1.28:.3g}% of range used with rms mean at {rmsmean/1.28:.3g}% of range.")
+    
+    print(f"{robustmax/1.27:.3g}% of range used with rms mean at {rmsmean/1.27:.3g}% of range.")
 
     # check for any saturated samples
     if satcount > 0:
         print(f"WARNING: {satcount} counts of oversaturation detected")
 
+    # check if likely undersaturated. rmsmean check is for quantization noise.
     if (robustmax < 128/8):
-        print(f"WARNING: undersaturation detected")
+        print(f"WARNING: range undersaturation detected")
+
+    # quantization undersaturation check
+    elif (rmsmean < 3):
+        print(f"WARNING: RMS mean undersaturation detected")
 
     print("========================")
     
@@ -392,7 +396,8 @@ class Frame:
         
 
     def satcount(self):
-        return sum([1 if (n == 127 or n == -128) else 0 for n in self.bins])
+        return sum([1 if (n >= 127 or n <= -128) else 0 for n in self.bins])
+        # return sum([1 if n >= 126.999 else 0 for n in np.abs(self.bins)])
 
 
     def robust_absmax(self):
